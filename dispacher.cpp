@@ -69,7 +69,7 @@ void buildData(json &config)
 
     for (int i = 0; i < inpFiles.size(); i++)
     {
-        config["rootFile"] = inpFiles[i];
+        config["crtFile"] = inpFiles[i];
 
         futures.push_back(async(std::launch::async, [config]()
                                 { dispatchThread(config); })
@@ -151,7 +151,7 @@ void calculateDelay(json &config)
         }
     }
 
-    auto inpFiles = getPathFiles(config["inputPath"], ".root");
+    auto inpFiles = getPathFiles(config["inputPath"], config["inputIdentifier"]);
 
     auto tFile = TFile(inpFiles[0].c_str());
 
@@ -378,7 +378,7 @@ vector<string> generateInputFiles(json &config)
 
         auto finalFiles = removeAlreadyBuilt(inpFiles, outFiles);
 
-        cout << "-> " << finalFiles.size() << " (built) " << endl;
+        cout << "-> " << finalFiles.size() << " (already done) " << endl;
 
         if (finalFiles.size())
         {
@@ -387,6 +387,8 @@ vector<string> generateInputFiles(json &config)
 
         return finalFiles;
     }
+
+    cout << endl;
 
     return {};
 }

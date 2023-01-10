@@ -22,6 +22,12 @@
 #include "TH2D.h"
 #include "TF1.h"
 
+#include "eventProto.capnp.h"
+#include <capnp/message.h>
+#include <capnp/serialize-packed.h>
+#include <fcntl.h>
+#include <limits>
+
 #define TRIGGER_DELAY 1000
 #define DETECTOR_TYPES 5
 
@@ -34,6 +40,7 @@ namespace fs = std::filesystem;
 json readConfigFile(string fileName);
 
 deque<event *> convertROOTChain(json &config);
+deque<event *> convertProto(json &config);
 
 void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask);
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
@@ -132,9 +139,22 @@ vector<string> getPathFiles(string path, string extension)
 
 void analizeData(json config)
 {
-    auto events = convertROOTChain(config);
 
-    vector<vector<int>> coincMask = config["coincMask"].get<vector<vector<int>>>();
+    string dataType = config["inputType"];
+
+    deque<event *> events;
+
+    if (dataType == "root")
+    {
+        events = convertROOTChain(config);
+    }
+    else if (dataType == "proto")
+    {
+        events = convertProto(config);
+    }
+
+    vector<vector<int>>
+        coincMask = config["coincMask"].get<vector<vector<int>>>();
 
     builder(config, events, coincMask);
 }
@@ -174,6 +194,87 @@ vector<vector<int>> getDelayVector(json delay)
     return tempDelay;
 }
 
+deque<event *> convertProto(json &config)
+{
+
+    deque<event *> events;
+
+    uint eventNumb = config["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = numeric_limits<uint>::max();
+    }
+
+    string fileName = config["crtFile"];
+
+    auto fd = open(fileName.c_str(), O_RDONLY);
+
+    vector<vector<int>> delay = getDelayVector(config["delayNs"]);
+    vector<vector<int>> lut = config["detectorLUT"].get<vector<vector<int>>>();
+    vector<vector<int>> mask = config["detectorMask"].get<vector<vector<int>>>();
+    vector<vector<int>> coincPair = config["coincPairs"].get<vector<vector<int>>>();
+    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    vector<int> antiCoincFlags = config["antiCoincFlag"].get<vector<int>>();
+
+    kj::FdInputStream fdStream(fd);
+    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+    while (bufferedStream.tryGetReadBuffer() != nullptr)
+    {
+        capnp::PackedMessageReader message(bufferedStream);
+
+        auto dts = message.getRoot<Dataset>();
+
+        auto proEvent = dts.getEvents();
+
+        for (uint i = 0; i < proEvent.size(); i++)
+        {
+
+            auto ev = new event();
+
+            auto brd = proEvent[i].getBoard();
+            auto ch = proEvent[i].getChannel();
+
+            ev->setBoardNumb(brd);
+            ev->setChannelNumb(ch);
+            ev->setLutNumb(lut[brd][ch]);
+            ev->setDetectorType(mask[brd][ch]);
+
+            ev->setEnergy(proEvent[i].getEnergy());
+
+            uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
+            ev->setTimeStamp(delayedTime);
+
+            // coinc
+            ev->setCoincPair(coincPair[brd][ch]);
+
+            auto findPair = make_pair(brd, ch);
+
+            if (!coincPairTypes.count(findPair))
+            {
+                coincPairTypes[findPair] = findCoincPairType(config, brd, ch);
+            }
+
+            ev->setCoincPairType(coincPairTypes[findPair]);
+
+            if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
+            {
+                ev->setAntiCoincFlag(true);
+            }
+
+            events.push_back(ev);
+
+            if (events.size() == eventNumb)
+            {
+                return events;
+            }
+        }
+    }
+
+    return events;
+}
+
 deque<event *> convertROOTChain(json &config)
 {
 
@@ -192,7 +293,7 @@ deque<event *> convertROOTChain(json &config)
     ULong64_t timeStamp;
     double psd;
 
-    string fileName = config["rootFile"];
+    string fileName = config["crtFile"];
 
     auto tFile = new TFile(fileName.c_str());
 
@@ -304,13 +405,18 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
     preProcessEvent(config, varEventPool);
 
-    string fileName = config["rootFile"];
+    string fileName = config["crtFile"];
 
     auto runNumber = stoi(extractNumbers(fileName));
 
     auto pos = fileName.find_last_of("/") + 1;
+    auto nSize = 6;
 
-    fileName = fileName.substr(pos, fileName.size() - pos - 5);
+    fileName = fileName.substr(pos, fileName.size());
+
+    pos = fileName.find_last_of(".");
+
+    fileName = fileName.substr(0, pos);
 
     fileName = string(config["outputPath"]) + "/" + fileName;
 
@@ -508,9 +614,10 @@ bool dataSort(const std::string &a, const std::string &b)
 
 string extractNumbers(const string &a)
 {
-    auto index = a.find_last_of("_");
+    auto pos = a.find_last_of(".");
+    auto nSize = 6;
 
-    string numberString = a.substr(a.size() - 11, 6);
+    string numberString = a.substr(pos - nSize, nSize);
 
     return numberString;
 }

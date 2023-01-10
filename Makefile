@@ -4,8 +4,8 @@ INCLUDE += -Iinclude
 LIBS = -L$(ROOT_BASE)/lib
 
 
-LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp
-
+LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -lcapnp -lkj
+ 
 
 all:
 	g++ dispacher.cpp -o build src/*.cpp -std=c++17 $(INCLUDE) $(LIBS) $(LDLIBS)	
