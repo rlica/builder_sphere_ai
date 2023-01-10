@@ -22,6 +22,7 @@ void calculateDelay(json &config);
 vector<string> getPathFiles(string path, string extension = "");
 void dispatchThread(json config);
 vector<string> generateInputFiles(json &config);
+void printStatus(int finished, int total);
 
 int main(int argc, char **argv)
 {
@@ -64,11 +65,10 @@ void buildData(json &config)
     cout << "requested: " << inpFiles.size() << " file/s" << endl;
     cout << "building on: " << maxCores << " core/s" << endl;
 
+    int finished = 0;
+
     for (int i = 0; i < inpFiles.size(); i++)
     {
-
-        cout << inpFiles[i] << endl;
-
         config["rootFile"] = inpFiles[i];
 
         futures.push_back(async(std::launch::async, [config]()
@@ -90,9 +90,49 @@ void buildData(json &config)
             if (pos != -1)
             {
                 futures.erase(futures.begin() + pos);
+                finished++;
             }
         }
+        printStatus(finished, inpFiles.size());
     }
+
+    while (futures.size())
+    {
+
+        int pos = -1;
+
+        for (int o = 0; o < futures.size(); o++)
+        {
+            if (futures[o].wait_for(10ms) == std::future_status::ready)
+            {
+                pos = o;
+            }
+        }
+
+        if (pos != -1)
+        {
+            futures.erase(futures.begin() + pos);
+            finished++;
+        }
+
+        printStatus(finished, inpFiles.size());
+    }
+
+    if (finished)
+    {
+        cout << endl;
+    }
+}
+
+void printStatus(int finished, int total)
+{
+    string doneStr = "000000" + to_string(finished);
+    doneStr = doneStr.substr(doneStr.size() - 6);
+
+    string totalStr = "000000" + to_string(total);
+    totalStr = totalStr.substr(totalStr.size() - 6);
+
+    cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
 }
 
 void calculateDelay(json &config)
@@ -236,13 +276,6 @@ vector<string> getPathFiles(string path, string extension)
     transform(timeFiles.cbegin(), timeFiles.cend(), files.begin(), [](pair<string, int64_t> i)
               { return i.first; });
 
-    for (auto file : files)
-    {
-        cout << file << endl;
-    }
-
-    abort();
-
     return files;
 }
 
@@ -321,30 +354,20 @@ vector<string> generateInputFiles(json &config)
         int start = int(config["keep"][0]);
         int stop = int(config["keep"][1]);
 
-        bool invalid = false;
-
         if (start < 0 || start >= inpFiles.size())
         {
             start = 0;
-            invalid = true;
         }
 
         if (stop < 0 || stop >= inpFiles.size())
         {
             stop = inpFiles.size();
-            invalid = true;
         }
 
         if (start == stop)
         {
             start = 0;
             stop = inpFiles.size();
-            invalid = true;
-        }
-
-        if (invalid)
-        {
-            // cout << "info: keep " << config["keep"] << " is invalid, using fallback value: [" << start << "," << stop << ")" << endl;
         }
 
         inpFiles = {inpFiles.begin() + start, inpFiles.begin() + stop};

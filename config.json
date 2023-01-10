@@ -33,12 +33,12 @@
     [16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  0,  0, 0, 0, 0, 0], 
     [11, 12, 13, 14, 15,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0]  
   ], 
-  "eventCount": 10000, 
+  "eventCount": 1000000, 
   "inputIdentifier": "60CO_", 
   "inputPath": "input", 
-  "keep": [0, 4], 
+  "keep": [0, 1000], 
   "liveBuild": false, 
-  "maxCores": 1, 
+  "maxCores": 12, 
   "outputPath": "output", 
   "run": "build", 
   "sortBeforeBuild": true
