@@ -1,8 +1,8 @@
 {
   "input": {
     "fileFormat": "proto", 
-    "eventCount": 0, 
-    "fileIdentifier": "152Eu", 
+    "eventCount": 10000000, 
+    "fileIdentifier": "Run000645.cap", 
     "path": "input", 
     "keepIndex": [0, 1], 
     "liveBuild": false
@@ -37,13 +37,14 @@
       [  14, 7, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  
     ]
   }, 
-  "general": {"maxCores": 1, "run": "pulserDelay"}, 
+  "general": {"maxCores": 1, "run": "build"}, 
   "output": {"outputPath": "output"}, 
   "build": {
     "sortBeforeBuild": true, 
     "antiCoincFlag": [2], 
     "coincMask": [ [1, 0, 0, 0, 0] ], 
     "coincWindow": 1000000, 
-    "typePriority": [1, 2, 0, 3, 4]
+    "typePriority": [1, 2, 0, 3, 4], 
+    "absoluteTime": {"resetGap": 5, "scalePower": -12}
   }
 }

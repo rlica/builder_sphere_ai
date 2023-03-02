@@ -9,6 +9,7 @@
 #include <fstream>
 #include <math.h> /* isnan, sqrt */
 #include "json.hpp"
+#include <climits>
 
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
@@ -23,7 +24,7 @@ public:
     gaspDataWriter(string file, int numb);
 
     void initializeOutputFile(string scope);
-    void addBuiltEvent(vector<event *> *events, vector<int> &eventMask, uint64_t time);
+    void addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time);
 
     void writeData();
     void closeFile();
@@ -33,7 +34,7 @@ public:
     void setFileName(string name) { varFileName = name; }
     string getFileName() { return varFileName; }
 
-    void setConfig(json config) { varConfig = config; }
+    void setConfig(json config);
 
     void addByteWrite(uint32_t size) { varByteWrite += size; }
     uint64_t getByteWrite();
@@ -64,5 +65,10 @@ private:
     string varFileName;
 
     ofstream varOutFile;
+
+    int64_t resetTime = std::numeric_limits<int64_t>::min();
+    int64_t prevTime = std::numeric_limits<int64_t>::min();
+    int64_t resetGap = -1;
+    double timeScale = 1;
 };
 #endif

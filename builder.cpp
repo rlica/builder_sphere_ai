@@ -327,6 +327,8 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
     auto dataWriter = make_shared<gaspDataWriter>(gaspDataWriter(fileName, runNumber));
 
+    dataWriter->setConfig(config);
+
     uint64_t coincWindow = config["build"]["coincWindow"];
 
     vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
@@ -511,7 +513,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     vector<event *> tempList;
 
-    uint64_t absTime = (*evt.first)->getTimeStamp();
+    int64_t absTime = (*evt.first)->getTimeStamp();
 
     // capture the list
     for (auto i = evt.first; i < evt.second; i++)

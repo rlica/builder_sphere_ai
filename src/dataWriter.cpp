@@ -13,7 +13,7 @@ gaspDataWriter::gaspDataWriter(string file, int numb)
     initializeRecordHeader();
 }
 
-void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMask, uint64_t time)
+void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time)
 {
 
     // pop bgo from event mask
@@ -27,8 +27,18 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
     // size of header and detector mask
     size += varEventHeaderSize + varParamMask.size();
 
+    // this should be from config
+    if (time > (prevTime + resetGap))
+    {
+        resetTime = time;
+    }
+
+    prevTime = time;
+
+    short scaledTime = (time - resetTime) * timeScale;
+
     // fill header parameters for now they are empty set abs time in 10s per sample
-    eventBuffer.push_back(time * pow(10, -13));
+    eventBuffer.push_back(scaledTime);
 
     // fill detector mask
     for (uint i = 0; i < eventMask.size(); i++)
@@ -42,7 +52,6 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
 
     for (int i = 0; i < events->size(); i++)
     {
-
         switch (events->at(i)->getDetectorType())
         {
         case 0:
@@ -182,4 +191,12 @@ void gaspDataWriter::initializeOutputFile(string scope)
     varOutFile.open(getFileName().c_str());
 
     initializeFileHeader();
+}
+
+void gaspDataWriter::setConfig(json config)
+{
+    varConfig = config;
+
+    resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
+    timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
 }
