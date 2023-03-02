@@ -28,42 +28,34 @@
 #include <fcntl.h>
 #include <limits>
 
-#define TRIGGER_DELAY 1000
 #define DETECTOR_TYPES 5
-
-std::mutex g_i_mutex;
 
 using json = nlohmann::json;
 using namespace std;
-namespace fs = std::filesystem;
 
-json readConfigFile(string fileName);
+int eventCount = 0;
+int signalCount = 0;
 
 deque<event *> convertROOTChain(json &config);
 deque<event *> convertProto(json &config);
 
 void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask);
-bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
-bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
 void addToCheckMask(vector<int> &checkMask, event &evt);
 void preProcessEvent(json &config, deque<event *> &events);
-pair<int, int> findBoardChannel(json &config, int detType, int lut);
-vector<string> getPathFiles(string path, string extension = "");
-bool dataSort(const std::string &a, const std::string &b);
-string extractNumbers(const string &a);
-
-void postProcessEvent(pair<deque<event *>::iterator, deque<event *>::iterator>, shared_ptr<gaspDataWriter> dataWriter);
-
-pair<int, int> findCoincPairType(json &config, int brd, int ch);
-vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
-vector<int> getStartCond(vector<vector<int>> coincMask);
-pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events);
-double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
-
+void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt, shared_ptr<gaspDataWriter> dataWriter);
 void analizeData(json config);
 
-vector<shared_ptr<TH1D>> hists;
-vector<shared_ptr<TH1D>> energy;
+bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
+bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
+
+pair<int, int> findBoardChannel(json &config, int detType, int lut);
+pair<int, int> findCoincPairType(json &config, int brd, int ch);
+
+string extractNumbers(const string &a);
+
+pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events);
+
+double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
 
 int main(int argc, char **argv)
 {
@@ -77,70 +69,10 @@ int main(int argc, char **argv)
     }
 }
 
-vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output)
-{
-
-    for (auto i : output)
-    {
-        auto pos = i.find_last_of("/") + 1;
-        auto tempOut = i.substr(pos);
-
-        for (string &o : input)
-        {
-            pos = o.find_last_of("/") + 1;
-            auto tempInp = o.substr(pos);
-
-            if (tempInp.find(tempOut) != string::npos)
-            {
-                o = "";
-            }
-        }
-    }
-
-    input.erase(std::remove(input.begin(), input.end(), ""), input.end());
-
-    return input;
-}
-
-vector<string> getPathFiles(string path, string extension)
-{
-
-    vector<pair<string, int64_t>> timeFiles;
-
-    for (const auto &entry : fs::directory_iterator(path))
-    {
-        auto time = std::chrono::duration_cast<std::chrono::seconds>(entry.last_write_time().time_since_epoch()).count();
-
-        if (extension != "")
-        {
-            if (entry.path().string().find(extension) != string::npos)
-            {
-                timeFiles.push_back(make_pair(entry.path().string(), time));
-            }
-        }
-        else
-        {
-            timeFiles.push_back(make_pair(entry.path().string(), time));
-        }
-    }
-
-    sort(timeFiles.begin(), timeFiles.end(),
-         [](auto i, auto j)
-         { return (i.second < j.second); });
-
-    vector<string> files;
-    files.resize(timeFiles.size());
-
-    transform(timeFiles.cbegin(), timeFiles.cend(), files.begin(), [](pair<string, int64_t> i)
-              { return i.first; });
-
-    return files;
-}
-
 void analizeData(json config)
 {
 
-    string dataType = config["inputType"];
+    string dataType = config["input"]["fileFormat"];
 
     deque<event *> events;
 
@@ -154,7 +86,7 @@ void analizeData(json config)
     }
 
     vector<vector<int>>
-        coincMask = config["coincMask"].get<vector<vector<int>>>();
+        coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
     builder(config, events, coincMask);
 }
@@ -162,8 +94,8 @@ void analizeData(json config)
 pair<int, int> findBoardChannel(json &config, int detType, int lut)
 {
 
-    vector<vector<int>> lutVect = config["detectorLUT"];
-    vector<vector<int>> bTypeVect = config["detectorMask"];
+    vector<vector<int>> lutVect = config["detector"]["lut"];
+    vector<vector<int>> bTypeVect = config["detector"]["type"];
 
     for (int i = 0; i < lutVect.size(); i++)
     {
@@ -199,7 +131,7 @@ deque<event *> convertProto(json &config)
 
     deque<event *> events;
 
-    uint eventNumb = config["eventCount"];
+    uint eventNumb = config["input"]["eventCount"];
 
     if (eventNumb == 0)
     {
@@ -210,12 +142,12 @@ deque<event *> convertProto(json &config)
 
     auto fd = open(fileName.c_str(), O_RDONLY);
 
-    vector<vector<int>> delay = getDelayVector(config["delayNs"]);
-    vector<vector<int>> lut = config["detectorLUT"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detectorMask"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["coincPairs"].get<vector<vector<int>>>();
+    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
     map<pair<int, int>, pair<int, int>> coincPairTypes;
-    vector<int> antiCoincFlags = config["antiCoincFlag"].get<vector<int>>();
+    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
     kj::FdInputStream fdStream(fd);
     kj::BufferedInputStreamWrapper bufferedStream(fdStream);
@@ -280,10 +212,10 @@ deque<event *> convertROOTChain(json &config)
 
     vector<vector<int>> boards = vector<vector<int>>(5, vector<int>(50, -100));
     vector<vector<int>> channels = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> coincPairs = config["coincPairs"].get<vector<vector<int>>>();
-    vector<vector<int>> delay = getDelayVector(config["delayNs"]);
+    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
 
-    vector<int> antiCoincFlags = config["antiCoincFlag"].get<vector<int>>();
+    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
     map<pair<int, int>, pair<int, int>> coincPairTypes;
 
@@ -307,7 +239,7 @@ deque<event *> convertROOTChain(json &config)
 
     deque<event *> events;
 
-    int eventNumb = config["eventCount"];
+    int eventNumb = config["input"]["eventCount"];
 
     if (eventNumb == 0)
     {
@@ -362,42 +294,15 @@ deque<event *> convertROOTChain(json &config)
     return events;
 }
 
-json readConfigFile(string fileName)
-{
-    std::ifstream ifs(fileName.c_str());
-    json jf = json::parse(ifs);
-
-    return jf;
-}
-
 void preProcessEvent(json &config, deque<event *> &events)
 {
 
-    if (bool(config["sortBeforeBuild"]))
+    if (bool(config["build"]["sortBeforeBuild"]))
     {
         __gnu_parallel::sort(events.begin(), events.end(),
                              [](event *i, event *j)
                              { return (i->getTimeStamp() < j->getTimeStamp()); });
     }
-}
-
-vector<int> getStartCond(vector<vector<int>> coincMask)
-{
-
-    vector<int> tempCond = vector<int>(coincMask[0].size(), 0);
-
-    for (auto cond : coincMask)
-    {
-        for (int i = 0; i < cond.size(); i++)
-        {
-            if (cond[i])
-            {
-                tempCond[i] = 1;
-            }
-        }
-    }
-
-    return tempCond;
 }
 
 void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask)
@@ -418,11 +323,11 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
     fileName = fileName.substr(0, pos);
 
-    fileName = string(config["outputPath"]) + "/" + fileName;
+    fileName = string(config["output"]["outputPath"]) + "/" + fileName;
 
     auto dataWriter = make_shared<gaspDataWriter>(gaspDataWriter(fileName, runNumber));
 
-    uint64_t coincWindow = config["coincWindow"];
+    uint64_t coincWindow = config["build"]["coincWindow"];
 
     vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
 
@@ -484,7 +389,7 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
             auto evt = selectOverlapEvent(overlapEvents);
 
-            postProcessEvent(evt, dataWriter);
+            postProcessEvent(config, evt, dataWriter);
         }
     }
 
@@ -591,27 +496,6 @@ bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask)
     return false;
 }
 
-bool dataSort(const std::string &a, const std::string &b)
-{
-
-    auto fSec = extractNumbers(a);
-    auto sSec = extractNumbers(b);
-
-    for (int i = 0; i < fSec.size(); i++)
-    {
-        if (fSec[i] > sSec[i])
-        {
-            return false;
-        }
-        else if (fSec[i] < sSec[i])
-        {
-            return true;
-        }
-    }
-
-    return true;
-}
-
 string extractNumbers(const string &a)
 {
     auto pos = a.find_last_of(".");
@@ -622,32 +506,55 @@ string extractNumbers(const string &a)
     return numberString;
 }
 
-void postProcessEvent(pair<deque<event *>::iterator, deque<event *>::iterator> evt, shared_ptr<gaspDataWriter> dataWriter)
+void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt, shared_ptr<gaspDataWriter> dataWriter)
 {
 
     vector<event *> tempList;
 
     uint64_t absTime = (*evt.first)->getTimeStamp();
 
+    // capture the list
     for (auto i = evt.first; i < evt.second; i++)
     {
         tempList.push_back(new event(*(*i)));
+    }
 
-        double relativeTime = (*i)->getTimeStamp() - tempList.front()->getTimeStamp() + TRIGGER_DELAY;
+    eventCount++;
+    signalCount += tempList.size();
+
+    // sort by (type and timestamp)
+    auto start = tempList.begin();
+
+    for (auto val : config["build"]["typePriority"])
+    {
+        auto it = std::partition(start, tempList.end(), [val](event *ev)
+                                 { return ev->getDetectorType() == val; });
+
+        sort(start, it, [](event *i, event *m)
+             { return i->getTimeStamp() < m->getTimeStamp(); });
+
+        start = it;
+    }
+
+    // set relative times
+    for (int i = 0; i < tempList.size(); i++)
+    {
+        double relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + int(config["build"]["coincWindow"]);
 
         uint16_t timeNs = int(relativeTime) / 1000;
         uint16_t timePs = int(relativeTime) % 1000;
 
-        tempList.back()->setRelativeTimeNs(timeNs);
-        tempList.back()->setRelativeTimePs(timePs);
+        tempList[i]->setRelativeTimeNs(timeNs);
+        tempList[i]->setRelativeTimePs(timePs);
     }
 
     if (tempList.size() != 1)
     {
-        sort(tempList.begin(), tempList.end(), [](event *i, event *j)
-             { return (i->getCoincPair() < j->getCoincPair()); });
+        std::sort(tempList.begin(), tempList.end(), [](event *i, event *j)
+                  { return (i->getCoincPair() < j->getCoincPair()); });
     }
 
+    // rewrite this ... its kind of shit
     for (uint i = 0; i < tempList.size(); i++)
     {
         if (tempList[i] == nullptr)
@@ -718,11 +625,11 @@ void postProcessEvent(pair<deque<event *>::iterator, deque<event *>::iterator> e
             }
         }
     }
-
     tempList.erase(remove(tempList.begin(), tempList.end(), nullptr), tempList.end());
+    // rewrite this ... its kind of shit
 
-    sort(tempList.begin(), tempList.end(), [](event *i, event *j)
-         { return (i->getDetectorType() < j->getDetectorType()); });
+    std::sort(tempList.begin(), tempList.end(), [](event *i, event *j)
+              { return (i->getDetectorType() < j->getDetectorType()); });
 
     vector<int> eventMask = vector<int>(DETECTOR_TYPES, 0);
 
@@ -744,9 +651,9 @@ pair<int, int> findCoincPairType(json &config, int brd, int ch)
 
     int foundBrd = 0;
 
-    int pair = config["coincPairs"][brd][ch];
+    int pair = config["detector"]["coincPairs"][brd][ch];
 
-    for (auto i : config["coincPairs"])
+    for (auto i : config["detector"]["coincPairs"])
     {
         auto pos = find(i.begin(), i.end(), pair);
 
@@ -756,8 +663,8 @@ pair<int, int> findCoincPairType(json &config, int brd, int ch)
             if (brd != foundBrd || ch != distance(i.begin(), pos))
             {
 
-                auto p = make_pair(config["detectorMask"][foundBrd][distance(i.begin(), pos)],
-                                   config["detectorLUT"][foundBrd][distance(i.begin(), pos)]);
+                auto p = make_pair(config["detector"]["type"][foundBrd][distance(i.begin(), pos)],
+                                   config["detector"]["lut"][foundBrd][distance(i.begin(), pos)]);
 
                 return p;
             }

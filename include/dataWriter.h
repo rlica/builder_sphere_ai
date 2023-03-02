@@ -16,36 +16,6 @@
 using namespace std;
 using json = nlohmann::json;
 
-/*
-class digitizerDataWriter
-{
-public:
-    digitizerDataWriter(string file, int numb);
-
-    virtual void addBuiltEvent(vector<event *> *events, vector<int> &eventMask){};
-    virtual void writeData(){};
-    virtual void initializeOutputFile(string scope){};
-    virtual void closeFile(){};
-
-    virtual void setFileName(string name){};
-
-    virtual string getFileName() { return varFileName; };
-    virtual int getRunNumb() { return varRunNumb; };
-
-    int getRunNumber(string path, string tag);
-    vector<int> getCrtRuns(string path, string tag);
-
-    void addByteWrite(uint32_t size) { varByteWrite += size; }
-    uint64_t getByteWrite();
-
-protected:
-    uint64_t varByteWrite = 0;
-
-    int varRunNumb;
-    string varFileName;
-};
-*/
-
 class gaspDataWriter
 {
 
