@@ -4,7 +4,7 @@ INCLUDE += -Iinclude
 LIBS = -L$(ROOT_BASE)/lib
 
 
-LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -lcapnp -lkj
+LDLIBS = `root-config --cflags --glibs` -pthread -fopenmp -lcapnp -lkj
  
 
 all:

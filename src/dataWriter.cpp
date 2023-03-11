@@ -5,11 +5,14 @@
 #include <regex>
 #include <iomanip>
 
-gaspDataWriter::gaspDataWriter(string file, int numb)
-    : varFileName(file), varRunNumb(numb)
-
+dataWriter::dataWriter(string file, int numb) : varFileName(file), varRunNumb(numb)
 {
-    initializeOutputFile("run");
+}
+
+gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
+{
+
+    initializeOutputFile();
     initializeRecordHeader();
 }
 
@@ -152,7 +155,6 @@ void gaspDataWriter::initializeFileHeader()
     varBlockBuffer.push_back(0x0010);
 
     varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
-    addByteWrite(varBlockBuffer.size() * sizeof(short));
 
     writeData();
 
@@ -170,7 +172,6 @@ void gaspDataWriter::initializeRecordHeader()
     varBlockBuffer.push_back(EVENT_HEADER_SIZE);
 
     varBlockBuffer.insert(varBlockBuffer.end(), EVENT_HEADER_SIZE - varBlockBuffer.size(), 0);
-    addByteWrite(varBlockBuffer.size() * sizeof(short));
 }
 
 void gaspDataWriter::closeFile()
@@ -183,7 +184,7 @@ void gaspDataWriter::closeFile()
     varOutFile.clear();
 }
 
-void gaspDataWriter::initializeOutputFile(string scope)
+void gaspDataWriter::initializeOutputFile()
 {
 
     resetBlockNumber();
@@ -193,10 +194,83 @@ void gaspDataWriter::initializeOutputFile(string scope)
     initializeFileHeader();
 }
 
-void gaspDataWriter::setConfig(json config)
+void dataWriter::setConfig(json config)
 {
     varConfig = config;
 
     resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
     timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
+}
+
+rootDataWriter::rootDataWriter(string file, int numb) : dataWriter(file, numb)
+{
+    initializeOutputFile();
+}
+
+void rootDataWriter::initializeOutputFile()
+{
+
+    string fName = getFileName() + ".root";
+
+    varOutFile = make_unique<TFile>(fName.c_str(), "RECREATE");
+
+    initializeTree();
+}
+
+void rootDataWriter::initializeTree()
+{
+
+    varEventTree = new TTree("events", "events tree");
+
+    varEventTree->Branch("detectorLUT", &varDetectorLUT);
+    varEventTree->Branch("detectorType", &varDetectorType);
+
+    varEventTree->Branch("energy", &varEnergy);
+    varEventTree->Branch("vetoEnergy", &varVetoEnergy);
+
+    varEventTree->Branch("relativeNsTime", &varRelativeNsTime);
+    varEventTree->Branch("relativePsTime", &varRelativePsTime);
+
+    varEventTree->Branch("vetoRelativeNsTime", &varVetoRelativeNsTime);
+    varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
+}
+
+void rootDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time)
+{
+
+    varDetectorLUT.clear();
+    varDetectorType.clear();
+
+    varEnergy.clear();
+    varVetoEnergy.clear();
+
+    varRelativeNsTime.clear();
+    varRelativePsTime.clear();
+
+    varVetoRelativeNsTime.clear();
+    varVetoRelativePsTime.clear();
+
+    for (uint i = 0; i < events->size(); i++)
+    {
+
+        varDetectorLUT.push_back(events->at(i)->getLutNumb());
+        varDetectorType.push_back(events->at(i)->getDetectorType());
+
+        varEnergy.push_back(events->at(i)->getEnergy());
+        varVetoEnergy.push_back(events->at(i)->getVetoEnergy());
+
+        varRelativeNsTime.push_back(events->at(i)->getRelativeTimeNs());
+        varRelativePsTime.push_back(events->at(i)->getRelativeTimePs());
+
+        varVetoRelativeNsTime.push_back(events->at(i)->getVetoRelativeTimeNs());
+        varVetoRelativePsTime.push_back(events->at(i)->getVetoRelativeTimePs());
+    }
+
+    varEventTree->Fill();
+}
+
+void rootDataWriter::closeFile()
+{
+    varEventTree->Write();
+    varOutFile->Close();
 }

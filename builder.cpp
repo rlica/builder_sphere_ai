@@ -38,11 +38,12 @@ int signalCount = 0;
 
 deque<event *> convertROOTChain(json &config);
 deque<event *> convertProto(json &config);
+deque<event *> convertDelila(json &config);
 
 void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask);
 void addToCheckMask(vector<int> &checkMask, event &evt);
 void preProcessEvent(json &config, deque<event *> &events);
-void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt, shared_ptr<gaspDataWriter> dataWriter);
+void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt);
 void analizeData(json config);
 
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
@@ -51,11 +52,12 @@ bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
 pair<int, int> findBoardChannel(json &config, int detType, int lut);
 pair<int, int> findCoincPairType(json &config, int brd, int ch);
 
-string extractNumbers(const string &a);
+string extractNumbers(const string &a, string format = "proto");
 
 pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events);
 
 double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
+dataWriter *writer;
 
 int main(int argc, char **argv)
 {
@@ -83,6 +85,10 @@ void analizeData(json config)
     else if (dataType == "proto")
     {
         events = convertProto(config);
+    }
+    else if (dataType == "delila")
+    {
+        events = convertDelila(config);
     }
 
     vector<vector<int>>
@@ -207,6 +213,85 @@ deque<event *> convertProto(json &config)
     return events;
 }
 
+deque<event *> convertDelila(json &config)
+{
+
+    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+
+    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
+
+    map<pair<int, int>, pair<int, int>> coincPairTypes;
+
+    string fileName = config["crtFile"];
+
+    auto tFile = new TFile(fileName.c_str());
+
+    auto chain = (TTree *)tFile->Get("ELIADE_Tree");
+
+    UChar_t Mod;
+    UChar_t Ch;
+    uint16_t energy;
+    ULong64_t timeStamp;
+    double fineTs;
+
+    chain->SetBranchAddress("Mod", &Mod);
+    chain->SetBranchAddress("Ch", &Ch);
+    chain->SetBranchAddress("ChargeLong", &energy);
+    chain->SetBranchAddress("TimeStamp", &timeStamp);
+    chain->SetBranchAddress("FineTS", &fineTs);
+
+    deque<event *> events;
+
+    int eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = chain->GetEntries();
+    }
+
+    int entry = 0;
+
+    for (int i = 0; i < eventNumb; i++)
+    {
+        chain->GetEntry(i);
+
+        int board = Mod;
+        int ch = Ch;
+
+        auto lut = config["detector"]["lut"][board][ch];
+        auto dType = config["detector"]["type"][board][ch];
+
+        uint64_t delayedTime = timeStamp - delay[board][ch];
+
+        events.push_back(new event(dType, energy, delayedTime, board, ch));
+        events.back()->setLutNumb(lut);
+        events.back()->setCoincPair(coincPairs[board][ch]);
+
+        auto findPair = make_pair(board, ch);
+
+        if (!coincPairTypes.count(findPair))
+        {
+            coincPairTypes[findPair] = findCoincPairType(config, board, ch);
+        }
+
+        events.back()->setCoincPairType(coincPairTypes[findPair]);
+
+        if (find(antiCoincFlags.begin(), antiCoincFlags.end(), events.back()->getDetectorType()) != antiCoincFlags.end())
+        {
+            events.back()->setAntiCoincFlag(true);
+        }
+    }
+
+    chain->Reset();
+    delete chain;
+
+    tFile->Close();
+    delete tFile;
+
+    return events;
+}
+
 deque<event *> convertROOTChain(json &config)
 {
 
@@ -312,7 +397,7 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
     string fileName = config["crtFile"];
 
-    auto runNumber = stoi(extractNumbers(fileName));
+    auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
 
     auto pos = fileName.find_last_of("/") + 1;
     auto nSize = 6;
@@ -325,9 +410,16 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
     fileName = string(config["output"]["outputPath"]) + "/" + fileName;
 
-    auto dataWriter = make_shared<gaspDataWriter>(gaspDataWriter(fileName, runNumber));
+    if (config["output"]["fileFormat"] == "gasp")
+    {
+        writer = new gaspDataWriter(fileName, runNumber);
+    }
+    else if (config["output"]["fileFormat"] == "root")
+    {
+        writer = new rootDataWriter(fileName, runNumber);
+    }
 
-    dataWriter->setConfig(config);
+    writer->setConfig(config);
 
     uint64_t coincWindow = config["build"]["coincWindow"];
 
@@ -391,7 +483,7 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
 
             auto evt = selectOverlapEvent(overlapEvents);
 
-            postProcessEvent(config, evt, dataWriter);
+            postProcessEvent(config, evt);
         }
     }
 
@@ -400,7 +492,7 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
         delete i;
     }
 
-    dataWriter->closeFile();
+    writer->closeFile();
 
     gROOT->Reset();
 }
@@ -498,17 +590,32 @@ bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask)
     return false;
 }
 
-string extractNumbers(const string &a)
+string extractNumbers(const string &a, string format)
 {
-    auto pos = a.find_last_of(".");
-    auto nSize = 6;
 
-    string numberString = a.substr(pos - nSize, nSize);
+    string numberString;
+
+    if (format == "proto" || format == "root")
+    {
+        auto pos = a.find_last_of(".");
+        auto nSize = 6;
+
+        numberString = a.substr(pos - nSize, nSize);
+    }
+    else if (format == "delila")
+    {
+        // this wil most likely not work
+
+        auto fPos = a.find_first_of("_") + 1;
+        auto lPos = a.find_last_of("_");
+
+        numberString = a.substr(fPos, lPos - fPos);
+    }
 
     return numberString;
 }
 
-void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt, shared_ptr<gaspDataWriter> dataWriter)
+void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt)
 {
 
     vector<event *> tempList;
@@ -640,7 +747,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
         eventMask[i->getDetectorType()] += 1;
     }
 
-    dataWriter->addBuiltEvent(&tempList, eventMask, absTime);
+    writer->addBuiltEvent(&tempList, eventMask, absTime);
 
     for (int i = 0; i < tempList.size(); i++)
     {
