@@ -22,17 +22,15 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 json readConfigFile(string fileName);
-void buildData(json &config);
+void buildRun(json &config);
+void delayRun(json &config);
+
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
 pair<int, int> findBoardChannel(json &config, int detType, int lut);
-void calculateDelay(json &config);
-vector<string> getPathFiles(string path, string extension = "");
+vector<string> getPathFiles(string path, string identifier = "", string extension = "");
 void dispatchThread(json config);
 vector<string> generateInputFiles(json &config);
 void printStatus(int finished, int total);
-void pulserDelay(json &config);
-vector<double> getPulserDelay(json config);
-deque<event *> convertProto(json &config);
 
 int main(int argc, char **argv)
 {
@@ -42,31 +40,11 @@ int main(int argc, char **argv)
 
     if (config["general"]["run"] == "build")
     {
-        buildData(config);
+        buildRun(config);
     }
     else if (config["general"]["run"] == "delay")
     {
-        if (config["input"]["fileFormat"] == "root")
-        {
-            calculateDelay(config);
-        }
-        else
-        {
-            cout << "calculate delay works only with root format at this point" << endl;
-            exit(1);
-        }
-    }
-    else if (config["general"]["run"] == "pulserDelay")
-    {
-        if (config["input"]["fileFormat"] == "proto")
-        {
-            pulserDelay(config);
-        }
-        else
-        {
-            cout << "pulserDelay works only with proto format at this point" << endl;
-            exit(1);
-        }
+        delayRun(config);
     }
     else
     {
@@ -83,7 +61,7 @@ json readConfigFile(string fileName)
     return jf;
 }
 
-void buildData(json &config)
+void buildRun(json &config)
 {
 
     auto inpFiles = generateInputFiles(config);
@@ -96,6 +74,8 @@ void buildData(json &config)
     cout << "building on: " << maxCores << " core/s" << endl;
 
     int finished = 0;
+
+    config["crtRun"] = "build";
 
     for (int i = 0; i < inpFiles.size(); i++)
     {
@@ -165,235 +145,7 @@ void printStatus(int finished, int total)
     cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
 }
 
-void pulserDelay(json &config)
-{
-    auto inpFiles = generateInputFiles(config);
-
-    vector<shared_future<vector<double>>> futures;
-
-    int maxCores = config["general"]["maxCores"];
-
-    cout << "requested: " << inpFiles.size() << " file/s" << endl;
-    cout << "building on: " << maxCores << " core/s" << endl;
-
-    int finished = 0;
-
-    for (int i = 0; i < inpFiles.size(); i++)
-    {
-        config["crtFile"] = inpFiles[i];
-        config["index"] = i + 1;
-
-        futures.push_back(async(std::launch::async, [config]()
-                                { return getPulserDelay(config); })
-                              .share());
-
-        while (futures.size() == maxCores)
-        {
-            int pos = -1;
-
-            for (int o = 0; o < futures.size(); o++)
-            {
-                if (futures[o].wait_for(10ms) == std::future_status::ready)
-                {
-                    pos = o;
-                }
-            }
-
-            if (pos != -1)
-            {
-                futures.erase(futures.begin() + pos);
-                finished++;
-            }
-        }
-        // printStatus(finished, inpFiles.size());
-    }
-
-    vector<vector<double>> delayData;
-
-    while (futures.size())
-    {
-
-        int pos = -1;
-
-        for (int o = 0; o < futures.size(); o++)
-        {
-            if (futures[o].wait_for(10ms) == std::future_status::ready)
-            {
-                pos = o;
-            }
-        }
-
-        if (pos != -1)
-        {
-            delayData.push_back(futures[pos].get());
-            futures.erase(futures.begin() + pos);
-            finished++;
-        }
-
-        // printStatus(finished, inpFiles.size());
-    }
-}
-
-vector<double> getPulserDelay(json config)
-{
-
-    vector<double> delay = vector<double>(6, 0);
-    vector<double> counts = vector<double>(5, 0);
-
-    delay[5] = config["index"];
-
-    auto events = convertProto(config);
-
-    int trigger = 1;
-
-    int64_t time = 0;
-
-    for (auto evt : events)
-    {
-        cout << evt->getTimeStamp() << endl;
-
-        if (evt->getChannelNumb() == 15)
-        {
-
-            // if (evt->getBoardNumb() == 1)
-            // {
-            //     time = evt->getTimeStamp();
-            // }
-            // if (time != 0)
-            // {
-            //     int64_t dif = (int64_t(evt->getTimeStamp()) - time);
-
-            //     cout << dif << endl;
-
-            //     delay[evt->getBoardNumb()] += dif;
-            //     counts[evt->getBoardNumb()]++;
-            // }
-        }
-    }
-
-    // for (int i = 0; i < counts.size(); i++)
-    // {
-    //     delay[i] /= counts[i];
-    // }
-
-    // for (auto d : delay)
-    // {
-    //     cout << d << endl;
-    // }
-
-    return delay;
-}
-
-void calculateDelay(json &config)
-{
-
-    vector<vector<shared_ptr<TH1D>>> hists;
-
-    for (int i = 0; i < 5; i++)
-    {
-        auto temp = vector<shared_ptr<TH1D>>();
-        hists.push_back(temp);
-        for (int o = 0; o < 25; o++)
-        {
-            string fileName = "type_" + to_string(i) + "_lut_" + to_string(o);
-            hists[i].push_back(make_shared<TH1D>(TH1D(fileName.c_str(), fileName.c_str(), 10000, -10, 20000000)));
-        }
-    }
-
-    auto inpFiles = getPathFiles(config["input"]["path"], config["input"]["fileIdentifier"]);
-
-    auto tFile = TFile(inpFiles[0].c_str());
-
-    if (!tFile.IsZombie())
-    {
-
-        auto chain = dynamic_cast<TTree *>(tFile.Get("events"));
-
-        uint16_t lut;
-        uint16_t dType;
-        ULong64_t timeStamp;
-        uint16_t energy;
-
-        chain->SetBranchAddress("boardTimeStamp", &timeStamp);
-        chain->SetBranchAddress("detectorLUT", &lut);
-        chain->SetBranchAddress("detectorType", &dType);
-        chain->SetBranchAddress("energy", &energy);
-
-        int eventNumb = config["input"]["eventCount"];
-
-        if (eventNumb == 0)
-        {
-            eventNumb = chain->GetEntries();
-        }
-
-        vector<vector<uint64_t>> theTimes = vector<vector<uint64_t>>(5, vector<uint64_t>(0));
-
-        vector<tuple<int, int, uint64_t>> events;
-
-        for (int i = 0; i < eventNumb; i++)
-        {
-            chain->GetEntry(i);
-
-            if (energy > 200)
-            {
-                events.push_back(make_tuple(dType, lut, timeStamp));
-            }
-        }
-
-        sort(events.begin(), events.end(),
-             [](auto i, auto j)
-             { return (get<2>(i) < get<2>(j)); });
-
-        uint64_t refTimeStamp;
-
-        for (auto evt : events)
-        {
-            if (get<0>(evt) == 2 && get<1>(evt) == 0)
-            {
-                refTimeStamp = get<2>(evt);
-            }
-
-            int64_t timeDif = get<2>(evt) - refTimeStamp;
-
-            hists[get<0>(evt)][get<1>(evt)]->Fill(timeDif);
-        }
-
-        vector<vector<int>> theDelays = vector<vector<int>>(5, vector<int>(16, 0));
-
-        vector<vector<int>> lutVect = config["detector"]["lut"];
-        vector<vector<int>> bTypeVect = config["detector"]["type"];
-
-        for (int i = 0; i < hists.size(); i++)
-        {
-            for (int o = 0; o < hists[i].size(); o++)
-            {
-                if (hists[i][o]->GetEntries())
-                {
-
-                    if (i != 4)
-                    {
-                        int binmax = hists[i][o]->GetMaximumBin();
-                        double x = hists[i][o]->GetXaxis()->GetBinCenter(binmax);
-
-                        auto brdCh = findBoardChannel(config, i, o);
-
-                        theDelays[brdCh.first][brdCh.second] = x / 1000;
-
-                        hists[i][o]->Draw("hist");
-                        gPad->WaitPrimitive("ggg");
-                    }
-                }
-            }
-        }
-
-        config["detector"]["delayNs"] = theDelays;
-
-        std::ofstream outFile("config.json");
-        outFile << std::setw(2) << config << std::endl;
-    }
-}
-
-vector<string> getPathFiles(string path, string extension)
+vector<string> getPathFiles(string path, string identifier, string extension)
 {
 
     vector<pair<string, int64_t>> timeFiles;
@@ -402,11 +154,28 @@ vector<string> getPathFiles(string path, string extension)
     {
         auto time = std::chrono::duration_cast<std::chrono::seconds>(entry.last_write_time().time_since_epoch()).count();
 
-        if (extension != "")
+        if (identifier != "")
         {
-            if (entry.path().string().find(extension) != string::npos)
+
+            if (extension != "")
             {
-                timeFiles.push_back(make_pair(entry.path().string(), time));
+                bool fIdent = entry.path().string().find(identifier) != string::npos;
+                bool fExt = entry.path().string().find(extension) != string::npos;
+
+                if (fIdent && fExt)
+                {
+                    timeFiles.push_back(make_pair(entry.path().string(), time));
+                }
+            }
+            else // condition for gasp output
+            {
+                bool fIdent = entry.path().string().find(identifier) != string::npos;
+                bool fDot = entry.path().string().find(".") == string::npos;
+
+                if (fIdent && fDot)
+                {
+                    timeFiles.push_back(make_pair(entry.path().string(), time));
+                }
             }
         }
         else
@@ -431,19 +200,23 @@ vector<string> getPathFiles(string path, string extension)
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output)
 {
 
-    for (auto i : output)
+    for (auto out : output)
     {
-        auto pos = i.find_last_of("/") + 1;
-        auto tempOut = i.substr(pos);
+        auto pos = out.find_last_of("/") + 1;
+        auto tempOut = out.substr(pos);
 
-        for (string &o : input)
+        pos = tempOut.find_last_of(".");
+
+        if (tempOut.find_last_of(".") != string::npos)
         {
-            pos = o.find_last_of("/") + 1;
-            auto tempInp = o.substr(pos);
+            tempOut = tempOut.substr(0, pos);
+        }
 
-            if (tempInp.find(tempOut) != string::npos)
+        for (string &inp : input)
+        {
+            if (inp.find(tempOut) != string::npos)
             {
-                o = "";
+                inp = "";
             }
         }
     }
@@ -479,7 +252,7 @@ void dispatchThread(json config)
 
     dump = std::regex_replace(dump, std::regex("\""), "\\\"");
 
-    string cmd = "./builder \"" + dump + "\"";
+    string cmd = "builder \"" + dump + "\"";
 
     system(cmd.c_str());
 }
@@ -487,7 +260,9 @@ void dispatchThread(json config)
 vector<string> generateInputFiles(json &config)
 {
 
-    auto inpFiles = getPathFiles(config["input"]["path"], config["input"]["fileIdentifier"]);
+    string extension = fileExtensions[string(config["input"]["fileFormat"])];
+
+    auto inpFiles = getPathFiles(config["input"]["path"], config["input"]["fileIdentifier"], extension);
 
     cout << "files: " << inpFiles.size() << " (total) ";
 
@@ -523,7 +298,9 @@ vector<string> generateInputFiles(json &config)
 
         cout << "-> " << inpFiles.size() << " (keepIndex) ";
 
-        auto outFiles = getPathFiles(config["output"]["outputPath"]);
+        string extension = fileExtensions[string(config["output"]["fileFormat"])];
+
+        auto outFiles = getPathFiles(config["output"]["outputPath"], config["input"]["fileIdentifier"], extension);
 
         auto finalFiles = removeAlreadyBuilt(inpFiles, outFiles);
 
@@ -542,65 +319,45 @@ vector<string> generateInputFiles(json &config)
     return {};
 }
 
-deque<event *> convertProto(json &config)
+void delayRun(json &config)
 {
 
-    deque<event *> events;
+    string extension = fileExtensions[string(config["input"]["fileFormat"])];
 
-    uint eventNumb = config["input"]["eventCount"];
+    auto inpFiles = getPathFiles(config["input"]["path"], config["input"]["fileIdentifier"], extension);
 
-    if (eventNumb == 0)
+    int start = int(config["input"]["keepIndex"][0]);
+    int stop = int(config["input"]["keepIndex"][1]);
+
+    if (start < 0 || start >= inpFiles.size())
     {
-        eventNumb = numeric_limits<uint>::max();
+        start = 0;
     }
 
-    string fileName = config["crtFile"];
-
-    auto fd = open(fileName.c_str(), O_RDONLY);
-
-    kj::FdInputStream fdStream(fd);
-    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
-
-    while (bufferedStream.tryGetReadBuffer() != nullptr)
+    if (stop < 0 || stop >= inpFiles.size())
     {
-        capnp::PackedMessageReader message(bufferedStream);
-
-        auto dts = message.getRoot<Dataset>();
-
-        auto proEvent = dts.getEvents();
-
-        for (uint i = 0; i < proEvent.size(); i++)
-        {
-
-            auto ev = new event();
-
-            auto brd = proEvent[i].getBoard();
-            auto ch = proEvent[i].getChannel();
-
-            ev->setBoardNumb(brd);
-            ev->setChannelNumb(ch);
-
-            ev->setEnergy(proEvent[i].getEnergy());
-
-            ev->setTimeStamp(proEvent[i].getTimestamp());
-
-            events.push_back(ev);
-
-            if (events.size() == eventNumb)
-            {
-
-                sort(events.begin(), events.end(),
-                     [](event *i, event *j)
-                     { return (i->getTimeStamp() < j->getTimeStamp()); });
-
-                return events;
-            }
-        }
+        stop = inpFiles.size();
     }
 
-    sort(events.begin(), events.end(),
-         [](event *i, event *j)
-         { return (i->getTimeStamp() < j->getTimeStamp()); });
+    if (start == stop)
+    {
+        start = 0;
+        stop = inpFiles.size();
+    }
 
-    return events;
+    inpFiles = {inpFiles.begin() + start, inpFiles.begin() + stop};
+
+    if (inpFiles.size())
+    {
+        cout << "running delay from: " << inpFiles.front() << " to " << inpFiles.back() << endl;
+
+        config["crtFile"] = inpFiles;
+        config["crtRun"] = "delay";
+
+        dispatchThread(config);
+    }
+    else
+    {
+        cout << "no files found" << endl;
+    }
 }

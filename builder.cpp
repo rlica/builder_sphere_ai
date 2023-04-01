@@ -28,23 +28,24 @@
 #include <fcntl.h>
 #include <limits>
 
-#define DETECTOR_TYPES 5
-
 using json = nlohmann::json;
 using namespace std;
 
-int eventCount = 0;
-int signalCount = 0;
-
-deque<event *> convertROOTChain(json &config);
+deque<event *> convertROOT(json &config);
 deque<event *> convertProto(json &config);
 deque<event *> convertDelila(json &config);
+
+vector<tuple<int, int, uint64_t>> convertRootDelayEvents(json &config);
+vector<tuple<int, int, uint64_t>> convertProtoDelayEvents(json &config);
+vector<tuple<int, int, uint64_t>> convertDelilaDelayEvents(json &config);
 
 void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask);
 void addToCheckMask(vector<int> &checkMask, event &evt);
 void preProcessEvent(json &config, deque<event *> &events);
 void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt);
-void analizeData(json config);
+
+void buildRun(json config);
+void delayRun(json config);
 
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
 bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
@@ -67,11 +68,18 @@ int main(int argc, char **argv)
 
         json request = json::parse(argv[1]);
 
-        analizeData(request);
+        if (request["crtRun"] == "build")
+        {
+            buildRun(request);
+        }
+        else if (request["crtRun"] == "delay")
+        {
+            delayRun(request);
+        }
     }
 }
 
-void analizeData(json config)
+void buildRun(json config)
 {
 
     string dataType = config["input"]["fileFormat"];
@@ -80,7 +88,7 @@ void analizeData(json config)
 
     if (dataType == "root")
     {
-        events = convertROOTChain(config);
+        events = convertROOT(config);
     }
     else if (dataType == "proto")
     {
@@ -91,8 +99,7 @@ void analizeData(json config)
         events = convertDelila(config);
     }
 
-    vector<vector<int>>
-        coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
+    vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
     builder(config, events, coincMask);
 }
@@ -114,7 +121,7 @@ pair<int, int> findBoardChannel(json &config, int detType, int lut)
         }
     }
 
-    return {};
+    return {-1, -1};
 }
 vector<vector<int>> getDelayVector(json delay)
 {
@@ -180,6 +187,7 @@ deque<event *> convertProto(json &config)
             ev->setDetectorType(mask[brd][ch]);
 
             ev->setEnergy(proEvent[i].getEnergy());
+            ev->setPSD(proEvent[i].getPsd() * 10000);
 
             uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
             ev->setTimeStamp(delayedTime);
@@ -292,7 +300,7 @@ deque<event *> convertDelila(json &config)
     return events;
 }
 
-deque<event *> convertROOTChain(json &config)
+deque<event *> convertROOT(json &config)
 {
 
     vector<vector<int>> boards = vector<vector<int>>(5, vector<int>(50, -100));
@@ -628,9 +636,6 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
         tempList.push_back(new event(*(*i)));
     }
 
-    eventCount++;
-    signalCount += tempList.size();
-
     // sort by (type and timestamp)
     auto start = tempList.begin();
 
@@ -686,6 +691,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
                     tempList[i]->setLutNumb(pairDetectorType.second);
                 }
                 tempList[i]->setEnergy(0);
+                tempList[i]->setPSD(0);
                 tempList[i]->setRelativeTimeNs(0);
                 tempList[i]->setRelativeTimePs(0);
             }
@@ -727,6 +733,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
                             tempList[i]->setLutNumb(pairDetectorType.second);
                         }
                         tempList[i]->setEnergy(0);
+                        tempList[i]->setPSD(0);
                         tempList[i]->setRelativeTimeNs(0);
                         tempList[i]->setRelativeTimePs(0);
                     }
@@ -740,14 +747,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
     std::sort(tempList.begin(), tempList.end(), [](event *i, event *j)
               { return (i->getDetectorType() < j->getDetectorType()); });
 
-    vector<int> eventMask = vector<int>(DETECTOR_TYPES, 0);
-
-    for (auto i : tempList)
-    {
-        eventMask[i->getDetectorType()] += 1;
-    }
-
-    writer->addBuiltEvent(&tempList, eventMask, absTime);
+    writer->addBuiltEvent(&tempList, absTime);
 
     for (int i = 0; i < tempList.size(); i++)
     {
@@ -783,4 +783,242 @@ pair<int, int> findCoincPairType(json &config, int brd, int ch)
     }
 
     return make_pair(0, -100);
+}
+
+vector<tuple<int, int, uint64_t>> convertRootDelayEvents(json &config)
+{
+
+    vector<tuple<int, int, uint64_t>> events;
+
+    auto files = config["crtFile"].get<vector<string>>();
+
+    TChain chain("events");
+
+    for (auto file : files)
+    {
+        chain.Add(file.c_str());
+    }
+
+    uint16_t dLut;
+    uint16_t dType;
+    uint16_t energy;
+    ULong64_t timeStamp;
+
+    chain.SetBranchAddress("energy", &energy);
+    chain.SetBranchAddress("boardTimeStamp", &timeStamp);
+    chain.SetBranchAddress("detectorLUT", &dLut);
+    chain.SetBranchAddress("detectorType", &dType);
+
+    uint eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = chain.GetEntries();
+    }
+
+    int refLUT = config["delay"]["refLUT"];
+    int refType = config["delay"]["refType"];
+    int tresh = config["delay"]["energyThreshold"];
+    int offset = config["delay"]["refTimeOffset"];
+
+    for (int i = 0; i < eventNumb; i++)
+    {
+        chain.GetEntry(i);
+
+        if (energy > tresh)
+        {
+
+            if (dType == refType && dLut == refLUT)
+            {
+                timeStamp += offset;
+            }
+
+            events.push_back(make_tuple(dType, dLut, timeStamp));
+        }
+    }
+
+    return events;
+}
+vector<tuple<int, int, uint64_t>> convertProtoDelayEvents(json &config)
+{
+    vector<tuple<int, int, uint64_t>> events;
+
+    uint eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = numeric_limits<uint>::max();
+    }
+
+    auto files = config["crtFile"].get<vector<string>>();
+
+    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+
+    int refLUT = config["delay"]["refLUT"];
+    int refType = config["delay"]["refType"];
+    int tresh = config["delay"]["energyThreshold"];
+    int offset = config["delay"]["refTimeOffset"];
+
+    for (auto fileName : files)
+    {
+
+        auto fd = open(fileName.c_str(), O_RDONLY);
+
+        kj::FdInputStream fdStream(fd);
+        kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+        while (bufferedStream.tryGetReadBuffer() != nullptr)
+        {
+            capnp::PackedMessageReader message(bufferedStream);
+
+            auto dts = message.getRoot<Dataset>();
+
+            auto proEvent = dts.getEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+
+                auto brd = proEvent[i].getBoard();
+                auto ch = proEvent[i].getChannel();
+
+                auto dType = mask[brd][ch];
+                auto dLut = lut[brd][ch];
+
+                if (proEvent[i].getEnergy() > tresh)
+                {
+
+                    auto timeStamp = proEvent[i].getTimestamp();
+
+                    if (dType == refType && dLut == refLUT)
+                    {
+                        timeStamp += offset;
+                    }
+
+                    events.push_back(make_tuple(dType, dLut, timeStamp));
+
+                    if (events.size() == eventNumb)
+                    {
+                        return events;
+                    }
+                }
+            }
+        }
+    }
+    return events;
+}
+
+vector<tuple<int, int, uint64_t>> convertDelilaDelayEvents(json &config)
+{
+    cout << "delila delay calculation not yet implemented" << endl;
+    abort();
+    return {};
+}
+
+void delayRun(json config)
+{
+    string dataType = config["input"]["fileFormat"];
+
+    vector<tuple<int, int, uint64_t>> events;
+
+    if (dataType == "root")
+    {
+        events = convertRootDelayEvents(config);
+    }
+    else if (dataType == "proto")
+    {
+        events = convertProtoDelayEvents(config);
+    }
+    else if (dataType == "delila")
+    {
+        events = convertDelilaDelayEvents(config);
+    }
+
+    sort(events.begin(), events.end(),
+         [](auto i, auto j)
+         { return (get<2>(i) < get<2>(j)); });
+
+    double refTimeStamp = 0;
+
+    map<pair<int, int>, shared_ptr<TH1D>> hists;
+
+    int refLUT = config["delay"]["refLUT"];
+    int refType = config["delay"]["refType"];
+
+    for (auto evt : events)
+    {
+
+        if (get<0>(evt) == refType && get<1>(evt) == refLUT)
+        {
+            refTimeStamp = get<2>(evt);
+        }
+
+        double timeDif = double(get<2>(evt)) - refTimeStamp;
+
+        auto id = make_pair(get<0>(evt), get<1>(evt));
+
+        if (hists.count(id))
+        {
+            hists[id]->Fill(timeDif);
+        }
+        else
+        {
+            string name = "type_" + to_string(get<0>(evt)) + "_lut_" + to_string(get<1>(evt));
+
+            int bins = config["delay"]["histBins"];
+            auto range = config["delay"]["histRange"].get<vector<double>>();
+
+            if (range.size() != 2)
+            {
+                range = {0, 1000000};
+            }
+
+            hists[id] = make_shared<TH1D>(TH1D(name.c_str(), name.c_str(), bins, range[0], range[1]));
+        }
+    }
+
+    vector<vector<int>> delay = config["detector"]["delayNs"];
+
+    for (auto hist : hists)
+    {
+        if (hist.second->GetEntries())
+        {
+            int binmax = hist.second->GetMaximumBin();
+            double x = hist.second->GetXaxis()->GetBinCenter(binmax);
+
+            auto brdCh = findBoardChannel(config, hist.first.first, hist.first.second);
+
+            auto time = x;
+
+            if (hist.first.first == refType && hist.first.second == refLUT)
+            {
+                time = 0;
+            }
+            else
+            {
+                time += int(config["delay"]["refTimeOffset"]);
+            }
+
+            delay[brdCh.first][brdCh.second] = time / 1000;
+        }
+    }
+
+    config["detector"]["delayNs"] = delay;
+
+    config.erase("crtFile");
+    config.erase("crtRun");
+
+    std::ofstream outConfigFile("config.json");
+    outConfigFile << std::setw(2) << config << std::endl;
+
+    string outFileName = config["delay"]["outFileName"];
+
+    auto outFile = TFile(outFileName.c_str(), "RECREATE");
+
+    for (auto &hist : hists)
+    {
+        hist.second->Write();
+    }
+
+    outFile.Close();
 }

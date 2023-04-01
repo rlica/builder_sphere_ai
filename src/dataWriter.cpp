@@ -16,8 +16,15 @@ gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
     initializeRecordHeader();
 }
 
-void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time)
+void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 {
+
+    vector<int> eventMask = vector<int>(varConfig["gasp"]["detectorTypes"], 0);
+
+    for (auto i : *events)
+    {
+        eventMask[i->getDetectorType()] += 1;
+    }
 
     // pop bgo from event mask
     eventMask.erase(eventMask.begin() + 2);
@@ -55,9 +62,20 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
 
     for (int i = 0; i < events->size(); i++)
     {
-        switch (events->at(i)->getDetectorType())
+
+        switch (varOutputTypes[events->at(i)->getDetectorType()])
         {
-        case 0:
+        case BASIC:
+
+            eventBuffer.push_back(events->at(i)->getLutNumb());
+            eventBuffer.push_back(events->at(i)->getEnergy());
+
+            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
+            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+
+            break;
+
+        case VETO:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -66,31 +84,12 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
             eventBuffer.push_back(events->at(i)->getRelativeTimePs());
 
             eventBuffer.push_back(events->at(i)->getVetoEnergy());
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
-            break;
-
-        case 1:
-
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
-
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
-
-            eventBuffer.push_back(events->at(i)->getVetoEnergy());
 
             eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
             eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
             break;
 
-        case 2:
-
-            cout << "i should not be here this time" << endl;
-            abort();
-            break;
-
-        case 3:
+        case BASIC_PSD:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -100,9 +99,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
 
             eventBuffer.push_back(events->at(i)->getPSD());
 
-            break;
-
-        case 4:
+        case VETO_PSD:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -110,11 +107,21 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
             eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
             eventBuffer.push_back(events->at(i)->getRelativeTimePs());
 
+            eventBuffer.push_back(events->at(i)->getPSD());
+
+            eventBuffer.push_back(events->at(i)->getVetoEnergy());
+
+            eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
+            eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
+
             break;
 
+        case NO_TYPE:
         default:
 
             cout << "default value, is not implemented: " << events->at(i)->getDetectorType() << endl;
+
+            abort();
 
             break;
         }
@@ -202,6 +209,70 @@ void dataWriter::setConfig(json config)
     timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
 }
 
+void gaspDataWriter::setConfig(json config)
+{
+    varConfig = config;
+
+    resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
+    timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
+
+    auto dTypes = config["detector"]["type"].get<vector<vector<int>>>();
+
+    map<int, int> typeCount;
+
+    for (auto brd : dTypes)
+    {
+        for (auto ch : brd)
+        {
+            typeCount[ch]++;
+        }
+    }
+
+    typeCount.erase(-1);
+
+    varConfig["gasp"]["detectorTypes"] = typeCount.size();
+
+    auto outTypes = varConfig["gasp"]["typeOutputFormat"].get<vector<string>>();
+
+    if (outTypes.size() < typeCount.size())
+    {
+        cout << "gasp typeOutputFormat are not set for all detector types" << endl;
+        abort();
+    }
+
+    for (auto count : typeCount)
+    {
+        auto parSize = detectorTypes[outTypes[count.first]];
+
+        varParamMask.push_back(parSize);
+
+        if (outTypes[count.first] == "veto")
+        {
+            varOutputTypes.push_back(VETO);
+        }
+        else if (outTypes[count.first] == "basic")
+        {
+            varOutputTypes.push_back(BASIC);
+        }
+        else if (outTypes[count.first] == "basicPsd")
+        {
+            varOutputTypes.push_back(BASIC_PSD);
+        }
+        else if (outTypes[count.first] == "vetoPsd")
+        {
+            varOutputTypes.push_back(VETO_PSD);
+        }
+        else
+        {
+            varOutputTypes.push_back(NO_TYPE);
+        }
+    }
+
+    // pop bgo from event mask
+    varParamMask.erase(varParamMask.begin() + 2);
+    varOutputTypes.erase(varOutputTypes.begin() + 2);
+}
+
 rootDataWriter::rootDataWriter(string file, int numb) : dataWriter(file, numb)
 {
     initializeOutputFile();
@@ -226,6 +297,8 @@ void rootDataWriter::initializeTree()
     varEventTree->Branch("detectorType", &varDetectorType);
 
     varEventTree->Branch("energy", &varEnergy);
+    varEventTree->Branch("psd", &varPsd);
+
     varEventTree->Branch("vetoEnergy", &varVetoEnergy);
 
     varEventTree->Branch("relativeNsTime", &varRelativeNsTime);
@@ -235,13 +308,16 @@ void rootDataWriter::initializeTree()
     varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
 }
 
-void rootDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time)
+void rootDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 {
 
     varDetectorLUT.clear();
     varDetectorType.clear();
 
     varEnergy.clear();
+
+    varPsd.clear();
+
     varVetoEnergy.clear();
 
     varRelativeNsTime.clear();
@@ -257,6 +333,9 @@ void rootDataWriter::addBuiltEvent(vector<event *> *events, vector<int> &eventMa
         varDetectorType.push_back(events->at(i)->getDetectorType());
 
         varEnergy.push_back(events->at(i)->getEnergy());
+
+        varPsd.push_back(events->at(i)->getPSD());
+
         varVetoEnergy.push_back(events->at(i)->getVetoEnergy());
 
         varRelativeNsTime.push_back(events->at(i)->getRelativeTimeNs());

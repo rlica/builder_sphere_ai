@@ -3,8 +3,14 @@
 
 #include <chrono>
 #include <iostream>
+#include <map>
 
 using namespace std;
+
+inline map<string, string> fileExtensions = {{"root", ".root"},
+                                             {"proto", ".cap"},
+                                             {"delila", ".root"},
+                                             {"gasp", ""}};
 
 class event
 {

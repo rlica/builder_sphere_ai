@@ -7,7 +7,7 @@
 #include <vector>
 #include "utils.h"
 #include <fstream>
-#include <math.h> /* isnan, sqrt */
+#include <math.h>
 #include "json.hpp"
 #include <climits>
 #include "TFile.h"
@@ -15,6 +15,12 @@
 
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
+
+#define BASIC 0
+#define VETO 1
+#define BASIC_PSD 2
+#define VETO_PSD 3
+#define NO_TYPE 4
 
 using namespace std;
 using json = nlohmann::json;
@@ -28,10 +34,7 @@ public:
     ~dataWriter(){};
 
     virtual void initializeOutputFile(){};
-    virtual void addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time)
-    {
-        cout << "why i am here" << endl;
-    };
+    virtual void addBuiltEvent(vector<event *> *events, int64_t time){};
 
     virtual void writeData(){};
     virtual void closeFile(){};
@@ -57,13 +60,16 @@ class rootDataWriter : public dataWriter
 public:
     rootDataWriter(string file, int numb);
     void initializeOutputFile();
-    void addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time);
+    void addBuiltEvent(vector<event *> *events, int64_t time);
     void closeFile();
 
     vector<uint16_t> varDetectorLUT;
     vector<uint16_t> varDetectorType;
 
     vector<uint16_t> varEnergy;
+
+    vector<uint16_t> varPsd;
+
     vector<uint16_t> varVetoEnergy;
 
     vector<uint16_t> varRelativeNsTime;
@@ -86,17 +92,16 @@ public:
     gaspDataWriter(string file, int numb);
 
     void initializeOutputFile();
-    void addBuiltEvent(vector<event *> *events, vector<int> &eventMask, int64_t time);
+    void addBuiltEvent(vector<event *> *events, int64_t time);
 
     void writeData();
     void closeFile();
 
+    void setConfig(json config);
+
 private:
     void initializeRecordHeader();
     void initializeFileHeader();
-
-    // vector<int> varParamMask = {6, 7, 3, 4, 4};
-    vector<int> varParamMask = {7, 7, 5, 4};
 
     vector<short> varBlockBuffer;
 
@@ -114,6 +119,11 @@ private:
 
     int64_t resetTime = std::numeric_limits<int64_t>::min();
     int64_t prevTime = std::numeric_limits<int64_t>::min();
+
+    map<string, int> detectorTypes = {{"basic", 4}, {"veto", 7}, {"basicPsd", 5}, {"vetoPsd", 8}};
+
+    vector<int> varParamMask;
+    vector<int> varOutputTypes;
 };
 
 #endif
