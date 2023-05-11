@@ -8,7 +8,9 @@
 using namespace std;
 
 inline map<string, string> fileExtensions = {{"root", ".root"},
+                                             {"3MV", ".root"},
                                              {"proto", ".cap"},
+                                             {"cap", ".cap"},
                                              {"delila", ".root"},
                                              {"gasp", ""}};
 
@@ -16,7 +18,7 @@ class event
 {
 
 public:
-    event(int dtype = 0, int nrg = 0, double tstamp = 0, int brd = 0, int ch = 0)
+    event(int dtype = 0, int nrg = 0, uint64_t tstamp = 0, int brd = 0, int ch = 0)
         : detectorType(dtype), energy(nrg), timeStamp(tstamp), boardNumb(brd), chNumb(ch) {}
 
     uint64_t getTimeStamp() { return timeStamp; }

@@ -65,7 +65,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 
         switch (varOutputTypes[events->at(i)->getDetectorType()])
         {
-        case BASIC:
+        case DETECTOR:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -75,7 +75,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 
             break;
 
-        case VETO:
+        case SUPPRESED_DETECTOR:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -89,7 +89,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
             eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
             break;
 
-        case BASIC_PSD:
+        case PSD_DETECTOR:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -99,7 +99,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 
             eventBuffer.push_back(events->at(i)->getPSD());
 
-        case VETO_PSD:
+        case SUPPRESED_PSD_DETECTOR:
 
             eventBuffer.push_back(events->at(i)->getLutNumb());
             eventBuffer.push_back(events->at(i)->getEnergy());
@@ -246,21 +246,21 @@ void gaspDataWriter::setConfig(json config)
 
         varParamMask.push_back(parSize);
 
-        if (outTypes[count.first] == "veto")
+        if (outTypes[count.first] == "suppressedDetector")
         {
-            varOutputTypes.push_back(VETO);
+            varOutputTypes.push_back(SUPPRESED_DETECTOR);
         }
-        else if (outTypes[count.first] == "basic")
+        else if (outTypes[count.first] == "detector")
         {
-            varOutputTypes.push_back(BASIC);
+            varOutputTypes.push_back(DETECTOR);
         }
-        else if (outTypes[count.first] == "basicPsd")
+        else if (outTypes[count.first] == "psdDetector")
         {
-            varOutputTypes.push_back(BASIC_PSD);
+            varOutputTypes.push_back(PSD_DETECTOR);
         }
-        else if (outTypes[count.first] == "vetoPsd")
+        else if (outTypes[count.first] == "suppresedPsdDetector")
         {
-            varOutputTypes.push_back(VETO_PSD);
+            varOutputTypes.push_back(SUPPRESED_PSD_DETECTOR);
         }
         else
         {

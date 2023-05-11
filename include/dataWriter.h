@@ -1,4 +1,3 @@
-
 #ifndef datawriter_h
 #define datawriter_h
 
@@ -16,10 +15,10 @@
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
 
-#define BASIC 0
-#define VETO 1
-#define BASIC_PSD 2
-#define VETO_PSD 3
+#define DETECTOR 0
+#define SUPPRESED_DETECTOR 1
+#define PSD_DETECTOR 2
+#define SUPPRESED_PSD_DETECTOR 3
 #define NO_TYPE 4
 
 using namespace std;
@@ -120,7 +119,10 @@ private:
     int64_t resetTime = std::numeric_limits<int64_t>::min();
     int64_t prevTime = std::numeric_limits<int64_t>::min();
 
-    map<string, int> detectorTypes = {{"basic", 4}, {"veto", 7}, {"basicPsd", 5}, {"vetoPsd", 8}};
+    map<string, int> detectorTypes = {{"detector", 4},
+                                      {"suppressedDetector", 7},
+                                      {"psdDetector", 5},
+                                      {"suppressedPsdDetector", 8}};
 
     vector<int> varParamMask;
     vector<int> varOutputTypes;
