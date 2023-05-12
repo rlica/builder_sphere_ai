@@ -18,8 +18,7 @@ class event
 {
 
 public:
-    event(int dtype = 0, int nrg = 0, uint64_t tstamp = 0, int brd = 0, int ch = 0)
-        : detectorType(dtype), energy(nrg), timeStamp(tstamp), boardNumb(brd), chNumb(ch) {}
+    event() {}
 
     uint64_t getTimeStamp() { return timeStamp; }
     void setTimeStamp(uint64_t val) { timeStamp = val; }

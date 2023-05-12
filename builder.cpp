@@ -32,6 +32,9 @@
 using json = nlohmann::json;
 using namespace std;
 
+typedef unsigned __int128 uint128_t;
+typedef __float128 float128_t;
+
 deque<event *> convertRoot(json &config);
 deque<event *> convertProto(json &config);
 deque<event *> convertDelila(json &config);
@@ -64,6 +67,8 @@ string extractNumbers(const string &a, string format = "proto");
 pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events);
 
 double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
+double getTimeOldStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
+
 dataWriter *writer;
 
 int main(int argc, char **argv)
@@ -404,7 +409,14 @@ deque<event *> convertDelila(json &config)
 
         uint64_t delayedTime = timeStamp - delay[board][ch];
 
-        events.push_back(new event(dType, energy, delayedTime, board, ch));
+        events.push_back(new event());
+
+        events.back()->setDetectorType(dType);
+        events.back()->setEnergy(energy);
+        events.back()->setTimeStamp(delayedTime);
+        events.back()->setBoardNumb(board);
+        events.back()->setChannelNumb(ch);
+
         events.back()->setLutNumb(lut);
         events.back()->setCoincPair(coincPairs[board][ch]);
 
@@ -474,7 +486,14 @@ deque<event *> convert3MV(json &config)
 
         auto delayedTime = timeStamp - delay[board][ch];
 
-        events.push_back(new event(mask[board][ch], energy, delayedTime, board, ch));
+        events.push_back(new event());
+
+        events.back()->setDetectorType(mask[board][ch]);
+        events.back()->setEnergy(energy);
+        events.back()->setTimeStamp(delayedTime);
+        events.back()->setBoardNumb(board);
+        events.back()->setChannelNumb(ch);
+
         events.back()->setLutNumb(lut[board][ch]);
 
         events.back()->setPSD(psd);
@@ -548,7 +567,14 @@ deque<event *> convertRoot(json &config)
 
         auto delayedTime = timeStamp - delay[board][ch];
 
-        events.push_back(new event(dType, energy, delayedTime, board, ch));
+        events.push_back(new event());
+
+        events.back()->setDetectorType(dType);
+        events.back()->setEnergy(energy);
+        events.back()->setTimeStamp(delayedTime);
+        events.back()->setBoardNumb(board);
+        events.back()->setChannelNumb(ch);
+
         events.back()->setLutNumb(lut);
         events.back()->setCoincPair(coincPairs[board][ch]);
 
@@ -736,15 +762,15 @@ double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt)
 
     auto size = distance(evt.first, evt.second);
 
-    uint64_t sum = accumulate(evt.first, evt.second, uint64_t(0), [](auto sum, auto val)
-                              { return sum + val->getTimeStamp(); });
+    uint128_t sum = accumulate(evt.first, evt.second, uint128_t(0), [](auto sum, auto val)
+                               { return sum + val->getTimeStamp(); });
 
-    double mean = sum / size;
+    float128_t mean = sum / size;
 
     vector<double> diff(size);
 
     transform(evt.first, evt.second, diff.begin(), [mean](auto x)
-              { return double(x->getTimeStamp()) - mean; });
+              { return float128_t(x->getTimeStamp()) - mean; });
 
     double sq_sum = inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
     double stdev = sqrt(sq_sum / size);
