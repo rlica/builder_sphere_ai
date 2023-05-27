@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <limits>
 #include <parallel/algorithm>
+#include <cstdlib>
 
 using namespace std;
 using json = nlohmann::json;
@@ -25,6 +26,7 @@ json readConfigFile(string fileName);
 void buildRun(json &config);
 void delayRun(json &config);
 
+vector<string> removeKeepFiles(vector<string> input, json config);
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
 pair<int, int> findBoardChannel(json &config, int detType, int lut);
 vector<string> getPathFiles(string path, string identifier = "", string extension = "");
@@ -37,6 +39,20 @@ int main(int argc, char **argv)
     TApplication theApp("theApp", &argc, argv);
 
     json config = readConfigFile("config.json");
+
+    try
+    {
+        auto schemaPath = getEnvironment("BUILDER_BASE") + "/configSchema.json";
+
+        json schema = readConfigFile(schemaPath);
+
+        validateJsonSchema(config, schema);
+    }
+    catch (string test)
+    {
+        cout << test << endl;
+        exit(1);
+    }
 
     if (config["general"]["run"] == "build")
     {
@@ -275,26 +291,7 @@ vector<string> generateInputFiles(json &config)
     if (inpFiles.size())
     {
 
-        int start = int(config["input"]["keepIndex"][0]);
-        int stop = int(config["input"]["keepIndex"][1]);
-
-        if (start < 0 || start >= inpFiles.size())
-        {
-            start = 0;
-        }
-
-        if (stop < 0 || stop >= inpFiles.size())
-        {
-            stop = inpFiles.size();
-        }
-
-        if (start == stop)
-        {
-            start = 0;
-            stop = inpFiles.size();
-        }
-
-        inpFiles = {inpFiles.begin() + start, inpFiles.begin() + stop};
+        inpFiles = removeKeepFiles(inpFiles, config);
 
         cout << "-> " << inpFiles.size() << " (keepIndex) ";
 
@@ -326,26 +323,7 @@ void delayRun(json &config)
 
     auto inpFiles = getPathFiles(config["input"]["path"], config["input"]["fileIdentifier"], extension);
 
-    int start = int(config["input"]["keepIndex"][0]);
-    int stop = int(config["input"]["keepIndex"][1]);
-
-    if (start < 0 || start >= inpFiles.size())
-    {
-        start = 0;
-    }
-
-    if (stop < 0 || stop >= inpFiles.size())
-    {
-        stop = inpFiles.size();
-    }
-
-    if (start == stop)
-    {
-        start = 0;
-        stop = inpFiles.size();
-    }
-
-    inpFiles = {inpFiles.begin() + start, inpFiles.begin() + stop};
+    inpFiles = removeKeepFiles(inpFiles, config);
 
     if (inpFiles.size())
     {
@@ -360,4 +338,39 @@ void delayRun(json &config)
     {
         cout << "no files found" << endl;
     }
+}
+
+vector<string> removeKeepFiles(vector<string> inpFiles, json config)
+{
+
+    int start = int(config["input"]["keepIndex"][0]);
+    int stop = int(config["input"]["keepIndex"][1]);
+
+    if (start <= 0)
+    {
+        start = 1;
+    }
+
+    if (stop <= 0)
+    {
+        stop = std::numeric_limits<int>::max();
+    }
+
+    vector<string> output;
+
+    for (auto &str : inpFiles)
+    {
+        auto pos = str.find_last_of(".cap");
+
+        auto fName = str.substr(pos - 9, 6);
+
+        auto index = stoi(fName);
+
+        if (index >= start && index <= stop)
+        {
+            output.push_back(str);
+        }
+    }
+
+    return output;
 }

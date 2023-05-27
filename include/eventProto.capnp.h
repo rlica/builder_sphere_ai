@@ -10,231 +10,212 @@
 #error "Version mismatch between generated code and library headers.  You must use the same version of the Cap'n Proto compiler and library."
 #endif
 
+
 CAPNP_BEGIN_HEADER
 
-namespace capnp
-{
-  namespace schemas
-  {
+namespace capnp {
+namespace schemas {
 
-    CAPNP_DECLARE_SCHEMA(d68071ca2261003a);
-    CAPNP_DECLARE_SCHEMA(f8ff52779f55f192);
-    CAPNP_DECLARE_SCHEMA(ee0c92c4fb1fd66d);
-    CAPNP_DECLARE_SCHEMA(a918f8e1503d9aa1);
-    CAPNP_DECLARE_SCHEMA(daab86ecfa2fa4d4);
-    CAPNP_DECLARE_SCHEMA(cb3f086bb40ae877);
-    CAPNP_DECLARE_SCHEMA(d4108f0ff4656c1c);
-    CAPNP_DECLARE_SCHEMA(d294789ec2bf70a3);
-    CAPNP_DECLARE_SCHEMA(8917d2259a5b3060);
-    CAPNP_DECLARE_SCHEMA(bb036b976096d406);
-    CAPNP_DECLARE_SCHEMA(b01c95f91988e106);
-    CAPNP_DECLARE_SCHEMA(e869bfbd6fa844db);
+CAPNP_DECLARE_SCHEMA(d68071ca2261003a);
+CAPNP_DECLARE_SCHEMA(f8ff52779f55f192);
+CAPNP_DECLARE_SCHEMA(ee0c92c4fb1fd66d);
+CAPNP_DECLARE_SCHEMA(a918f8e1503d9aa1);
+CAPNP_DECLARE_SCHEMA(daab86ecfa2fa4d4);
+CAPNP_DECLARE_SCHEMA(d12474530a361751);
+CAPNP_DECLARE_SCHEMA(cb3f086bb40ae877);
+CAPNP_DECLARE_SCHEMA(d4108f0ff4656c1c);
+CAPNP_DECLARE_SCHEMA(d294789ec2bf70a3);
+CAPNP_DECLARE_SCHEMA(8917d2259a5b3060);
+CAPNP_DECLARE_SCHEMA(bb036b976096d406);
+CAPNP_DECLARE_SCHEMA(ca2986a7775e1438);
+CAPNP_DECLARE_SCHEMA(b01c95f91988e106);
+CAPNP_DECLARE_SCHEMA(e869bfbd6fa844db);
 
-  } // namespace schemas
-} // namespace capnp
+}  // namespace schemas
+}  // namespace capnp
 
-struct FullData
-{
+
+struct FullData {
   FullData() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(d68071ca2261003a, 1, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct PlainData
-{
+struct PlainData {
   PlainData() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(f8ff52779f55f192, 1, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct PsdData
-{
+struct PsdData {
   PsdData() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(ee0c92c4fb1fd66d, 1, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct WaveData
-{
+struct WaveData {
   WaveData() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(a918f8e1503d9aa1, 1, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct DualWaveData
-{
+struct DualWaveData {
   DualWaveData() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(daab86ecfa2fa4d4, 1, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct FullEvent
-{
+struct RawTimeData {
+  RawTimeData() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(d12474530a361751, 1, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct FullEvent {
   FullEvent() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(cb3f086bb40ae877, 2, 2)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct PlainEvent
-{
-  PlainEvent();
+struct PlainEvent {
+  PlainEvent() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(d4108f0ff4656c1c, 2, 0)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct PsdEvent
-{
-  PsdEvent();
+struct PsdEvent {
+  PsdEvent() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(d294789ec2bf70a3, 2, 0)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct WaveEvent
-{
+struct WaveEvent {
   WaveEvent() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(8917d2259a5b3060, 2, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct DualWaveEvent
-{
+struct DualWaveEvent {
   DualWaveEvent() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(bb036b976096d406, 2, 2)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct Dataset
-{
+struct RawTimeEvent {
+  RawTimeEvent() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(ca2986a7775e1438, 2, 0)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct Dataset {
   Dataset() = delete;
 
   class Reader;
@@ -242,64 +223,52 @@ struct Dataset
   class Pipeline;
   struct Event;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(b01c95f91988e106, 0, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
-struct Dataset::Event
-{
+struct Dataset::Event {
   Event() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
-  struct _capnpPrivate
-  {
+  struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(e869bfbd6fa844db, 2, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const *brand()
-    {
-      return &schema->defaultBrand;
-    }
-#endif // !CAPNP_LITE
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
   };
 };
 
 // =======================================================================================
 
-class FullData::Reader
-{
+class FullData::Reader {
 public:
   typedef FullData Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType() const;
+  inline  ::uint8_t getType() const;
 
   inline bool hasEvents() const;
-  inline ::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Reader getEvents() const;
+  inline  ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -313,35 +282,31 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class FullData::Builder
-{
+class FullData::Builder {
 public:
   typedef FullData Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType();
-  inline void setType(::uint8_t value);
+  inline  ::uint8_t getType();
+  inline void setType( ::uint8_t value);
 
   inline bool hasEvents();
-  inline ::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Builder getEvents();
-  inline void setEvents(::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
-  inline void adoptEvents(::capnp::Orphan<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>> disownEvents();
+  inline  ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>> disownEvents();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -353,13 +318,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class FullData::Pipeline
-{
+class FullData::Pipeline {
 public:
   typedef FullData Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -368,32 +332,29 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class PlainData::Reader
-{
+class PlainData::Reader {
 public:
   typedef PlainData Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType() const;
+  inline  ::uint8_t getType() const;
 
   inline bool hasEvents() const;
-  inline ::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Reader getEvents() const;
+  inline  ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -407,35 +368,31 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class PlainData::Builder
-{
+class PlainData::Builder {
 public:
   typedef PlainData Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType();
-  inline void setType(::uint8_t value);
+  inline  ::uint8_t getType();
+  inline void setType( ::uint8_t value);
 
   inline bool hasEvents();
-  inline ::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Builder getEvents();
-  inline void setEvents(::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
-  inline void adoptEvents(::capnp::Orphan<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>> disownEvents();
+  inline  ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>> disownEvents();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -447,13 +404,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class PlainData::Pipeline
-{
+class PlainData::Pipeline {
 public:
   typedef PlainData Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -462,32 +418,29 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class PsdData::Reader
-{
+class PsdData::Reader {
 public:
   typedef PsdData Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType() const;
+  inline  ::uint8_t getType() const;
 
   inline bool hasEvents() const;
-  inline ::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Reader getEvents() const;
+  inline  ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -501,35 +454,31 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class PsdData::Builder
-{
+class PsdData::Builder {
 public:
   typedef PsdData Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType();
-  inline void setType(::uint8_t value);
+  inline  ::uint8_t getType();
+  inline void setType( ::uint8_t value);
 
   inline bool hasEvents();
-  inline ::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Builder getEvents();
-  inline void setEvents(::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
-  inline void adoptEvents(::capnp::Orphan<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>> disownEvents();
+  inline  ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>> disownEvents();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -541,13 +490,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class PsdData::Pipeline
-{
+class PsdData::Pipeline {
 public:
   typedef PsdData Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -556,32 +504,29 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class WaveData::Reader
-{
+class WaveData::Reader {
 public:
   typedef WaveData Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType() const;
+  inline  ::uint8_t getType() const;
 
   inline bool hasEvents() const;
-  inline ::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Reader getEvents() const;
+  inline  ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -595,35 +540,31 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class WaveData::Builder
-{
+class WaveData::Builder {
 public:
   typedef WaveData Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType();
-  inline void setType(::uint8_t value);
+  inline  ::uint8_t getType();
+  inline void setType( ::uint8_t value);
 
   inline bool hasEvents();
-  inline ::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Builder getEvents();
-  inline void setEvents(::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
-  inline void adoptEvents(::capnp::Orphan<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>> disownEvents();
+  inline  ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>> disownEvents();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -635,13 +576,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class WaveData::Pipeline
-{
+class WaveData::Pipeline {
 public:
   typedef WaveData Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -650,32 +590,29 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class DualWaveData::Reader
-{
+class DualWaveData::Reader {
 public:
   typedef DualWaveData Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType() const;
+  inline  ::uint8_t getType() const;
 
   inline bool hasEvents() const;
-  inline ::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Reader getEvents() const;
+  inline  ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -689,35 +626,31 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class DualWaveData::Builder
-{
+class DualWaveData::Builder {
 public:
   typedef DualWaveData Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getType();
-  inline void setType(::uint8_t value);
+  inline  ::uint8_t getType();
+  inline void setType( ::uint8_t value);
 
   inline bool hasEvents();
-  inline ::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Builder getEvents();
-  inline void setEvents(::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
-  inline void adoptEvents(::capnp::Orphan<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>> disownEvents();
+  inline  ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>> disownEvents();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -729,13 +662,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class DualWaveData::Pipeline
-{
+class DualWaveData::Pipeline {
 public:
   typedef DualWaveData Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -744,43 +676,126 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class FullEvent::Reader
-{
+class RawTimeData::Reader {
+public:
+  typedef RawTimeData Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint8_t getType() const;
+
+  inline bool hasEvents() const;
+  inline  ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class RawTimeData::Builder {
+public:
+  typedef RawTimeData Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint8_t getType();
+  inline void setType( ::uint8_t value);
+
+  inline bool hasEvents();
+  inline  ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>> disownEvents();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class RawTimeData::Pipeline {
+public:
+  typedef RawTimeData Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class FullEvent::Reader {
 public:
   typedef FullEvent Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard() const;
+  inline  ::uint8_t getBoard() const;
 
-  inline ::uint8_t getChannel() const;
+  inline  ::uint8_t getChannel() const;
 
-  inline ::uint16_t getEnergy() const;
+  inline  ::uint16_t getEnergy() const;
 
-  inline ::uint64_t getTimestamp() const;
+  inline  ::uint64_t getTimestamp() const;
 
   inline float getPsd() const;
 
   inline bool hasWaveform1() const;
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader getWaveform1() const;
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader getWaveform1() const;
 
   inline bool hasWaveform2() const;
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader getWaveform2() const;
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader getWaveform2() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -794,56 +809,52 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class FullEvent::Builder
-{
+class FullEvent::Builder {
 public:
   typedef FullEvent Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard();
-  inline void setBoard(::uint8_t value);
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
 
-  inline ::uint8_t getChannel();
-  inline void setChannel(::uint8_t value);
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
 
-  inline ::uint16_t getEnergy();
-  inline void setEnergy(::uint16_t value);
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
 
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
 
   inline float getPsd();
   inline void setPsd(float value);
 
   inline bool hasWaveform1();
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder getWaveform1();
-  inline void setWaveform1(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value);
-  inline void setWaveform1(::kj::ArrayPtr<const ::int16_t> value);
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder initWaveform1(unsigned int size);
-  inline void adoptWaveform1(::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> disownWaveform1();
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder getWaveform1();
+  inline void setWaveform1( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setWaveform1(::kj::ArrayPtr<const  ::int16_t> value);
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder initWaveform1(unsigned int size);
+  inline void adoptWaveform1(::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> disownWaveform1();
 
   inline bool hasWaveform2();
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder getWaveform2();
-  inline void setWaveform2(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value);
-  inline void setWaveform2(::kj::ArrayPtr<const ::int16_t> value);
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder initWaveform2(unsigned int size);
-  inline void adoptWaveform2(::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> disownWaveform2();
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder getWaveform2();
+  inline void setWaveform2( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setWaveform2(::kj::ArrayPtr<const  ::int16_t> value);
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder initWaveform2(unsigned int size);
+  inline void adoptWaveform2(::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> disownWaveform2();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -855,13 +866,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class FullEvent::Pipeline
-{
+class FullEvent::Pipeline {
 public:
   typedef FullEvent Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -870,35 +880,32 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class PlainEvent::Reader
-{
+class PlainEvent::Reader {
 public:
   typedef PlainEvent Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard() const;
+  inline  ::uint8_t getBoard() const;
 
-  inline ::uint8_t getChannel() const;
+  inline  ::uint8_t getChannel() const;
 
-  inline ::uint16_t getEnergy() const;
+  inline  ::uint16_t getEnergy() const;
 
-  inline ::uint64_t getTimestamp() const;
+  inline  ::uint64_t getTimestamp() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -912,37 +919,33 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class PlainEvent::Builder
-{
+class PlainEvent::Builder {
 public:
   typedef PlainEvent Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard();
-  inline void setBoard(::uint8_t value);
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
 
-  inline ::uint8_t getChannel();
-  inline void setChannel(::uint8_t value);
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
 
-  inline ::uint16_t getEnergy();
-  inline void setEnergy(::uint16_t value);
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
 
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -954,13 +957,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class PlainEvent::Pipeline
-{
+class PlainEvent::Pipeline {
 public:
   typedef PlainEvent Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -969,35 +971,32 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class PsdEvent::Reader
-{
+class PsdEvent::Reader {
 public:
   typedef PsdEvent Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard() const;
+  inline  ::uint8_t getBoard() const;
 
-  inline ::uint8_t getChannel() const;
+  inline  ::uint8_t getChannel() const;
 
-  inline ::uint16_t getEnergy() const;
+  inline  ::uint16_t getEnergy() const;
 
-  inline ::uint64_t getTimestamp() const;
+  inline  ::uint64_t getTimestamp() const;
 
   inline float getPsd() const;
 
@@ -1013,37 +1012,33 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class PsdEvent::Builder
-{
+class PsdEvent::Builder {
 public:
   typedef PsdEvent Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard();
-  inline void setBoard(::uint8_t value);
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
 
-  inline ::uint8_t getChannel();
-  inline void setChannel(::uint8_t value);
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
 
-  inline ::uint16_t getEnergy();
-  inline void setEnergy(::uint16_t value);
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
 
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
 
   inline float getPsd();
   inline void setPsd(float value);
@@ -1058,13 +1053,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class PsdEvent::Pipeline
-{
+class PsdEvent::Pipeline {
 public:
   typedef PsdEvent Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -1073,38 +1067,35 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class WaveEvent::Reader
-{
+class WaveEvent::Reader {
 public:
   typedef WaveEvent Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard() const;
+  inline  ::uint8_t getBoard() const;
 
-  inline ::uint8_t getChannel() const;
+  inline  ::uint8_t getChannel() const;
 
-  inline ::uint16_t getEnergy() const;
+  inline  ::uint16_t getEnergy() const;
 
-  inline ::uint64_t getTimestamp() const;
+  inline  ::uint64_t getTimestamp() const;
 
   inline bool hasWaveform1() const;
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader getWaveform1() const;
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader getWaveform1() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -1118,45 +1109,41 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class WaveEvent::Builder
-{
+class WaveEvent::Builder {
 public:
   typedef WaveEvent Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard();
-  inline void setBoard(::uint8_t value);
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
 
-  inline ::uint8_t getChannel();
-  inline void setChannel(::uint8_t value);
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
 
-  inline ::uint16_t getEnergy();
-  inline void setEnergy(::uint16_t value);
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
 
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
 
   inline bool hasWaveform1();
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder getWaveform1();
-  inline void setWaveform1(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value);
-  inline void setWaveform1(::kj::ArrayPtr<const ::int16_t> value);
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder initWaveform1(unsigned int size);
-  inline void adoptWaveform1(::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> disownWaveform1();
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder getWaveform1();
+  inline void setWaveform1( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setWaveform1(::kj::ArrayPtr<const  ::int16_t> value);
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder initWaveform1(unsigned int size);
+  inline void adoptWaveform1(::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> disownWaveform1();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -1168,13 +1155,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class WaveEvent::Pipeline
-{
+class WaveEvent::Pipeline {
 public:
   typedef WaveEvent Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -1183,41 +1169,38 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class DualWaveEvent::Reader
-{
+class DualWaveEvent::Reader {
 public:
   typedef DualWaveEvent Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard() const;
+  inline  ::uint8_t getBoard() const;
 
-  inline ::uint8_t getChannel() const;
+  inline  ::uint8_t getChannel() const;
 
-  inline ::uint16_t getEnergy() const;
+  inline  ::uint16_t getEnergy() const;
 
-  inline ::uint64_t getTimestamp() const;
+  inline  ::uint64_t getTimestamp() const;
 
   inline bool hasWaveform1() const;
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader getWaveform1() const;
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader getWaveform1() const;
 
   inline bool hasWaveform2() const;
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader getWaveform2() const;
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader getWaveform2() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -1231,53 +1214,49 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class DualWaveEvent::Builder
-{
+class DualWaveEvent::Builder {
 public:
   typedef DualWaveEvent Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard();
-  inline void setBoard(::uint8_t value);
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
 
-  inline ::uint8_t getChannel();
-  inline void setChannel(::uint8_t value);
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
 
-  inline ::uint16_t getEnergy();
-  inline void setEnergy(::uint16_t value);
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
 
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
 
   inline bool hasWaveform1();
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder getWaveform1();
-  inline void setWaveform1(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value);
-  inline void setWaveform1(::kj::ArrayPtr<const ::int16_t> value);
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder initWaveform1(unsigned int size);
-  inline void adoptWaveform1(::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> disownWaveform1();
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder getWaveform1();
+  inline void setWaveform1( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setWaveform1(::kj::ArrayPtr<const  ::int16_t> value);
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder initWaveform1(unsigned int size);
+  inline void adoptWaveform1(::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> disownWaveform1();
 
   inline bool hasWaveform2();
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder getWaveform2();
-  inline void setWaveform2(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value);
-  inline void setWaveform2(::kj::ArrayPtr<const ::int16_t> value);
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder initWaveform2(unsigned int size);
-  inline void adoptWaveform2(::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> disownWaveform2();
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder getWaveform2();
+  inline void setWaveform2( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setWaveform2(::kj::ArrayPtr<const  ::int16_t> value);
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder initWaveform2(unsigned int size);
+  inline void adoptWaveform2(::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> disownWaveform2();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -1289,13 +1268,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class DualWaveEvent::Pipeline
-{
+class DualWaveEvent::Pipeline {
 public:
   typedef DualWaveEvent Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -1304,30 +1282,123 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class Dataset::Reader
-{
+class RawTimeEvent::Reader {
+public:
+  typedef RawTimeEvent Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint8_t getBoard() const;
+
+  inline  ::uint8_t getChannel() const;
+
+  inline  ::uint16_t getEnergy() const;
+
+  inline  ::uint64_t getTimestamp() const;
+
+  inline  ::uint16_t getFineTimestamp() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class RawTimeEvent::Builder {
+public:
+  typedef RawTimeEvent Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
+
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
+
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
+
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
+
+  inline  ::uint16_t getFineTimestamp();
+  inline void setFineTimestamp( ::uint16_t value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class RawTimeEvent::Pipeline {
+public:
+  typedef RawTimeEvent Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class Dataset::Reader {
 public:
   typedef Dataset Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
   inline bool hasEvents() const;
-  inline ::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Reader getEvents() const;
+  inline  ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Reader getEvents() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -1341,32 +1412,28 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class Dataset::Builder
-{
+class Dataset::Builder {
 public:
   typedef Dataset Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
   inline bool hasEvents();
-  inline ::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Builder getEvents();
-  inline void setEvents(::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
-  inline void adoptEvents(::capnp::Orphan<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>> disownEvents();
+  inline  ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Builder getEvents();
+  inline void setEvents( ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Builder initEvents(unsigned int size);
+  inline void adoptEvents(::capnp::Orphan< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>> disownEvents();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -1378,13 +1445,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class Dataset::Pipeline
-{
+class Dataset::Pipeline {
 public:
   typedef Dataset Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -1393,40 +1459,37 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-class Dataset::Event::Reader
-{
+class Dataset::Event::Reader {
 public:
   typedef Event Reads;
 
   Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base) : _reader(base) {}
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
 
-  inline ::capnp::MessageSize totalSize() const
-  {
+  inline ::capnp::MessageSize totalSize() const {
     return _reader.totalSize().asPublic();
   }
 
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
+  inline ::kj::StringTree toString() const {
     return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard() const;
+  inline  ::uint8_t getBoard() const;
 
-  inline ::uint8_t getChannel() const;
+  inline  ::uint8_t getChannel() const;
 
-  inline ::uint16_t getEnergy() const;
+  inline  ::uint16_t getEnergy() const;
 
-  inline ::uint64_t getTimestamp() const;
+  inline  ::uint64_t getTimestamp() const;
 
   inline float getPsd() const;
 
   inline bool hasWaveform() const;
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader getWaveform() const;
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader getWaveform() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -1440,48 +1503,44 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class Dataset::Event::Builder
-{
+class Dataset::Event::Builder {
 public:
   typedef Event Builds;
 
-  Builder() = delete; // Deleted to discourage incorrect usage.
-                      // You can explicitly initialize to nullptr instead.
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
   inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base) : _builder(base) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
   inline operator Reader() const { return Reader(_builder.asReader()); }
   inline Reader asReader() const { return *this; }
 
   inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
 #if !CAPNP_LITE
-  inline ::kj::StringTree toString() const
-  {
-    return asReader().toString();
-  }
-#endif // !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
 
-  inline ::uint8_t getBoard();
-  inline void setBoard(::uint8_t value);
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
 
-  inline ::uint8_t getChannel();
-  inline void setChannel(::uint8_t value);
+  inline  ::uint8_t getChannel();
+  inline void setChannel( ::uint8_t value);
 
-  inline ::uint16_t getEnergy();
-  inline void setEnergy(::uint16_t value);
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
 
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
 
   inline float getPsd();
   inline void setPsd(float value);
 
   inline bool hasWaveform();
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder getWaveform();
-  inline void setWaveform(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value);
-  inline void setWaveform(::kj::ArrayPtr<const ::int16_t> value);
-  inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder initWaveform(unsigned int size);
-  inline void adoptWaveform(::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value);
-  inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> disownWaveform();
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder getWaveform();
+  inline void setWaveform( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setWaveform(::kj::ArrayPtr<const  ::int16_t> value);
+  inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder initWaveform(unsigned int size);
+  inline void adoptWaveform(::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> disownWaveform();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -1493,13 +1552,12 @@ private:
 };
 
 #if !CAPNP_LITE
-class Dataset::Event::Pipeline
-{
+class Dataset::Event::Pipeline {
 public:
   typedef Event Pipelines;
 
-  inline Pipeline(decltype(nullptr)) : _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline &&typeless)
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
 private:
@@ -1508,1152 +1566,1008 @@ private:
   template <typename, ::capnp::Kind>
   friend struct ::capnp::ToDynamic_;
 };
-#endif // !CAPNP_LITE
+#endif  // !CAPNP_LITE
 
 // =======================================================================================
 
-inline ::uint8_t FullData::Reader::getType() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t FullData::Reader::getType() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t FullData::Builder::getType()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t FullData::Builder::getType() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void FullData::Builder::setType(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void FullData::Builder::setType( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool FullData::Reader::hasEvents() const
-{
+inline bool FullData::Reader::hasEvents() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool FullData::Builder::hasEvents()
-{
+inline bool FullData::Builder::hasEvents() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Reader FullData::Reader::getEvents() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Reader FullData::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Builder FullData::Builder::getEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Builder FullData::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void FullData::Builder::setEvents(::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
-                                                                                         ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                     value);
+inline void FullData::Builder::setEvents( ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>::Builder FullData::Builder::initEvents(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
-                                                                                                 ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                             size);
+inline  ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>::Builder FullData::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void FullData::Builder::adoptEvents(
-    ::capnp::Orphan<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
-                                                                                           ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                       kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>> FullData::Builder::disownEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::FullEvent, ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>> FullData::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::FullEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t PlainData::Reader::getType() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t PlainData::Reader::getType() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t PlainData::Builder::getType()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t PlainData::Builder::getType() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void PlainData::Builder::setType(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void PlainData::Builder::setType( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool PlainData::Reader::hasEvents() const
-{
+inline bool PlainData::Reader::hasEvents() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool PlainData::Builder::hasEvents()
-{
+inline bool PlainData::Builder::hasEvents() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Reader PlainData::Reader::getEvents() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Reader PlainData::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Builder PlainData::Builder::getEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Builder PlainData::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void PlainData::Builder::setEvents(::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void PlainData::Builder::setEvents( ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>::Builder PlainData::Builder::initEvents(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>::Builder PlainData::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void PlainData::Builder::adoptEvents(
-    ::capnp::Orphan<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>> PlainData::Builder::disownEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PlainEvent, ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>> PlainData::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PlainEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t PsdData::Reader::getType() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t PsdData::Reader::getType() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t PsdData::Builder::getType()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t PsdData::Builder::getType() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void PsdData::Builder::setType(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void PsdData::Builder::setType( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool PsdData::Reader::hasEvents() const
-{
+inline bool PsdData::Reader::hasEvents() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool PsdData::Builder::hasEvents()
-{
+inline bool PsdData::Builder::hasEvents() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Reader PsdData::Reader::getEvents() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Reader PsdData::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Builder PsdData::Builder::getEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Builder PsdData::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void PsdData::Builder::setEvents(::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
-                                                                                        ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                    value);
+inline void PsdData::Builder::setEvents( ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>::Builder PsdData::Builder::initEvents(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
-                                                                                                ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                            size);
+inline  ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>::Builder PsdData::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void PsdData::Builder::adoptEvents(
-    ::capnp::Orphan<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>> PsdData::Builder::disownEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::PsdEvent, ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>> PsdData::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::PsdEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t WaveData::Reader::getType() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t WaveData::Reader::getType() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t WaveData::Builder::getType()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t WaveData::Builder::getType() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void WaveData::Builder::setType(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void WaveData::Builder::setType( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool WaveData::Reader::hasEvents() const
-{
+inline bool WaveData::Reader::hasEvents() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool WaveData::Builder::hasEvents()
-{
+inline bool WaveData::Builder::hasEvents() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Reader WaveData::Reader::getEvents() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Reader WaveData::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Builder WaveData::Builder::getEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Builder WaveData::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void WaveData::Builder::setEvents(::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
-                                                                                         ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                     value);
+inline void WaveData::Builder::setEvents( ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>::Builder WaveData::Builder::initEvents(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
-                                                                                                 ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                             size);
+inline  ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>::Builder WaveData::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void WaveData::Builder::adoptEvents(
-    ::capnp::Orphan<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
-                                                                                           ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                       kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>> WaveData::Builder::disownEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::WaveEvent, ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>> WaveData::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::WaveEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t DualWaveData::Reader::getType() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t DualWaveData::Reader::getType() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t DualWaveData::Builder::getType()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t DualWaveData::Builder::getType() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void DualWaveData::Builder::setType(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void DualWaveData::Builder::setType( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool DualWaveData::Reader::hasEvents() const
-{
+inline bool DualWaveData::Reader::hasEvents() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool DualWaveData::Builder::hasEvents()
-{
+inline bool DualWaveData::Builder::hasEvents() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Reader DualWaveData::Reader::getEvents() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Reader DualWaveData::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Builder DualWaveData::Builder::getEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Builder DualWaveData::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void DualWaveData::Builder::setEvents(::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
-                                                                                             ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                         value);
+inline void DualWaveData::Builder::setEvents( ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>::Builder DualWaveData::Builder::initEvents(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
-                                                                                                     ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                                 size);
+inline  ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>::Builder DualWaveData::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void DualWaveData::Builder::adoptEvents(
-    ::capnp::Orphan<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
-                                                                                               ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                           kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>> DualWaveData::Builder::disownEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::DualWaveEvent, ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>> DualWaveData::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::DualWaveEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t FullEvent::Reader::getBoard() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t RawTimeData::Reader::getType() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t FullEvent::Builder::getBoard()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t RawTimeData::Builder::getType() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void FullEvent::Builder::setBoard(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void RawTimeData::Builder::setType( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t FullEvent::Reader::getChannel() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline bool RawTimeData::Reader::hasEvents() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool RawTimeData::Builder::hasEvents() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Reader RawTimeData::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Builder RawTimeData::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void RawTimeData::Builder::setEvents( ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>::Builder RawTimeData::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void RawTimeData::Builder::adoptEvents(
+    ::capnp::Orphan< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>> RawTimeData::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::RawTimeEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline  ::uint8_t FullEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t FullEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void FullEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint8_t FullEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t FullEvent::Builder::getChannel()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t FullEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void FullEvent::Builder::setChannel(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void FullEvent::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint16_t FullEvent::Reader::getEnergy() const
-{
-  return _reader.getDataField<::uint16_t>(
+inline  ::uint16_t FullEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint16_t FullEvent::Builder::getEnergy()
-{
-  return _builder.getDataField<::uint16_t>(
+inline  ::uint16_t FullEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void FullEvent::Builder::setEnergy(::uint16_t value)
-{
-  _builder.setDataField<::uint16_t>(
+inline void FullEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t FullEvent::Reader::getTimestamp() const
-{
-  return _reader.getDataField<::uint64_t>(
+inline  ::uint64_t FullEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t FullEvent::Builder::getTimestamp()
-{
-  return _builder.getDataField<::uint64_t>(
+inline  ::uint64_t FullEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void FullEvent::Builder::setTimestamp(::uint64_t value)
-{
-  _builder.setDataField<::uint64_t>(
+inline void FullEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline float FullEvent::Reader::getPsd() const
-{
+inline float FullEvent::Reader::getPsd() const {
   return _reader.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline float FullEvent::Builder::getPsd()
-{
+inline float FullEvent::Builder::getPsd() {
   return _builder.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void FullEvent::Builder::setPsd(float value)
-{
+inline void FullEvent::Builder::setPsd(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool FullEvent::Reader::hasWaveform1() const
-{
+inline bool FullEvent::Reader::hasWaveform1() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool FullEvent::Builder::hasWaveform1()
-{
+inline bool FullEvent::Builder::hasWaveform1() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader FullEvent::Reader::getWaveform1() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader FullEvent::Reader::getWaveform1() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::getWaveform1()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::getWaveform1() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void FullEvent::Builder::setWaveform1(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void FullEvent::Builder::setWaveform1( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline void FullEvent::Builder::setWaveform1(::kj::ArrayPtr<const ::int16_t> value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void FullEvent::Builder::setWaveform1(::kj::ArrayPtr<const  ::int16_t> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::initWaveform1(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::initWaveform1(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void FullEvent::Builder::adoptWaveform1(
-    ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> FullEvent::Builder::disownWaveform1()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> FullEvent::Builder::disownWaveform1() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool FullEvent::Reader::hasWaveform2() const
-{
+inline bool FullEvent::Reader::hasWaveform2() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
 }
-inline bool FullEvent::Builder::hasWaveform2()
-{
+inline bool FullEvent::Builder::hasWaveform2() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader FullEvent::Reader::getWaveform2() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader FullEvent::Reader::getWaveform2() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::getWaveform2()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::getWaveform2() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline void FullEvent::Builder::setWaveform2(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void FullEvent::Builder::setWaveform2( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
 }
-inline void FullEvent::Builder::setWaveform2(::kj::ArrayPtr<const ::int16_t> value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void FullEvent::Builder::setWaveform2(::kj::ArrayPtr<const  ::int16_t> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::initWaveform2(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder FullEvent::Builder::initWaveform2(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), size);
 }
 inline void FullEvent::Builder::adoptWaveform2(
-    ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> FullEvent::Builder::disownWaveform2()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> FullEvent::Builder::disownWaveform2() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t PlainEvent::Reader::getBoard() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t PlainEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t PlainEvent::Builder::getBoard()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t PlainEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void PlainEvent::Builder::setBoard(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void PlainEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t PlainEvent::Reader::getChannel() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t PlainEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t PlainEvent::Builder::getChannel()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t PlainEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PlainEvent::Builder::setChannel(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void PlainEvent::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint16_t PlainEvent::Reader::getEnergy() const
-{
-  return _reader.getDataField<::uint16_t>(
+inline  ::uint16_t PlainEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint16_t PlainEvent::Builder::getEnergy()
-{
-  return _builder.getDataField<::uint16_t>(
+inline  ::uint16_t PlainEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PlainEvent::Builder::setEnergy(::uint16_t value)
-{
-  _builder.setDataField<::uint16_t>(
+inline void PlainEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t PlainEvent::Reader::getTimestamp() const
-{
-  return _reader.getDataField<::uint64_t>(
+inline  ::uint64_t PlainEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t PlainEvent::Builder::getTimestamp()
-{
-  return _builder.getDataField<::uint64_t>(
+inline  ::uint64_t PlainEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PlainEvent::Builder::setTimestamp(::uint64_t value)
-{
-  _builder.setDataField<::uint64_t>(
+inline void PlainEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t PsdEvent::Reader::getBoard() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t PsdEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t PsdEvent::Builder::getBoard()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t PsdEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void PsdEvent::Builder::setBoard(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void PsdEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t PsdEvent::Reader::getChannel() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t PsdEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t PsdEvent::Builder::getChannel()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t PsdEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PsdEvent::Builder::setChannel(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void PsdEvent::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint16_t PsdEvent::Reader::getEnergy() const
-{
-  return _reader.getDataField<::uint16_t>(
+inline  ::uint16_t PsdEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint16_t PsdEvent::Builder::getEnergy()
-{
-  return _builder.getDataField<::uint16_t>(
+inline  ::uint16_t PsdEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PsdEvent::Builder::setEnergy(::uint16_t value)
-{
-  _builder.setDataField<::uint16_t>(
+inline void PsdEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t PsdEvent::Reader::getTimestamp() const
-{
-  return _reader.getDataField<::uint64_t>(
+inline  ::uint64_t PsdEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t PsdEvent::Builder::getTimestamp()
-{
-  return _builder.getDataField<::uint64_t>(
+inline  ::uint64_t PsdEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PsdEvent::Builder::setTimestamp(::uint64_t value)
-{
-  _builder.setDataField<::uint64_t>(
+inline void PsdEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline float PsdEvent::Reader::getPsd() const
-{
+inline float PsdEvent::Reader::getPsd() const {
   return _reader.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline float PsdEvent::Builder::getPsd()
-{
+inline float PsdEvent::Builder::getPsd() {
   return _builder.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void PsdEvent::Builder::setPsd(float value)
-{
+inline void PsdEvent::Builder::setPsd(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t WaveEvent::Reader::getBoard() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t WaveEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t WaveEvent::Builder::getBoard()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t WaveEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void WaveEvent::Builder::setBoard(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void WaveEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t WaveEvent::Reader::getChannel() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t WaveEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t WaveEvent::Builder::getChannel()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t WaveEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void WaveEvent::Builder::setChannel(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void WaveEvent::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint16_t WaveEvent::Reader::getEnergy() const
-{
-  return _reader.getDataField<::uint16_t>(
+inline  ::uint16_t WaveEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint16_t WaveEvent::Builder::getEnergy()
-{
-  return _builder.getDataField<::uint16_t>(
+inline  ::uint16_t WaveEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void WaveEvent::Builder::setEnergy(::uint16_t value)
-{
-  _builder.setDataField<::uint16_t>(
+inline void WaveEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t WaveEvent::Reader::getTimestamp() const
-{
-  return _reader.getDataField<::uint64_t>(
+inline  ::uint64_t WaveEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t WaveEvent::Builder::getTimestamp()
-{
-  return _builder.getDataField<::uint64_t>(
+inline  ::uint64_t WaveEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void WaveEvent::Builder::setTimestamp(::uint64_t value)
-{
-  _builder.setDataField<::uint64_t>(
+inline void WaveEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool WaveEvent::Reader::hasWaveform1() const
-{
+inline bool WaveEvent::Reader::hasWaveform1() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool WaveEvent::Builder::hasWaveform1()
-{
+inline bool WaveEvent::Builder::hasWaveform1() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader WaveEvent::Reader::getWaveform1() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader WaveEvent::Reader::getWaveform1() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder WaveEvent::Builder::getWaveform1()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder WaveEvent::Builder::getWaveform1() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void WaveEvent::Builder::setWaveform1(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void WaveEvent::Builder::setWaveform1( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline void WaveEvent::Builder::setWaveform1(::kj::ArrayPtr<const ::int16_t> value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void WaveEvent::Builder::setWaveform1(::kj::ArrayPtr<const  ::int16_t> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder WaveEvent::Builder::initWaveform1(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder WaveEvent::Builder::initWaveform1(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void WaveEvent::Builder::adoptWaveform1(
-    ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> WaveEvent::Builder::disownWaveform1()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> WaveEvent::Builder::disownWaveform1() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint8_t DualWaveEvent::Reader::getBoard() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t DualWaveEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t DualWaveEvent::Builder::getBoard()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t DualWaveEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void DualWaveEvent::Builder::setBoard(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void DualWaveEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t DualWaveEvent::Reader::getChannel() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t DualWaveEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t DualWaveEvent::Builder::getChannel()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t DualWaveEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void DualWaveEvent::Builder::setChannel(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void DualWaveEvent::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint16_t DualWaveEvent::Reader::getEnergy() const
-{
-  return _reader.getDataField<::uint16_t>(
+inline  ::uint16_t DualWaveEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint16_t DualWaveEvent::Builder::getEnergy()
-{
-  return _builder.getDataField<::uint16_t>(
+inline  ::uint16_t DualWaveEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void DualWaveEvent::Builder::setEnergy(::uint16_t value)
-{
-  _builder.setDataField<::uint16_t>(
+inline void DualWaveEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t DualWaveEvent::Reader::getTimestamp() const
-{
-  return _reader.getDataField<::uint64_t>(
+inline  ::uint64_t DualWaveEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t DualWaveEvent::Builder::getTimestamp()
-{
-  return _builder.getDataField<::uint64_t>(
+inline  ::uint64_t DualWaveEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void DualWaveEvent::Builder::setTimestamp(::uint64_t value)
-{
-  _builder.setDataField<::uint64_t>(
+inline void DualWaveEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool DualWaveEvent::Reader::hasWaveform1() const
-{
+inline bool DualWaveEvent::Reader::hasWaveform1() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool DualWaveEvent::Builder::hasWaveform1()
-{
+inline bool DualWaveEvent::Builder::hasWaveform1() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader DualWaveEvent::Reader::getWaveform1() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader DualWaveEvent::Reader::getWaveform1() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::getWaveform1()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::getWaveform1() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void DualWaveEvent::Builder::setWaveform1(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void DualWaveEvent::Builder::setWaveform1( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline void DualWaveEvent::Builder::setWaveform1(::kj::ArrayPtr<const ::int16_t> value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void DualWaveEvent::Builder::setWaveform1(::kj::ArrayPtr<const  ::int16_t> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::initWaveform1(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::initWaveform1(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void DualWaveEvent::Builder::adoptWaveform1(
-    ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> DualWaveEvent::Builder::disownWaveform1()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> DualWaveEvent::Builder::disownWaveform1() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool DualWaveEvent::Reader::hasWaveform2() const
-{
+inline bool DualWaveEvent::Reader::hasWaveform2() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
 }
-inline bool DualWaveEvent::Builder::hasWaveform2()
-{
+inline bool DualWaveEvent::Builder::hasWaveform2() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader DualWaveEvent::Reader::getWaveform2() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader DualWaveEvent::Reader::getWaveform2() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::getWaveform2()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::getWaveform2() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline void DualWaveEvent::Builder::setWaveform2(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void DualWaveEvent::Builder::setWaveform2( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
 }
-inline void DualWaveEvent::Builder::setWaveform2(::kj::ArrayPtr<const ::int16_t> value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void DualWaveEvent::Builder::setWaveform2(::kj::ArrayPtr<const  ::int16_t> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::initWaveform2(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder DualWaveEvent::Builder::initWaveform2(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), size);
 }
 inline void DualWaveEvent::Builder::adoptWaveform2(
-    ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<1>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> DualWaveEvent::Builder::disownWaveform2()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> DualWaveEvent::Builder::disownWaveform2() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline bool Dataset::Reader::hasEvents() const
-{
-  return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool Dataset::Builder::hasEvents()
-{
-  return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Reader Dataset::Reader::getEvents() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline ::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Builder Dataset::Builder::getEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline void Dataset::Builder::setEvents(::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
-                                                                                              ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                          value);
-}
-inline ::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>::Builder Dataset::Builder::initEvents(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
-                                                                                                      ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                                  size);
-}
-inline void Dataset::Builder::adoptEvents(
-    ::capnp::Orphan<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
-                                                                                                ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                            kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>> Dataset::Builder::disownEvents()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::Dataset::Event, ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-
-inline ::uint8_t Dataset::Event::Reader::getBoard() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t RawTimeEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t Dataset::Event::Builder::getBoard()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t RawTimeEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void Dataset::Event::Builder::setBoard(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void RawTimeEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint8_t Dataset::Event::Reader::getChannel() const
-{
-  return _reader.getDataField<::uint8_t>(
+inline  ::uint8_t RawTimeEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint8_t Dataset::Event::Builder::getChannel()
-{
-  return _builder.getDataField<::uint8_t>(
+inline  ::uint8_t RawTimeEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void Dataset::Event::Builder::setChannel(::uint8_t value)
-{
-  _builder.setDataField<::uint8_t>(
+inline void RawTimeEvent::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint16_t Dataset::Event::Reader::getEnergy() const
-{
-  return _reader.getDataField<::uint16_t>(
+inline  ::uint16_t RawTimeEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint16_t Dataset::Event::Builder::getEnergy()
-{
-  return _builder.getDataField<::uint16_t>(
+inline  ::uint16_t RawTimeEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void Dataset::Event::Builder::setEnergy(::uint16_t value)
-{
-  _builder.setDataField<::uint16_t>(
+inline void RawTimeEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t Dataset::Event::Reader::getTimestamp() const
-{
-  return _reader.getDataField<::uint64_t>(
+inline  ::uint64_t RawTimeEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t Dataset::Event::Builder::getTimestamp()
-{
-  return _builder.getDataField<::uint64_t>(
+inline  ::uint64_t RawTimeEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void Dataset::Event::Builder::setTimestamp(::uint64_t value)
-{
-  _builder.setDataField<::uint64_t>(
+inline void RawTimeEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline float Dataset::Event::Reader::getPsd() const
-{
+inline  ::uint16_t RawTimeEvent::Reader::getFineTimestamp() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t RawTimeEvent::Builder::getFineTimestamp() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void RawTimeEvent::Builder::setFineTimestamp( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool Dataset::Reader::hasEvents() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool Dataset::Builder::hasEvents() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Reader Dataset::Reader::getEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Builder Dataset::Builder::getEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void Dataset::Builder::setEvents( ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>::Builder Dataset::Builder::initEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void Dataset::Builder::adoptEvents(
+    ::capnp::Orphan< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>> Dataset::Builder::disownEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::Dataset::Event,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline  ::uint8_t Dataset::Event::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t Dataset::Event::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void Dataset::Event::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint8_t Dataset::Event::Reader::getChannel() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t Dataset::Event::Builder::getChannel() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void Dataset::Event::Builder::setChannel( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t Dataset::Event::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t Dataset::Event::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void Dataset::Event::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint64_t Dataset::Event::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint64_t Dataset::Event::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void Dataset::Event::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline float Dataset::Event::Reader::getPsd() const {
   return _reader.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline float Dataset::Event::Builder::getPsd()
-{
+inline float Dataset::Event::Builder::getPsd() {
   return _builder.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void Dataset::Event::Builder::setPsd(float value)
-{
+inline void Dataset::Event::Builder::setPsd(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool Dataset::Event::Reader::hasWaveform() const
-{
+inline bool Dataset::Event::Reader::hasWaveform() const {
   return !_reader.getPointerField(
-                     ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline bool Dataset::Event::Builder::hasWaveform()
-{
+inline bool Dataset::Event::Builder::hasWaveform() {
   return !_builder.getPointerField(
-                      ::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader Dataset::Event::Reader::getWaveform() const
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader Dataset::Event::Reader::getWaveform() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder Dataset::Event::Builder::getWaveform()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder Dataset::Event::Builder::getWaveform() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void Dataset::Event::Builder::setWaveform(::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Reader value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void Dataset::Event::Builder::setWaveform( ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline void Dataset::Event::Builder::setWaveform(::kj::ArrayPtr<const ::int16_t> value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
-                                                                                          ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                      value);
+inline void Dataset::Event::Builder::setWaveform(::kj::ArrayPtr<const  ::int16_t> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
-inline ::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>::Builder Dataset::Event::Builder::initWaveform(unsigned int size)
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
-                                                                                                  ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                              size);
+inline  ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>::Builder Dataset::Event::Builder::initWaveform(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void Dataset::Event::Builder::adoptWaveform(
-    ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> &&value)
-{
-  ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
-                                                                                            ::capnp::bounded<0>() * ::capnp::POINTERS),
-                                                                                        kj::mv(value));
+    ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>> Dataset::Event::Builder::disownWaveform()
-{
-  return ::capnp::_::PointerHelpers<::capnp::List<::int16_t, ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+inline ::capnp::Orphan< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>> Dataset::Event::Builder::disownWaveform() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::int16_t,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
+
 CAPNP_END_HEADER
+

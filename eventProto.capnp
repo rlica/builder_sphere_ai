@@ -25,6 +25,11 @@ struct DualWaveData{
     events @1: List(DualWaveEvent);
 }
 
+struct RawTimeData{
+    type @0: UInt8;
+    events @1: List(RawTimeEvent);
+}
+
 struct FullEvent {
     board @0 :UInt8;
     channel @1 :UInt8;
@@ -67,6 +72,13 @@ struct DualWaveEvent {
     waveform2 @5: List(Int16);    
 }
 
+struct RawTimeEvent {
+    board @0 :UInt8;
+    channel @1 :UInt8;
+    energy @2: UInt16;
+    timestamp @3: UInt64;
+    fineTimestamp @4: UInt16;
+}
 
 struct Dataset {
     events @0: List(Event);

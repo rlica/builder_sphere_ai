@@ -4,8 +4,13 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include "json-schema.hpp"
+#include "json.hpp"
 
 using namespace std;
+using nlohmann::json_uri;
+using nlohmann::json_schema::json_validator;
+using json = nlohmann::json;
 
 inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"3MV", ".root"},
@@ -65,17 +70,26 @@ public:
     uint16_t getPSD() { return varPSD; }
     void setPSD(uint16_t psd) { varPSD = psd; }
 
+    uint64_t getRawTs() { return rawTs; }
+    void setRawTs(uint64_t ts) { rawTs = ts; }
+
+    uint16_t getRawFineTs() { return rawFineTs; }
+    void setRawFineTs(uint16_t ts) { rawFineTs = ts; }
+
 private:
+    uint64_t rawTs = 0;
+    uint16_t rawFineTs = 0;
+
     uint64_t timeStamp = 0;
 
     uint16_t energy = 0;
     uint16_t vetoEnergy = 0;
 
     uint16_t detectorType = 0;
+    uint16_t lutNumb = 0;
 
     uint16_t boardNumb = 0;
     uint16_t chNumb = 0;
-    uint16_t lutNumb = 0;
 
     uint16_t relativeTimeNs = 0;
     uint16_t relativeTimePs = 0;
@@ -90,5 +104,41 @@ private:
 
     bool varAntiCoincFlag = false;
 };
+
+inline void validateJsonSchema(json configFile, json schemaFile)
+{
+    json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check, nullptr);
+
+    try
+    {
+        validator.set_root_schema(schemaFile);
+    }
+    catch (const std::exception &exp)
+    {
+        throw "validation of schema failed: " + string(exp.what());
+    }
+
+    try
+    {
+        validator.validate(configFile);
+    }
+    catch (const std::exception &exp)
+    {
+        throw "configFile validation of schema failed: " + string(exp.what());
+    }
+}
+
+inline string getEnvironment(string var)
+{
+    auto val = std::getenv(var.c_str());
+    if (val == nullptr)
+    {
+        throw "Environment variable " + var + " not set";
+    }
+    else
+    {
+        return val;
+    }
+}
 
 #endif

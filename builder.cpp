@@ -1,33 +1,23 @@
 #include <iostream>
-#include "TFile.h"
 #include "json.hpp"
 #include <fstream>
-#include "TChain.h"
 #include <deque>
 #include "utils.h"
 #include <math.h>
 #include <iomanip>
-#include "TH1D.h"
-#include "TSystem.h"
-#include "TApplication.h"
-#include "TPad.h"
 #include <string>
 #include <iostream>
 #include <filesystem>
 #include <future>
-#include "TROOT.h"
 #include <list>
 #include <parallel/algorithm>
 #include "dataWriter.h"
-#include "TH2D.h"
-#include "TF1.h"
 
 #include <variant>
-#include "eventProto.capnp.h"
-#include <capnp/message.h>
-#include <capnp/serialize-packed.h>
-#include <fcntl.h>
 #include <limits>
+#include "dataLoader.h"
+
+#include "TApplication.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -35,19 +25,6 @@ using namespace std;
 typedef unsigned __int128 uint128_t;
 typedef __float128 float128_t;
 
-deque<event *> convertRoot(json &config);
-deque<event *> convertProto(json &config);
-deque<event *> convertDelila(json &config);
-deque<event *> convert3MV(json &config);
-deque<event *> convertCap(json &config);
-
-vector<tuple<int, int, uint64_t>> convertRootDelayEvents(json &config);
-vector<tuple<int, int, uint64_t>> convertProtoDelayEvents(json &config);
-vector<tuple<int, int, uint64_t>> convertDelilaDelayEvents(json &config);
-vector<tuple<int, int, uint64_t>> convert3MVDelayEvents(json &config);
-vector<tuple<int, int, uint64_t>> convertCapDelayEvents(json &config);
-
-void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask);
 void addToCheckMask(vector<int> &checkMask, event &evt);
 void preProcessEvent(json &config, deque<event *> &events);
 void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt);
@@ -60,67 +37,70 @@ bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
 bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
 
 pair<int, int> findBoardChannel(json &config, int detType, int lut);
-pair<int, int> findCoincPairType(json &config, int brd, int ch);
 
 string extractNumbers(const string &a, string format = "proto");
 
 pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events);
 
 double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
-double getTimeOldStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
+
+void initializeDataLoader(json &config);
 
 dataWriter *writer;
+shared_ptr<dataLoader> loader;
 
 int main(int argc, char **argv)
 {
 
+    TApplication theApp("theApp", &argc, argv);
+
     if (argc > 1)
     {
 
-        json request = json::parse(argv[1]);
+        json config = json::parse(argv[1]);
 
-        if (request["crtRun"] == "build")
+        initializeDataLoader(config);
+
+        if (config["crtRun"] == "build")
         {
-            buildRun(request);
+            buildRun(config);
         }
-        else if (request["crtRun"] == "delay")
+        else if (config["crtRun"] == "delay")
         {
-            delayRun(request);
+            delayRun(config);
         }
     }
 }
 
-void buildRun(json config)
+void initializeDataLoader(json &config)
 {
 
     string dataType = config["input"]["fileFormat"];
 
-    deque<event *> events;
-
     if (dataType == "root")
     {
-        events = convertRoot(config);
+        loader = make_shared<rootLoader>(config);
     }
     else if (dataType == "proto")
     {
-        events = convertProto(config);
+        loader = make_shared<protoLoader>(config);
     }
     else if (dataType == "delila")
     {
-        events = convertDelila(config);
+        loader = make_shared<delilaLoader>(config);
     }
     else if (dataType == "3MV")
     {
-        events = convert3MV(config);
+        loader = make_shared<threeMVLoader>(config);
     }
     else if (dataType == "cap")
     {
-        events = convertCap(config);
+        loader = make_shared<capLoader>(config);
     }
-
-    vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
-
-    builder(config, events, coincMask);
+    else
+    {
+        throw invalid_argument("Invalid data type");
+    }
 }
 
 pair<int, int> findBoardChannel(json &config, int detType, int lut)
@@ -146,463 +126,6 @@ pair<int, int> findBoardChannel(json &config, int detType, int lut)
 
     return {-1, -1};
 }
-vector<vector<int>> getDelayVector(json delay)
-{
-
-    vector<vector<int>> tempDelay = delay.get<vector<vector<int>>>();
-
-    for (auto &board : tempDelay)
-    {
-        for (auto &ch : board)
-        {
-            ch = ch * 1000;
-        }
-    }
-
-    return tempDelay;
-}
-
-deque<event *> convertProto(json &config)
-{
-
-    deque<event *> events;
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = numeric_limits<uint>::max();
-    }
-
-    string fileName = config["crtFile"];
-
-    auto fd = open(fileName.c_str(), O_RDONLY);
-
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
-    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
-
-    kj::FdInputStream fdStream(fd);
-    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
-
-    while (bufferedStream.tryGetReadBuffer() != nullptr)
-    {
-        capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
-
-        auto dts = message.getRoot<Dataset>();
-
-        auto proEvent = dts.getEvents();
-
-        for (uint i = 0; i < proEvent.size(); i++)
-        {
-
-            auto ev = new event();
-
-            auto brd = proEvent[i].getBoard();
-            auto ch = proEvent[i].getChannel();
-
-            ev->setBoardNumb(brd);
-            ev->setChannelNumb(ch);
-            ev->setLutNumb(lut[brd][ch]);
-            ev->setDetectorType(mask[brd][ch]);
-
-            ev->setEnergy(proEvent[i].getEnergy());
-            ev->setPSD(proEvent[i].getPsd() * 10000);
-
-            uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
-            ev->setTimeStamp(delayedTime);
-
-            // coinc
-            ev->setCoincPair(coincPair[brd][ch]);
-
-            auto findPair = make_pair(brd, ch);
-
-            if (!coincPairTypes.count(findPair))
-            {
-                coincPairTypes[findPair] = findCoincPairType(config, brd, ch);
-            }
-
-            ev->setCoincPairType(coincPairTypes[findPair]);
-
-            if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
-            {
-                ev->setAntiCoincFlag(true);
-            }
-
-            events.push_back(ev);
-
-            if (events.size() == eventNumb)
-            {
-                return events;
-            }
-        }
-    }
-
-    return events;
-}
-
-deque<event *> convertCap(json &config)
-{
-
-    deque<event *> events;
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = numeric_limits<uint>::max();
-    }
-
-    string fileName = config["crtFile"];
-
-    auto fd = open(fileName.c_str(), O_RDONLY);
-
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
-    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
-
-    kj::FdInputStream fdStream(fd);
-    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
-
-    while (bufferedStream.tryGetReadBuffer() != nullptr)
-    {
-        capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
-
-        variant<PlainData::Reader, PsdData::Reader> dts = message.getRoot<PlainData>();
-
-        int evtType = get<PlainData::Reader>(dts).getType();
-
-        switch (evtType)
-        {
-        case 0:
-            break;
-        case 1:
-            dts = message.getRoot<PsdData>();
-            break;
-        default:
-            cout << "Unsupported event type" << endl;
-            abort();
-            break;
-        }
-
-        auto done = visit([&](auto &data) -> bool
-                          {
-
-                        auto proEvent = data.getEvents();
-
-                        for (uint i = 0; i < proEvent.size(); i++){
-
-                                    auto ev = new event();
-
-                                    auto brd = proEvent[i].getBoard();
-                                    auto ch = proEvent[i].getChannel();
-
-                                    ev->setBoardNumb(brd);
-                                    ev->setChannelNumb(ch);
-                                    ev->setLutNumb(lut[brd][ch]);
-                                    ev->setDetectorType(mask[brd][ch]);
-
-                                    ev->setEnergy(proEvent[i].getEnergy());
-
-                                    using T = std::decay_t<decltype(proEvent[i])>;
-                                    if constexpr (std::is_same_v<T, PsdEvent>){
-                                        ev->setPSD(proEvent[i].getPsd() * 10000);
-                                    } else {
-                                        ev->setPSD(0);
-                                    }
-
-
-                                    uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
-                                    ev->setTimeStamp(delayedTime);
-
-                                    // coinc
-                                    ev->setCoincPair(coincPair[brd][ch]);
-
-                                    auto findPair = make_pair(brd, ch);
-
-                                    if (!coincPairTypes.count(findPair))
-                                    {
-                                        coincPairTypes[findPair] = findCoincPairType(config, brd, ch);
-                                    }
-
-                                    ev->setCoincPairType(coincPairTypes[findPair]);
-
-                                    if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
-                                    {
-                                        ev->setAntiCoincFlag(true);
-                                    }
-
-                                    events.push_back(ev);
-
-                                    if (events.size() == eventNumb)
-                                    {
-                                        return true;
-                                    }
-                                }
-                                
-                      return false; },
-                          dts);
-
-        if (done)
-        {
-            return events;
-        }
-    }
-
-    return events;
-}
-
-deque<event *> convertDelila(json &config)
-{
-
-    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-
-    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
-
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
-
-    string fileName = config["crtFile"];
-
-    auto tFile = new TFile(fileName.c_str());
-
-    auto chain = (TTree *)tFile->Get("ELIADE_Tree");
-
-    UChar_t Mod;
-    UChar_t Ch;
-    uint16_t energy;
-    ULong64_t timeStamp;
-    double fineTs;
-
-    chain->SetBranchAddress("Mod", &Mod);
-    chain->SetBranchAddress("Ch", &Ch);
-    chain->SetBranchAddress("ChargeLong", &energy);
-    chain->SetBranchAddress("TimeStamp", &timeStamp);
-    chain->SetBranchAddress("FineTS", &fineTs);
-
-    deque<event *> events;
-
-    int eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = chain->GetEntries();
-    }
-
-    int entry = 0;
-
-    for (int i = 0; i < eventNumb; i++)
-    {
-        chain->GetEntry(i);
-
-        int board = Mod;
-        int ch = Ch;
-
-        auto lut = config["detector"]["lut"][board][ch];
-        auto dType = config["detector"]["type"][board][ch];
-
-        uint64_t delayedTime = timeStamp - delay[board][ch];
-
-        events.push_back(new event());
-
-        events.back()->setDetectorType(dType);
-        events.back()->setEnergy(energy);
-        events.back()->setTimeStamp(delayedTime);
-        events.back()->setBoardNumb(board);
-        events.back()->setChannelNumb(ch);
-
-        events.back()->setLutNumb(lut);
-        events.back()->setCoincPair(coincPairs[board][ch]);
-
-        auto findPair = make_pair(board, ch);
-
-        if (!coincPairTypes.count(findPair))
-        {
-            coincPairTypes[findPair] = findCoincPairType(config, board, ch);
-        }
-
-        events.back()->setCoincPairType(coincPairTypes[findPair]);
-
-        if (find(antiCoincFlags.begin(), antiCoincFlags.end(), events.back()->getDetectorType()) != antiCoincFlags.end())
-        {
-            events.back()->setAntiCoincFlag(true);
-        }
-    }
-
-    chain->Reset();
-    delete chain;
-
-    tFile->Close();
-    delete tFile;
-
-    return events;
-}
-
-deque<event *> convert3MV(json &config)
-{
-
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-
-    uint16_t ch;
-    uint16_t energy;
-    ULong64_t timeStamp;
-    double psd;
-
-    string fileName = config["crtFile"];
-
-    auto tFile = new TFile(fileName.c_str());
-
-    auto chain = (TTree *)tFile->Get("events");
-
-    chain->SetBranchAddress("energy", &energy);
-    chain->SetBranchAddress("boardTimeStamp", &timeStamp);
-    chain->SetBranchAddress("detectorId", &ch);
-    chain->SetBranchAddress("psd", &psd);
-
-    deque<event *> events;
-
-    int eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = chain->GetEntries();
-    }
-
-    int board = 0;
-    int entry = 0;
-
-    for (int i = 0; i < eventNumb; i++)
-    {
-        chain->GetEntry(i);
-
-        auto delayedTime = timeStamp - delay[board][ch];
-
-        events.push_back(new event());
-
-        events.back()->setDetectorType(mask[board][ch]);
-        events.back()->setEnergy(energy);
-        events.back()->setTimeStamp(delayedTime);
-        events.back()->setBoardNumb(board);
-        events.back()->setChannelNumb(ch);
-
-        events.back()->setLutNumb(lut[board][ch]);
-
-        events.back()->setPSD(psd);
-    }
-
-    chain->Reset();
-    delete chain;
-
-    tFile->Close();
-    delete tFile;
-
-    return events;
-}
-
-deque<event *> convertRoot(json &config)
-{
-
-    vector<vector<int>> boards = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> channels = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-
-    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
-
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
-
-    uint16_t lut;
-    uint16_t dType;
-    uint16_t energy;
-    ULong64_t timeStamp;
-    double psd;
-
-    string fileName = config["crtFile"];
-
-    auto tFile = new TFile(fileName.c_str());
-
-    auto chain = (TTree *)tFile->Get("events");
-
-    chain->SetBranchAddress("energy", &energy);
-    chain->SetBranchAddress("boardTimeStamp", &timeStamp);
-    chain->SetBranchAddress("detectorLUT", &lut);
-    chain->SetBranchAddress("detectorType", &dType);
-    chain->SetBranchAddress("psd", &psd);
-
-    deque<event *> events;
-
-    int eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = chain->GetEntries();
-    }
-
-    int entry = 0;
-
-    for (int i = 0; i < eventNumb; i++)
-    {
-        chain->GetEntry(i);
-
-        auto board = boards[dType][lut];
-        auto ch = channels[dType][lut];
-
-        if (board == -100)
-        {
-
-            auto boardChannel = findBoardChannel(config, dType, lut);
-
-            board = boards[dType][lut] = get<0>(boardChannel);
-            ch = channels[dType][lut] = get<1>(boardChannel);
-        }
-
-        auto delayedTime = timeStamp - delay[board][ch];
-
-        events.push_back(new event());
-
-        events.back()->setDetectorType(dType);
-        events.back()->setEnergy(energy);
-        events.back()->setTimeStamp(delayedTime);
-        events.back()->setBoardNumb(board);
-        events.back()->setChannelNumb(ch);
-
-        events.back()->setLutNumb(lut);
-        events.back()->setCoincPair(coincPairs[board][ch]);
-
-        events.back()->setPSD(psd * 10000);
-
-        auto findPair = make_pair(board, ch);
-
-        if (!coincPairTypes.count(findPair))
-        {
-            coincPairTypes[findPair] = findCoincPairType(config, board, ch);
-        }
-
-        events.back()->setCoincPairType(coincPairTypes[findPair]);
-
-        if (find(antiCoincFlags.begin(), antiCoincFlags.end(), events.back()->getDetectorType()) != antiCoincFlags.end())
-        {
-            events.back()->setAntiCoincFlag(true);
-        }
-    }
-
-    chain->Reset();
-    delete chain;
-
-    tFile->Close();
-    delete tFile;
-
-    return events;
-}
 
 void preProcessEvent(json &config, deque<event *> &events)
 {
@@ -615,8 +138,10 @@ void preProcessEvent(json &config, deque<event *> &events)
     }
 }
 
-void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coincMask)
+void buildRun(json config)
 {
+
+    deque<event *> varEventPool = loader->readEvents();
 
     preProcessEvent(config, varEventPool);
 
@@ -647,6 +172,7 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
     writer->setConfig(config);
 
     uint64_t coincWindow = config["build"]["coincWindow"];
+    vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
     vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
 
@@ -716,8 +242,6 @@ void builder(json &config, deque<event *> varEventPool, vector<vector<int>> coin
     }
 
     writer->closeFile();
-
-    gROOT->Reset();
 }
 
 pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events)
@@ -882,6 +406,10 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
         tempList[i]->setRelativeTimeNs(timeNs);
         tempList[i]->setRelativeTimePs(timePs);
+
+        // calculate raw timestamps
+        // uint16_t rawRelativeTsNs = int64_t(tempList[i]->getRawTs() - int64_t(tempList.front()->getRawTs()));
+        // uint16_t rawRelativeFineTs = int16_t(tempList[i]->getRawFineTs() - int16_t(tempList.front()->getRawFineTs()));
     }
 
     if (tempList.size() != 1)
@@ -1003,222 +531,6 @@ bool validateEvent(vector<event *> *events)
     return true;
 }
 
-pair<int, int> findCoincPairType(json &config, int brd, int ch)
-{
-
-    int foundBrd = 0;
-
-    int pair = config["detector"]["coincPairs"][brd][ch];
-
-    for (auto i : config["detector"]["coincPairs"])
-    {
-        auto pos = find(i.begin(), i.end(), pair);
-
-        if (pos != i.end())
-        {
-
-            if (brd != foundBrd || ch != distance(i.begin(), pos))
-            {
-
-                auto p = make_pair(config["detector"]["type"][foundBrd][distance(i.begin(), pos)],
-                                   config["detector"]["lut"][foundBrd][distance(i.begin(), pos)]);
-
-                return p;
-            }
-        }
-
-        foundBrd += 1;
-    }
-
-    return make_pair(0, -100);
-}
-
-vector<tuple<int, int, uint64_t>> convertRootDelayEvents(json &config)
-{
-
-    vector<tuple<int, int, uint64_t>> events;
-
-    auto files = config["crtFile"].get<vector<string>>();
-
-    TChain chain("events");
-
-    for (auto file : files)
-    {
-        chain.Add(file.c_str());
-    }
-
-    uint16_t dLut;
-    uint16_t dType;
-    uint16_t energy;
-    ULong64_t timeStamp;
-
-    chain.SetBranchAddress("energy", &energy);
-    chain.SetBranchAddress("boardTimeStamp", &timeStamp);
-    chain.SetBranchAddress("detectorLUT", &dLut);
-    chain.SetBranchAddress("detectorType", &dType);
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = chain.GetEntries();
-    }
-
-    int refLUT = config["delay"]["refLUT"];
-    int refType = config["delay"]["refType"];
-    int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
-
-    for (int i = 0; i < eventNumb; i++)
-    {
-        chain.GetEntry(i);
-
-        if (energy > tresh)
-        {
-
-            if (dType == refType && dLut == refLUT)
-            {
-                timeStamp += offset;
-            }
-
-            events.push_back(make_tuple(dType, dLut, timeStamp));
-        }
-    }
-
-    return events;
-}
-
-vector<tuple<int, int, uint64_t>> convert3MVDelayEvents(json &config)
-{
-
-    vector<tuple<int, int, uint64_t>> events;
-
-    auto files = config["crtFile"].get<vector<string>>();
-
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-
-    TChain chain("events");
-
-    for (auto file : files)
-    {
-        chain.Add(file.c_str());
-    }
-
-    uint16_t ch;
-    uint16_t energy;
-    ULong64_t timeStamp;
-
-    chain.SetBranchAddress("energy", &energy);
-    chain.SetBranchAddress("boardTimeStamp", &timeStamp);
-    chain.SetBranchAddress("detectorId", &ch);
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = chain.GetEntries();
-    }
-
-    int refLUT = config["delay"]["refLUT"];
-    int refType = config["delay"]["refType"];
-    int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
-
-    for (int i = 0; i < eventNumb; i++)
-    {
-        chain.GetEntry(i);
-
-        if (energy > tresh)
-        {
-
-            auto brd = 0;
-
-            auto dType = mask[brd][ch];
-            auto dLut = lut[brd][ch];
-
-            if (dType == refType && dLut == refLUT)
-            {
-                timeStamp += offset;
-            }
-
-            events.push_back(make_tuple(dType, dLut, timeStamp));
-        }
-    }
-
-    return events;
-}
-
-vector<tuple<int, int, uint64_t>> convertProtoDelayEvents(json &config)
-{
-    vector<tuple<int, int, uint64_t>> events;
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = numeric_limits<uint>::max();
-    }
-
-    auto files = config["crtFile"].get<vector<string>>();
-
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-
-    int refLUT = config["delay"]["refLUT"];
-    int refType = config["delay"]["refType"];
-    int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
-
-    for (auto fileName : files)
-    {
-
-        auto fd = open(fileName.c_str(), O_RDONLY);
-
-        kj::FdInputStream fdStream(fd);
-        kj::BufferedInputStreamWrapper bufferedStream(fdStream);
-
-        while (bufferedStream.tryGetReadBuffer() != nullptr)
-        {
-            capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
-
-            auto dts = message.getRoot<Dataset>();
-
-            auto proEvent = dts.getEvents();
-
-            for (uint i = 0; i < proEvent.size(); i++)
-            {
-
-                auto brd = proEvent[i].getBoard();
-                auto ch = proEvent[i].getChannel();
-
-                auto dType = mask[brd][ch];
-                auto dLut = lut[brd][ch];
-
-                if (proEvent[i].getEnergy() > tresh)
-                {
-
-                    auto timeStamp = proEvent[i].getTimestamp();
-
-                    if (dType == refType && dLut == refLUT)
-                    {
-                        timeStamp += offset;
-                    }
-
-                    events.push_back(make_tuple(dType, dLut, timeStamp));
-
-                    if (events.size() == eventNumb)
-                    {
-                        return events;
-                    }
-                }
-            }
-        }
-    }
-
-    return events;
-}
-
 template <class... Ts>
 struct overload : Ts...
 {
@@ -1227,144 +539,11 @@ struct overload : Ts...
 template <class... Ts>
 overload(Ts...) -> overload<Ts...>;
 
-vector<tuple<int, int, uint64_t>> convertCapDelayEvents(json &config)
-{
-    vector<tuple<int, int, uint64_t>> events;
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        eventNumb = numeric_limits<uint>::max();
-    }
-
-    auto files = config["crtFile"].get<vector<string>>();
-
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-
-    int refLUT = config["delay"]["refLUT"];
-    int refType = config["delay"]["refType"];
-    int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
-
-    for (auto fileName : files)
-    {
-
-        auto fd = open(fileName.c_str(), O_RDONLY);
-
-        kj::FdInputStream fdStream(fd);
-        kj::BufferedInputStreamWrapper bufferedStream(fdStream);
-
-        while (bufferedStream.tryGetReadBuffer() != nullptr)
-        {
-            capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
-
-            variant<PlainData::Reader, PsdData::Reader> dts = message.getRoot<PlainData>();
-
-            int evtType;
-
-            visit([&](auto &data)
-                  { 
-                    
-                   switch(data.getType()){
-                    case 0:
-                        break;
-
-                    case 1:
-                        dts = message.getRoot<PsdData>();
-                        break;
-
-                    default:
-                        cout << "cap data type not supported by builder" << endl;
-                        abort();
-
-                   } },
-
-                  dts);
-
-            auto done = visit([&](auto &data) -> bool
-                              {
-                      auto proEvent = data.getEvents();
-
-                      for (uint i = 0; i < proEvent.size(); i++)
-                      {
-
-                          auto brd = proEvent[i].getBoard();
-                          auto ch = proEvent[i].getChannel();
-
-                          auto dType = mask[brd][ch];
-                          auto dLut = lut[brd][ch];
-
-                          if (proEvent[i].getEnergy() > tresh)
-                          {
-
-                              auto timeStamp = proEvent[i].getTimestamp();
-
-                              if (dType == refType && dLut == refLUT)
-                              {
-                                  timeStamp += offset;
-                              }
-                
-                              events.push_back(make_tuple(dType, dLut, timeStamp));
-
-                              if (events.size() == eventNumb)
-                              {
-                                  return true;
-                              }
-                          }
-                      }
-                      
-                      return false; },
-                              dts);
-
-            if (done)
-            {
-                return events;
-            }
-        }
-    }
-    return events;
-}
-
-vector<tuple<int, int, uint64_t>> convertDelilaDelayEvents(json &config)
-{
-    cout << "delila delay calculation not yet implemented" << endl;
-    abort();
-    return {};
-}
-
 void delayRun(json config)
 {
     string dataType = config["input"]["fileFormat"];
 
-    vector<tuple<int, int, uint64_t>> events;
-
-    if (dataType == "root")
-    {
-        events = convertRootDelayEvents(config);
-    }
-    else if (dataType == "proto")
-    {
-        events = convertProtoDelayEvents(config);
-    }
-    else if (dataType == "cap")
-    {
-        events = convertCapDelayEvents(config);
-    }
-    else if (dataType == "delila")
-    {
-        events = convertDelilaDelayEvents(config);
-    }
-    else if (dataType == "3MV")
-    {
-        events = convert3MVDelayEvents(config);
-    }
-    else
-    {
-        cout << "unknown data type" << endl;
-        abort();
-    }
+    vector<tuple<int, int, uint64_t>> events = loader->readDelayEvents();
 
     sort(events.begin(), events.end(),
          [](auto i, auto j)

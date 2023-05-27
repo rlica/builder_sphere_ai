@@ -1,0 +1,143 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#", 
+    "type": "object", 
+    "properties": {
+        "build": {
+            "type": "object", 
+            "properties": {
+                "absoluteTime": {
+                    "type": "object", 
+                    "properties": {
+                        "resetGap"  : {"type": "integer"}, 
+                        "scalePower": {"type": "integer"}  
+                    }, 
+                    "required": ["resetGap", "scalePower"]
+                }, 
+                "antiCoincFlag": {
+                    "type": "array", 
+                    "items": {"type": "integer"}
+                }, 
+                "coincMask": {
+                    "type": "array", 
+                    "items": { "type": "array", "items": {"type": "integer"} }
+                }, 
+                "coincWindow": {"type": "integer"}, 
+                "sortBeforeBuild": {"type": "boolean"}, 
+                "typePriority": {
+                    "type": "array", 
+                    "items": {"type": "integer"}
+                }
+            }, 
+            "required": [
+                "absoluteTime"   , "antiCoincFlag"  , "coincMask"      , 
+                "coincWindow"    , "sortBeforeBuild", "typePriority"   
+            ]
+        }, 
+        "delay": {
+            "type": "object", 
+            "properties": {
+                "energyThreshold": {"type": "integer"}, 
+                "histBins": {"type": "integer"}, 
+                "histRange": {
+                    "type": "array", 
+                    "items": {"type": "integer"}, 
+                    "minItems": 2, 
+                    "maxItems": 2
+                }, 
+                "outFileName": {"type": "string"}, 
+                "refLUT": {"type": "integer"}, 
+                "refTimeOffset": {"type": "integer"}, 
+                "refType": {"type": "integer"}
+            }, 
+            "required": [
+                "energyThreshold", "histBins"       , "histRange"      , 
+                "outFileName"    , "refLUT"         , "refTimeOffset"  , 
+                "refType"        
+            ]
+        }, 
+        "detector": {
+            "type": "object", 
+            "properties": {
+                "coincPairs": {
+                    "type": "array", 
+                    "items": {
+                        "type": "array", 
+                        "items": {"type": "integer", "minimum": 0, "maximum": 1}
+                    }
+                }, 
+                "delayNs": {
+                    "type": "array", 
+                    "items": { "type": "array", "items": {"type": "integer"} }
+                }, 
+                "lut": {
+                    "type": "array", 
+                    "items": { "type": "array", "items": {"type": "integer"} }
+                }, 
+                "type": {
+                    "type": "array", 
+                    "items": { "type": "array", "items": {"type": "integer"} }
+                }
+            }, 
+            "required": ["coincPairs", "delayNs", "lut", "type"]
+        }, 
+        "gasp": {
+            "type": "object", 
+            "properties": {
+                "typeOutputFormat": {
+                    "type": "array", 
+                    "items": {
+                        "type": "string", 
+                        "enum": [
+                            "noType"               , 
+                            "detector"             , 
+                            "psdDetector"          , 
+                            "suppressedDetector"   , 
+                            "suppressedPsdDetector"  
+                        ]
+                    }
+                }
+            }, 
+            "required": ["typeOutputFormat"]
+        }, 
+        "general": {
+            "type": "object", 
+            "properties": {
+                "maxCores": {"type": "integer"}, 
+                "run"     : {"type": "string" }  
+            }, 
+            "required": ["maxCores", "run"]
+        }, 
+        "input": {
+            "type": "object", 
+            "properties": {
+                "eventCount": {"type": "integer"}, 
+                "fileFormat": {
+                    "type": "string", 
+                    "enum": ["root", "proto", "cap", "delila", "3MV"]
+                }, 
+                "fileIdentifier": {"type": "string"}, 
+                "keepIndex": {
+                    "type": "array", 
+                    "items": {"type": "integer"}, 
+                    "minItems": 2, 
+                    "maxItems": 2
+                }, 
+                "liveBuild": {"type": "boolean"}, 
+                "path": {"type": "string"}
+            }, 
+            "required": [
+                "eventCount"    , "fileFormat"    , "fileIdentifier", 
+                "keepIndex"     , "liveBuild"     , "path"          
+            ]
+        }, 
+        "output": {
+            "type": "object", 
+            "properties": {
+                "fileFormat": { "type": "string", "enum": ["gasp", "root"] }, 
+                "outputPath": { "type": "string"                           }  
+            }, 
+            "required": ["fileFormat", "outputPath"]
+        }
+    }, 
+    "required": ["build", "delay", "detector", "gasp", "general"]
+}
