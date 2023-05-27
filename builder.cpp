@@ -171,7 +171,7 @@ void buildRun(json config)
 
     writer->setConfig(config);
 
-    uint64_t coincWindow = config["build"]["coincWindow"];
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindowNs"]) * 1000;
     vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
     vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
@@ -397,9 +397,12 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
     }
 
     // set relative times
+
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindowNs"]) * 1000;
+
     for (int i = 0; i < tempList.size(); i++)
     {
-        double relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + int(config["build"]["coincWindow"]);
+        double relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + coincWindow;
 
         uint16_t timeNs = int(relativeTime) / 1000;
         uint16_t timePs = int(relativeTime) % 1000;
@@ -577,12 +580,10 @@ void delayRun(json config)
             string name = "type_" + to_string(get<0>(evt)) + "_lut_" + to_string(get<1>(evt));
 
             int bins = config["delay"]["histBins"];
-            auto range = config["delay"]["histRange"].get<vector<double>>();
+            auto range = config["delay"]["histRangeNs"].get<vector<double>>();
 
-            if (range.size() != 2)
-            {
-                range = {0, 1000000};
-            }
+            transform(range.begin(), range.end(), range.begin(), [](auto rg)
+                      { return rg * 1000; });
 
             hists[id] = make_shared<TH1D>(TH1D(name.c_str(), name.c_str(), bins, range[0], range[1]));
         }

@@ -21,7 +21,7 @@
                     "type": "array", 
                     "items": { "type": "array", "items": {"type": "integer"} }
                 }, 
-                "coincWindow": {"type": "integer"}, 
+                "coincWindowNs": {"type": "integer"}, 
                 "sortBeforeBuild": {"type": "boolean"}, 
                 "typePriority": {
                     "type": "array", 
@@ -30,7 +30,7 @@
             }, 
             "required": [
                 "absoluteTime"   , "antiCoincFlag"  , "coincMask"      , 
-                "coincWindow"    , "sortBeforeBuild", "typePriority"   
+                "coincWindowNs"  , "sortBeforeBuild", "typePriority"   
             ]
         }, 
         "delay": {
@@ -38,7 +38,7 @@
             "properties": {
                 "energyThreshold": {"type": "integer"}, 
                 "histBins": {"type": "integer"}, 
-                "histRange": {
+                "histRangeNs": {
                     "type": "array", 
                     "items": {"type": "integer"}, 
                     "minItems": 2, 
@@ -50,7 +50,7 @@
                 "refType": {"type": "integer"}
             }, 
             "required": [
-                "energyThreshold", "histBins"       , "histRange"      , 
+                "energyThreshold", "histBins"       , "histRangeNs"    , 
                 "outFileName"    , "refLUT"         , "refTimeOffset"  , 
                 "refType"        
             ]

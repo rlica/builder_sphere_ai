@@ -3,14 +3,14 @@
     "absoluteTime": {"resetGap": 5, "scalePower": -12}, 
     "antiCoincFlag": [2], 
     "coincMask": [ [0, 0, 0, 1, 0] ], 
-    "coincWindow": 1000000, 
+    "coincWindowNs": 1000, 
     "sortBeforeBuild": true, 
     "typePriority": [3, 1, 0, 2, 4]
   }, 
   "delay": {
     "energyThreshold": 50, 
     "histBins": 1000, 
-    "histRange": [0, 10000000], 
+    "histRangeNs": [0, 10000], 
     "outFileName": "results.root", 
     "refLUT": 0, 
     "refTimeOffset": -1000000, 
