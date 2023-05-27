@@ -62,7 +62,7 @@
   }, 
   "general": {"maxCores": 4, "run": "build"}, 
   "input": {
-    "eventCount": 100000, 
+    "eventCount": 10000000, 
     "fileFormat": "proto", 
     "fileIdentifier": "run_", 
     "keepIndex": [660, 662], 
