@@ -33,7 +33,7 @@ public:
     ~dataWriter(){};
 
     virtual void initializeOutputFile(){};
-    virtual void addBuiltEvent(vector<event *> *events, int64_t time){};
+    virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time){};
 
     virtual void writeData(){};
     virtual void closeFile(){};
@@ -59,7 +59,8 @@ class rootDataWriter : public dataWriter
 public:
     rootDataWriter(string file, int numb);
     void initializeOutputFile();
-    void addBuiltEvent(vector<event *> *events, int64_t time);
+    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+
     void closeFile();
 
     vector<uint16_t> varDetectorLUT;
@@ -91,7 +92,7 @@ public:
     gaspDataWriter(string file, int numb);
 
     void initializeOutputFile();
-    void addBuiltEvent(vector<event *> *events, int64_t time);
+    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
 
     void writeData();
     void closeFile();
@@ -119,13 +120,13 @@ private:
     int64_t resetTime = std::numeric_limits<int64_t>::min();
     int64_t prevTime = std::numeric_limits<int64_t>::min();
 
-    map<string, int> detectorTypes = {{"detector", 4},
-                                      {"suppressedDetector", 7},
-                                      {"psdDetector", 5},
-                                      {"suppressedPsdDetector", 8}};
+    map<int, int> detectorTypeSize = {{DETECTOR, 4},
+                                      {SUPPRESED_DETECTOR, 7},
+                                      {PSD_DETECTOR, 5},
+                                      {SUPPRESED_PSD_DETECTOR, 8},
+                                      {NO_TYPE, 0}};
 
-    vector<int> varParamMask;
-    vector<int> varOutputTypes;
+    map<int, int> varOutputTypes; // detector type - gasp output type
 };
 
 #endif

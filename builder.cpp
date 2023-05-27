@@ -36,7 +36,7 @@ bool validateEvent(vector<event *> *events);
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
 bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
 
-pair<int, int> findBoardChannel(json &config, int detType, int lut);
+pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut);
 
 string extractNumbers(const string &a, string format = "proto");
 
@@ -103,28 +103,28 @@ void initializeDataLoader(json &config)
     }
 }
 
-pair<int, int> findBoardChannel(json &config, int detType, int lut)
+pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut)
 {
 
-    vector<vector<int>> lutVect = config["detector"]["lut"];
-    vector<vector<int>> bTypeVect = config["detector"]["type"];
+    vector<vector<uint8_t>> lutVect = config["detector"]["lut"];
+    vector<vector<uint8_t>> bTypeVect = config["detector"]["type"];
 
     for (int i = 0; i < lutVect.size(); i++)
     {
         for (int o = 0; o < lutVect[0].size(); o++)
         {
-            if (lutVect[i][o] == lut && bTypeVect[i][o] == detType)
+            if (lutVect[i][o] == lut && bTypeVect[i][o] == type)
             {
                 return make_pair(i, o);
             }
         }
     }
 
-    cout << "Board and channel not found for detType: " << detType << " and lut: " << lut << endl;
+    cout << "Board and channel not found for detType: " << type << " and lut: " << lut << endl;
 
     abort();
 
-    return {-1, -1};
+    return {};
 }
 
 void preProcessEvent(json &config, deque<event *> &events)
@@ -382,9 +382,13 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
         tempList.push_back(new event(*(*i)));
     }
 
+    if (!validateEvent(&tempList))
+    {
+        return;
+    }
+
     // sort by (type and timestamp)
     auto start = tempList.begin();
-
     for (auto val : config["build"]["typePriority"])
     {
         auto it = std::partition(start, tempList.end(), [val](event *ev)
@@ -409,106 +413,89 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
         tempList[i]->setRelativeTimeNs(timeNs);
         tempList[i]->setRelativeTimePs(timePs);
-
-        // calculate raw timestamps
-        // uint16_t rawRelativeTsNs = int64_t(tempList[i]->getRawTs() - int64_t(tempList.front()->getRawTs()));
-        // uint16_t rawRelativeFineTs = int16_t(tempList[i]->getRawFineTs() - int16_t(tempList.front()->getRawFineTs()));
     }
 
-    if (tempList.size() != 1)
-    {
-        std::sort(tempList.begin(), tempList.end(), [](event *i, event *j)
-                  { return (i->getCoincPair() < j->getCoincPair()); });
-    }
+    // build events with anticoincidence
+    map<uint8_t, deque<event *>> coincMap;
 
-    // rewrite this ... its kind of shit
     for (uint i = 0; i < tempList.size(); i++)
     {
-        if (tempList[i] == nullptr)
-        {
-            continue;
-        }
-        else if (i == (tempList.size() - 1))
-        {
+        coincMap[tempList[i]->getCoincPair()].push_back(tempList[i]);
+    }
 
-            if (tempList[i]->getAntiCoincFlag())
+    for (auto &val : coincMap)
+    {
+        // the zero mappings do not have pairs
+        if (val.first != 0)
+        {
+            // one of the signals is missing
+            if (val.second.size() == 1)
             {
-                auto pairDetectorType = tempList[i]->getCoincPairType();
+                auto evt = new event();
 
-                tempList[i]->setVetoEnergy(tempList[i]->getEnergy());
-                tempList[i]->setVetoRelativeTimeNs(tempList[i]->getRelativeTimeNs());
-                tempList[i]->setVetoRelativeTimePs(tempList[i]->getRelativeTimePs());
-                tempList[i]->setDetectorType(pairDetectorType.first);
-                if (pairDetectorType.second != -100)
+                auto [type, lut] = val.second[0]->getCoincPairType();
+
+                evt->setDetectorType(type);
+                evt->setDetectorLut(lut);
+
+                evt->setEnergy(0);
+                evt->setRelativeTimeNs(0);
+                evt->setRelativeTimePs(0);
+                evt->setPSD(0);
+
+                if (val.second[0]->getAntiCoincFlag()) // first signal is the anti-coinc flag -> push front
                 {
-                    tempList[i]->setLutNumb(pairDetectorType.second);
+                    val.second.push_front(evt);
                 }
-                tempList[i]->setEnergy(0);
-                tempList[i]->setPSD(0);
-                tempList[i]->setRelativeTimeNs(0);
-                tempList[i]->setRelativeTimePs(0);
+                else // second signal is the anti-coinc flag -> push back
+                {
+                    val.second.push_back(evt);
+                }
+            }
+            else if (val.second.size() == 2) // both signals are here but the order might be wrong
+            {
+                if (val.second[0]->getAntiCoincFlag()) // first signal is the anticoinc flag -> reverse
+                {
+                    std::reverse(val.second.begin(), val.second.end());
+                }
+            }
+            else
+            {
+                cout << "more then two coincident signals found!" << endl;
+                abort();
+            }
+        }
+    }
+
+    vector<vector<event *>> eventList;
+
+    for (auto &val : coincMap)
+    {
+        if (val.first == 0)
+        {
+            for (auto &evt : val.second)
+            {
+                eventList.push_back(vector<event *>(1, evt));
             }
         }
         else
         {
-            if (tempList[i]->getCoincPair())
-            {
-                if (tempList[i]->getCoincPair() == tempList[i + 1]->getCoincPair())
-                {
-                    int evt = i;
-                    int veto = i + 1;
-
-                    if (tempList[evt]->getAntiCoincFlag())
-                    {
-                        evt = i + 1;
-                        veto = i;
-                    }
-
-                    tempList[evt]->setVetoEnergy(tempList[veto]->getEnergy());
-                    tempList[evt]->setVetoRelativeTimeNs(tempList[veto]->getRelativeTimeNs());
-                    tempList[evt]->setVetoRelativeTimePs(tempList[veto]->getRelativeTimePs());
-
-                    delete tempList[veto];
-                    tempList[veto] = nullptr;
-                }
-                else
-                {
-                    if (tempList[i]->getAntiCoincFlag())
-                    {
-                        auto pairDetectorType = tempList[i]->getCoincPairType();
-
-                        tempList[i]->setVetoEnergy(tempList[i]->getEnergy());
-                        tempList[i]->setVetoRelativeTimeNs(tempList[i]->getRelativeTimeNs());
-                        tempList[i]->setVetoRelativeTimePs(tempList[i]->getRelativeTimePs());
-                        tempList[i]->setDetectorType(pairDetectorType.first);
-                        if (pairDetectorType.second != -100)
-                        {
-                            tempList[i]->setLutNumb(pairDetectorType.second);
-                        }
-                        tempList[i]->setEnergy(0);
-                        tempList[i]->setPSD(0);
-                        tempList[i]->setRelativeTimeNs(0);
-                        tempList[i]->setRelativeTimePs(0);
-                    }
-                }
-            }
+            eventList.push_back(vector<event *>(val.second.begin(), val.second.end()));
         }
     }
-    tempList.erase(remove(tempList.begin(), tempList.end(), nullptr), tempList.end());
-    // rewrite this ... its kind of shit
+    // build events with anticoincidence
 
-    std::sort(tempList.begin(), tempList.end(), [](event *i, event *j)
-              { return (i->getDetectorType() < j->getDetectorType()); });
+    std::sort(eventList.begin(), eventList.end(), [](auto i, auto j)
+              { return (i[0]->getDetectorType() < j[0]->getDetectorType()); });
 
-    // we could validate sooner ... but maybe there are other validations to be added
-    if (validateEvent(&tempList))
+    writer->addBuiltEvent(&eventList, absTime);
+
+    for (int i = 0; i < eventList.size(); i++)
     {
-        writer->addBuiltEvent(&tempList, absTime);
-    }
-
-    for (int i = 0; i < tempList.size(); i++)
-    {
-        delete tempList[i];
+        for (int j = 0; j < eventList[i].size(); j++)
+        {
+            delete eventList[i][j];
+        }
     }
 }
 
@@ -518,12 +505,9 @@ bool validateEvent(vector<event *> *events)
     // remove events with duplicate signals
     map<pair<int, int>, int> counts;
 
-    bool found0 = false;
-    bool found3 = false;
-
     for (auto &ev : *events)
     {
-        counts[make_pair(ev->getLutNumb(), ev->getDetectorType())]++;
+        counts[make_pair(ev->getDetectorLut(), ev->getDetectorType())]++;
     }
 
     if (counts.size() != events->size())

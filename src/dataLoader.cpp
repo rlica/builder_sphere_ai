@@ -3,15 +3,16 @@
 
 deque<event *> rootLoader::readEvents()
 {
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
 
-    vector<vector<int>> boards = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> channels = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+    vector<vector<uint8_t>> boards = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
+    vector<vector<uint8_t>> channels = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
+
     vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
 
     uint16_t lut;
     uint16_t dType;
@@ -49,7 +50,7 @@ deque<event *> rootLoader::readEvents()
         auto board = boards[dType][lut];
         auto ch = channels[dType][lut];
 
-        if (board == -100)
+        if (board == 255)
         {
 
             auto boardChannel = findBoardChannel(dType, lut);
@@ -63,12 +64,13 @@ deque<event *> rootLoader::readEvents()
         events.push_back(new event());
 
         events.back()->setDetectorType(dType);
+        events.back()->setDetectorLut(lut);
+
         events.back()->setEnergy(energy);
         events.back()->setTimeStamp(delayedTime);
         events.back()->setBoardNumb(board);
         events.back()->setChannelNumb(ch);
 
-        events.back()->setLutNumb(lut);
         events.back()->setCoincPair(coincPairs[board][ch]);
 
         events.back()->setPSD(psd * 10000);
@@ -114,10 +116,11 @@ deque<event *> protoLoader::readEvents()
     auto fd = open(fileName.c_str(), O_RDONLY);
 
     vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
     kj::FdInputStream fdStream(fd);
@@ -141,7 +144,8 @@ deque<event *> protoLoader::readEvents()
 
             ev->setBoardNumb(brd);
             ev->setChannelNumb(ch);
-            ev->setLutNumb(lut[brd][ch]);
+
+            ev->setDetectorLut(lut[brd][ch]);
             ev->setDetectorType(mask[brd][ch]);
 
             ev->setEnergy(proEvent[i].getEnergy());
@@ -151,7 +155,7 @@ deque<event *> protoLoader::readEvents()
             ev->setTimeStamp(delayedTime);
 
             // coinc
-            ev->setCoincPair(coincPair[brd][ch]);
+            ev->setCoincPair(coincPairs[brd][ch]);
 
             auto findPair = make_pair(brd, ch);
 
@@ -185,9 +189,12 @@ deque<event *> delilaLoader::readEvents()
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
     vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
 
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
 
     string fileName = config["crtFile"];
 
@@ -225,20 +232,18 @@ deque<event *> delilaLoader::readEvents()
         int board = Mod;
         int ch = Ch;
 
-        auto lut = config["detector"]["lut"][board][ch];
-        auto dType = config["detector"]["type"][board][ch];
-
         uint64_t delayedTime = timeStamp - delay[board][ch];
 
         events.push_back(new event());
 
-        events.back()->setDetectorType(dType);
+        events.back()->setDetectorLut(lut[board][ch]);
+        events.back()->setDetectorType(mask[board][ch]);
+
         events.back()->setEnergy(energy);
         events.back()->setTimeStamp(delayedTime);
         events.back()->setBoardNumb(board);
         events.back()->setChannelNumb(ch);
 
-        events.back()->setLutNumb(lut);
         events.back()->setCoincPair(coincPairs[board][ch]);
 
         auto findPair = make_pair(board, ch);
@@ -269,8 +274,8 @@ deque<event *> threeMVLoader::readEvents()
 {
 
     vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
 
     uint16_t ch;
@@ -310,12 +315,12 @@ deque<event *> threeMVLoader::readEvents()
         events.push_back(new event());
 
         events.back()->setDetectorType(mask[board][ch]);
+        events.back()->setDetectorLut(lut[board][ch]);
+
         events.back()->setEnergy(energy);
         events.back()->setTimeStamp(delayedTime);
         events.back()->setBoardNumb(board);
         events.back()->setChannelNumb(ch);
-
-        events.back()->setLutNumb(lut[board][ch]);
 
         events.back()->setPSD(psd);
     }
@@ -346,10 +351,13 @@ deque<event *> capLoader::readEvents()
     auto fd = open(fileName.c_str(), O_RDONLY);
 
     vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
+
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
     kj::FdInputStream fdStream(fd);
@@ -396,7 +404,8 @@ deque<event *> capLoader::readEvents()
 
                                     ev->setBoardNumb(brd);
                                     ev->setChannelNumb(ch);
-                                    ev->setLutNumb(lut[brd][ch]);
+
+                                    ev->setDetectorLut(lut[brd][ch]);
                                     ev->setDetectorType(mask[brd][ch]);
 
                                     ev->setEnergy(proEvent[i].getEnergy());
@@ -413,10 +422,7 @@ deque<event *> capLoader::readEvents()
                                         uint64_t ts = proEvent[i].getTimestamp() * 1000 + fineTs ;
 
                                         uint64_t delayedTime = ts - delay[brd][ch];
-
-                                        ev->setRawTs(proEvent[i].getTimestamp());
-                                        ev->setRawFineTs(proEvent[i].getFineTimestamp());
-                                        
+                                      
                                         ev->setTimeStamp(delayedTime);
 
                                     } else {
@@ -428,7 +434,7 @@ deque<event *> capLoader::readEvents()
 
 
                                     // coinc
-                                    ev->setCoincPair(coincPair[brd][ch]);
+                                    ev->setCoincPair(coincPairs[brd][ch]);
 
                                     auto findPair = make_pair(brd, ch);
 
@@ -789,7 +795,7 @@ vector<vector<int>> dataLoader::getDelayVector(json delay)
     return tempDelay;
 }
 
-pair<int, int> dataLoader::findBoardChannel(int detType, int lut)
+pair<uint8_t, uint8_t> dataLoader::findBoardChannel(uint8_t detType, uint8_t lut)
 {
 
     vector<vector<int>> lutVect = config["detector"]["lut"];
@@ -813,7 +819,7 @@ pair<int, int> dataLoader::findBoardChannel(int detType, int lut)
     return {-1, -1};
 }
 
-pair<int, int> dataLoader::findCoincPairType(int brd, int ch)
+pair<uint8_t, uint8_t> dataLoader::findCoincPairType(uint8_t brd, uint8_t ch)
 {
 
     int foundBrd = 0;

@@ -28,7 +28,6 @@ void delayRun(json &config);
 
 vector<string> removeKeepFiles(vector<string> input, json config);
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
-pair<int, int> findBoardChannel(json &config, int detType, int lut);
 vector<string> getPathFiles(string path, string identifier = "", string extension = "");
 void dispatchThread(json config);
 vector<string> generateInputFiles(json &config);
@@ -240,26 +239,6 @@ vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output)
     input.erase(std::remove(input.begin(), input.end(), ""), input.end());
 
     return input;
-}
-
-pair<int, int> findBoardChannel(json &config, int detType, int lut)
-{
-
-    vector<vector<int>> lutVect = config["detector"]["lut"];
-    vector<vector<int>> bTypeVect = config["detector"]["type"];
-
-    for (int i = 0; i < lutVect.size(); i++)
-    {
-        for (int o = 0; o < lutVect[0].size(); o++)
-        {
-            if (lutVect[i][o] == lut && bTypeVect[i][o] == detType)
-            {
-                return make_pair(i, o);
-            }
-        }
-    }
-
-    return {};
 }
 
 void dispatchThread(json config)

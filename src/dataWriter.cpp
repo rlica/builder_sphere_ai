@@ -16,18 +16,15 @@ gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
     initializeRecordHeader();
 }
 
-void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
+void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
 {
 
-    vector<int> eventMask = vector<int>(varConfig["gasp"]["detectorTypes"], 0);
+    vector<int> eventMask = vector<int>(varOutputTypes.size(), 0);
 
-    for (auto i : *events)
+    for (auto &sig : *events)
     {
-        eventMask[i->getDetectorType()] += 1;
+        eventMask[sig[0]->getDetectorType()] += 1;
     }
-
-    // pop bgo from event mask
-    eventMask.erase(eventMask.begin() + 2);
 
     // set a default 0 value for the start of the event
     vector<short> eventBuffer = vector<short>(1, 0);
@@ -35,7 +32,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
     int size = 0;
 
     // size of header and detector mask
-    size += varEventHeaderSize + varParamMask.size();
+    size += varEventHeaderSize + varOutputTypes.size();
 
     // this should be from config
     if (time > (prevTime + resetGap))
@@ -47,79 +44,90 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 
     short scaledTime = (time - resetTime) * timeScale;
 
-    // fill header parameters for now they are empty set abs time in 10s per sample
+    // fill header parameters
     eventBuffer.push_back(scaledTime);
 
     // fill detector mask
     for (uint i = 0; i < eventMask.size(); i++)
     {
-        size += eventMask[i] * varParamMask[i];
+        size += eventMask[i] * detectorTypeSize[varOutputTypes[i]];
         eventBuffer.push_back(eventMask[i]);
     }
 
     // fill the proper event start value
     eventBuffer[0] = 0xF000 + size;
 
-    for (int i = 0; i < events->size(); i++)
+    for (auto &sig : *events)
     {
 
-        switch (varOutputTypes[events->at(i)->getDetectorType()])
+        switch (varOutputTypes[sig[0]->getDetectorType()])
         {
         case DETECTOR:
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
+            eventBuffer.push_back(sig[0]->getRelativeTimePs());
 
             break;
 
         case SUPPRESED_DETECTOR:
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
+            eventBuffer.push_back(sig[0]->getRelativeTimePs());
 
-            eventBuffer.push_back(events->at(i)->getVetoEnergy());
+            if (sig.size() != 2)
+            {
+                cout << "error: Suppressed detector event must have two signals" << endl;
+                exit(1);
+            }
 
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            eventBuffer.push_back(sig[1]->getRelativeTimeNs());
+            eventBuffer.push_back(sig[1]->getRelativeTimePs());
             break;
 
         case PSD_DETECTOR:
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
+            eventBuffer.push_back(sig[0]->getRelativeTimePs());
 
-            eventBuffer.push_back(events->at(i)->getPSD());
+            eventBuffer.push_back(sig[0]->getPSD());
 
         case SUPPRESED_PSD_DETECTOR:
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
+            eventBuffer.push_back(sig[0]->getRelativeTimePs());
 
-            eventBuffer.push_back(events->at(i)->getPSD());
+            eventBuffer.push_back(sig[0]->getPSD());
 
-            eventBuffer.push_back(events->at(i)->getVetoEnergy());
+            if (sig.size() != 2)
+            {
+                cout << "error: Suppressed detector event must have two signals" << endl;
+                exit(1);
+            }
 
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
+            eventBuffer.push_back(sig[1]->getEnergy());
+            eventBuffer.push_back(sig[1]->getRelativeTimeNs());
+            eventBuffer.push_back(sig[1]->getRelativeTimePs());
 
             break;
 
         case NO_TYPE:
         default:
 
-            cout << "default value, is not implemented: " << events->at(i)->getDetectorType() << endl;
+            cout << "default value, is not implemented: " << sig[0]->getDetectorType() << endl;
 
             abort();
 
@@ -227,10 +235,7 @@ void gaspDataWriter::setConfig(json config)
             typeCount[ch]++;
         }
     }
-
     typeCount.erase(-1);
-
-    varConfig["gasp"]["detectorTypes"] = typeCount.size();
 
     auto outTypes = varConfig["gasp"]["typeOutputFormat"].get<vector<string>>();
 
@@ -240,37 +245,37 @@ void gaspDataWriter::setConfig(json config)
         abort();
     }
 
-    for (auto count : typeCount)
+    for (auto [type, count] : typeCount)
     {
-        auto parSize = detectorTypes[outTypes[count.first]];
 
-        varParamMask.push_back(parSize);
-
-        if (outTypes[count.first] == "suppressedDetector")
+        if (outTypes[type] == "detector")
         {
-            varOutputTypes.push_back(SUPPRESED_DETECTOR);
+            varOutputTypes[type] = DETECTOR;
         }
-        else if (outTypes[count.first] == "detector")
+        else if (outTypes[type] == "suppressedDetector")
         {
-            varOutputTypes.push_back(DETECTOR);
+            varOutputTypes[type] = SUPPRESED_DETECTOR;
         }
-        else if (outTypes[count.first] == "psdDetector")
+        else if (outTypes[type] == "psdDetector")
         {
-            varOutputTypes.push_back(PSD_DETECTOR);
+            varOutputTypes[type] = PSD_DETECTOR;
         }
-        else if (outTypes[count.first] == "suppresedPsdDetector")
+        else if (outTypes[type] == "suppresedPsdDetector")
         {
-            varOutputTypes.push_back(SUPPRESED_PSD_DETECTOR);
+            varOutputTypes[type] = SUPPRESED_PSD_DETECTOR;
         }
         else
         {
-            varOutputTypes.push_back(NO_TYPE);
+            varOutputTypes[type] = NO_TYPE;
         }
     }
 
-    // pop bgo from event mask
-    varParamMask.erase(varParamMask.begin() + 2);
-    varOutputTypes.erase(varOutputTypes.begin() + 2);
+    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
+
+    for (auto m : antiCoincFlags)
+    {
+        varOutputTypes.erase(m);
+    }
 }
 
 rootDataWriter::rootDataWriter(string file, int numb) : dataWriter(file, numb)
@@ -308,7 +313,7 @@ void rootDataWriter::initializeTree()
     varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
 }
 
-void rootDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
+void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
 {
 
     varDetectorLUT.clear();
@@ -326,23 +331,32 @@ void rootDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
     varVetoRelativeNsTime.clear();
     varVetoRelativePsTime.clear();
 
-    for (uint i = 0; i < events->size(); i++)
+    for (auto &sig : *events)
     {
 
-        varDetectorLUT.push_back(events->at(i)->getLutNumb());
-        varDetectorType.push_back(events->at(i)->getDetectorType());
+        varDetectorLUT.push_back(sig.at(0)->getDetectorLut());
+        varDetectorType.push_back(sig.at(0)->getDetectorType());
 
-        varEnergy.push_back(events->at(i)->getEnergy());
+        varEnergy.push_back(sig.at(0)->getEnergy());
+        varPsd.push_back(sig.at(0)->getPSD());
 
-        varPsd.push_back(events->at(i)->getPSD());
+        varRelativeNsTime.push_back(sig.at(0)->getRelativeTimeNs());
+        varRelativePsTime.push_back(sig.at(0)->getRelativeTimePs());
 
-        varVetoEnergy.push_back(events->at(i)->getVetoEnergy());
+        if (sig.size() == 2)
+        {
+            varVetoEnergy.push_back(sig.at(1)->getEnergy());
 
-        varRelativeNsTime.push_back(events->at(i)->getRelativeTimeNs());
-        varRelativePsTime.push_back(events->at(i)->getRelativeTimePs());
+            varVetoRelativeNsTime.push_back(sig.at(1)->getRelativeTimeNs());
+            varVetoRelativePsTime.push_back(sig.at(1)->getRelativeTimePs());
+        }
+        else
+        {
+            varVetoEnergy.push_back(0);
 
-        varVetoRelativeNsTime.push_back(events->at(i)->getVetoRelativeTimeNs());
-        varVetoRelativePsTime.push_back(events->at(i)->getVetoRelativeTimePs());
+            varVetoRelativeNsTime.push_back(0);
+            varVetoRelativePsTime.push_back(0);
+        }
     }
 
     varEventTree->Fill();
