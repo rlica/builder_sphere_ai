@@ -18,7 +18,6 @@ gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
 
 void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
 {
-
     vector<int> eventMask = vector<int>(varOutputTypes.size(), 0);
 
     for (auto &sig : *events)
@@ -50,7 +49,9 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
     // fill detector mask
     for (uint i = 0; i < eventMask.size(); i++)
     {
-        size += eventMask[i] * detectorTypeSize[varOutputTypes[i]];
+        auto it = std::next(varOutputTypes.begin(), i);
+
+        size += eventMask[i] * detectorTypeSize[(*it).second];
         eventBuffer.push_back(eventMask[i]);
     }
 
