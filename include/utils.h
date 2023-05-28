@@ -118,4 +118,12 @@ inline string getEnvironment(string var)
     }
 }
 
+inline uint64_t getCrtTime()
+{
+    auto now = chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto nanos = chrono::duration_cast<chrono::nanoseconds>(duration).count();
+
+    return uint64_t(nanos);
+}
 #endif
