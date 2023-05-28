@@ -22,7 +22,11 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
     for (auto &sig : *events)
     {
-        eventMask[sig[0]->getDetectorType()] += 1;
+        auto it = varOutputTypes.find(sig[0]->getDetectorType());
+
+        auto dist = distance(varOutputTypes.begin(), it);
+
+        eventMask[dist] += 1;
     }
 
     // set a default 0 value for the start of the event
