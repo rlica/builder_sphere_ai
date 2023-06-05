@@ -68,22 +68,45 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
         switch (varOutputTypes[sig[0]->getDetectorType()])
         {
         case DETECTOR:
+        {
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
+        case DETECTOR_RAW:
+        {
 
             eventBuffer.push_back(sig[0]->getDetectorLut());
             eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
-            eventBuffer.push_back(sig[0]->getRelativeTimePs());
+            int32_t time = sig[0]->getRelativeTime();
+
+            uint16_t sTime = time & 0xFF;
+            uint16_t fTime = (time >> 8) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
             break;
-
+        }
         case SUPPRESED_DETECTOR:
+        {
 
             eventBuffer.push_back(sig[0]->getDetectorLut());
             eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
-            eventBuffer.push_back(sig[0]->getRelativeTimePs());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
             if (sig.size() != 2)
             {
@@ -93,27 +116,68 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
             eventBuffer.push_back(sig[1]->getEnergy());
 
-            eventBuffer.push_back(sig[1]->getRelativeTimeNs());
-            eventBuffer.push_back(sig[1]->getRelativeTimePs());
-            break;
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
 
+            eventBuffer.push_back(fVetoTime);
+            eventBuffer.push_back(sVetoTime);
+            break;
+        }
+        case SUPPRESED_DETECTOR_RAW:
+        {
+
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            int32_t time = sig[0]->getRelativeTime();
+
+            uint16_t sTime = time & 0xFF;
+            uint16_t fTime = (time >> 8) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            if (sig.size() != 2)
+            {
+                cout << "error: Suppressed detector raw event must have two signals" << endl;
+                exit(1);
+            }
+
+            time = sig[1]->getRelativeTime();
+
+            sTime = time & 0xFF;
+            fTime = (time >> 8) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
         case PSD_DETECTOR:
+        {
 
             eventBuffer.push_back(sig[0]->getDetectorLut());
             eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
-            eventBuffer.push_back(sig[0]->getRelativeTimePs());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
             eventBuffer.push_back(sig[0]->getPSD());
-
+        }
         case SUPPRESED_PSD_DETECTOR:
+        {
 
             eventBuffer.push_back(sig[0]->getDetectorLut());
             eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(sig[0]->getRelativeTimeNs());
-            eventBuffer.push_back(sig[0]->getRelativeTimePs());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
             eventBuffer.push_back(sig[0]->getPSD());
 
@@ -124,19 +188,26 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
             }
 
             eventBuffer.push_back(sig[1]->getEnergy());
-            eventBuffer.push_back(sig[1]->getRelativeTimeNs());
-            eventBuffer.push_back(sig[1]->getRelativeTimePs());
 
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fVetoTime);
+            eventBuffer.push_back(sVetoTime);
             break;
-
+        }
         case NO_TYPE:
+        {
+        }
         default:
+        {
 
             cout << "default value, is not implemented: " << sig[0]->getDetectorType() << endl;
 
             abort();
 
             break;
+        }
         }
     }
 
@@ -257,9 +328,17 @@ void gaspDataWriter::setConfig(json config)
         {
             varOutputTypes[type] = DETECTOR;
         }
+        else if (outTypes[type] == "detectorRaw")
+        {
+            varOutputTypes[type] = DETECTOR_RAW;
+        }
         else if (outTypes[type] == "suppressedDetector")
         {
             varOutputTypes[type] = SUPPRESED_DETECTOR;
+        }
+        else if (outTypes[type] == "suppressedDetectorRaw")
+        {
+            varOutputTypes[type] = SUPPRESED_DETECTOR_RAW;
         }
         else if (outTypes[type] == "psdDetector")
         {
@@ -339,21 +418,27 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
     for (auto &sig : *events)
     {
 
-        varDetectorLUT.push_back(sig.at(0)->getDetectorLut());
-        varDetectorType.push_back(sig.at(0)->getDetectorType());
+        varDetectorLUT.push_back(sig[0]->getDetectorLut());
+        varDetectorType.push_back(sig[0]->getDetectorType());
 
-        varEnergy.push_back(sig.at(0)->getEnergy());
-        varPsd.push_back(sig.at(0)->getPSD());
+        varEnergy.push_back(sig[0]->getEnergy());
+        varPsd.push_back(sig[0]->getPSD());
 
-        varRelativeNsTime.push_back(sig.at(0)->getRelativeTimeNs());
-        varRelativePsTime.push_back(sig.at(0)->getRelativeTimePs());
+        uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+        uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+        varRelativeNsTime.push_back(fTime);
+        varRelativePsTime.push_back(sTime);
 
         if (sig.size() == 2)
         {
-            varVetoEnergy.push_back(sig.at(1)->getEnergy());
+            varVetoEnergy.push_back(sig[1]->getEnergy());
 
-            varVetoRelativeNsTime.push_back(sig.at(1)->getRelativeTimeNs());
-            varVetoRelativePsTime.push_back(sig.at(1)->getRelativeTimePs());
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
+
+            varVetoRelativeNsTime.push_back(fVetoTime);
+            varVetoRelativePsTime.push_back(sVetoTime);
         }
         else
         {

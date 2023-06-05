@@ -21,6 +21,8 @@
 #define PSD_DETECTOR 2
 #define SUPPRESED_PSD_DETECTOR 3
 #define NO_TYPE 4
+#define DETECTOR_RAW 5
+#define SUPPRESED_DETECTOR_RAW 6
 
 using namespace std;
 using json = nlohmann::json;
@@ -131,7 +133,9 @@ private:
     int64_t prevTime = std::numeric_limits<int64_t>::min();
 
     map<int, int> detectorTypeSize = {{DETECTOR, 4},
+                                      {DETECTOR_RAW, 4},
                                       {SUPPRESED_DETECTOR, 7},
+                                      {SUPPRESED_DETECTOR_RAW, 7},
                                       {PSD_DETECTOR, 5},
                                       {SUPPRESED_PSD_DETECTOR, 8},
                                       {NO_TYPE, 0}};

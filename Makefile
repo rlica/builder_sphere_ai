@@ -1,3 +1,5 @@
+CPP = g++
+
 INCLUDE = -I$(ROOT_BASE)/include
 INCLUDE += -Iinclude
 
@@ -7,13 +9,37 @@ LIBS = -L$(ROOT_BASE)/lib
 LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -lcapnp -lkj
 #LDLIBS = `root-config --cflags --glibs` -fopenmp -lcapnp -lkj
 
+SOURCE_DIR := src
 
-all:
-	g++ dispacher.cpp -o build src/*.cpp -std=c++17 $(INCLUDE) $(LIBS) $(LDLIBS)	
-	g++ builder.cpp -o builder src/*.cpp -std=c++17 $(INCLUDE) $(LIBS) $(LDLIBS)	
+SOURCE_CPP := $(wildcard $(SOURCE_DIR)/*.cpp)
+SOURCE_C++ := $(wildcard $(SOURCE_DIR)/*.c++)
+
+OBJECTS_CPP := $(SOURCE_CPP:$(SOURCE_DIR)/%.cpp=$(SOURCE_DIR)/%.o)
+OBJECTS_C++ := $(SOURCE_C++:$(SOURCE_DIR)/%.c++=$(SOURCE_DIR)/%.o)
+
+OBJECTS := $(patsubst $(SOURCE_DIR)/%.cpp, $(SOURCE_DIR)/%.o, $(SOURCE_CPP))
+OBJECTS += $(patsubst $(SOURCE_DIR)/%.cpp, $(SOURCE_DIR)/%.o, $(OBJECTS_C++))
+
+FLAGS = -std=c++17
+
+
+all: $(OBJECTS)
+	$(CPP)  dispacher.cpp $^ $(INCLUDE) $(LIBS) $(LDLIBS) $(FLAGS) $(LDLIBS) -o build
+	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(LDLIBS) $(FLAGS) $(LDLIBS) -o builder
+
+$(SOURCE_DIR)/%.o: $(SOURCE_DIR)/%.cpp 
+	$(CPP) $(INCLUDE) -c $< -o $@ $(FLAGS)
+
+$(SOURCE_DIR)/%.o: $(SOURCE_DIR)/%.c++ 
+	$(CPP) $(INCLUDE) -c $< -o $@ $(FLAGS)
+
 
 
 proto: 
 	capnp compile -oc++ eventProto.capnp		
 	mv eventProto.capnp.h include/eventProto.capnp.h
 	mv eventProto.capnp.c++ src/eventProto.capnp.c++
+
+
+clean:
+	@rm -rf $(SOURCE_DIR)/*.o builder build

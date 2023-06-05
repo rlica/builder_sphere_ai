@@ -35,7 +35,8 @@ public:
 
 protected:
     json config;
-    vector<vector<int>> getDelayVector(json delay);
+    vector<vector<int>> getDelayVector(json &config);
+
     pair<uint8_t, uint8_t> findBoardChannel(uint8_t type, uint8_t lut);
     pair<uint8_t, uint8_t> findCoincPairType(uint8_t brd, uint8_t ch);
 

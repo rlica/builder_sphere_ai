@@ -12,6 +12,9 @@ using nlohmann::json_uri;
 using nlohmann::json_schema::json_validator;
 using json = nlohmann::json;
 
+typedef unsigned __int128 uint128_t;
+typedef __float128 float128_t;
+
 inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"3MV", ".root"},
                                              {"proto", ".cap"},
@@ -19,6 +22,10 @@ inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"delila", ".root"},
                                              {"gasp", ""},
                                              {"bell", ".root"}};
+
+inline map<string, int> units = {{"", 1},
+                                 {"kilo", 1000},
+                                 {"mega", 1000000}};
 
 class event
 {
@@ -44,11 +51,8 @@ public:
     uint8_t getDetectorLut() { return detectorLut; }
     void setDetectorLut(uint8_t lut) { detectorLut = lut; }
 
-    uint16_t getRelativeTimeNs() { return relativeTimeNs; }
-    void setRelativeTimeNs(uint16_t val) { relativeTimeNs = val; }
-
-    uint16_t getRelativeTimePs() { return relativeTimePs; }
-    void setRelativeTimePs(uint16_t val) { relativeTimePs = val; }
+    int32_t getRelativeTime() { return relativeTime; }
+    void setRelativeTime(int32_t val) { relativeTime = val; }
 
     uint8_t getCoincPair() { return varCoincPair; }
     void setCoincPair(uint8_t pair) { varCoincPair = pair; }
@@ -67,8 +71,7 @@ private:
 
     uint16_t energy = 0;
 
-    uint16_t relativeTimeNs = 0;
-    uint16_t relativeTimePs = 0;
+    int32_t relativeTime = 0;
 
     uint8_t detectorType = 0;
     uint8_t detectorLut = 0;

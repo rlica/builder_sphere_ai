@@ -11,7 +11,8 @@
                         "resetGap"  : {"type": "integer"}, 
                         "scalePower": {"type": "integer"}  
                     }, 
-                    "required": ["resetGap", "scalePower"]
+                    "required": ["resetGap", "scalePower"], 
+                    "additionalProperties": false
                 }, 
                 "antiCoincFlag": {
                     "type": "array", 
@@ -21,7 +22,7 @@
                     "type": "array", 
                     "items": { "type": "array", "items": {"type": "integer"} }
                 }, 
-                "coincWindowNs": {"type": "integer"}, 
+                "coincWindow": {"type": "integer"}, 
                 "sortBeforeBuild": {"type": "boolean"}, 
                 "typePriority": {
                     "type": "array", 
@@ -30,15 +31,16 @@
             }, 
             "required": [
                 "absoluteTime"   , "antiCoincFlag"  , "coincMask"      , 
-                "coincWindowNs"  , "sortBeforeBuild", "typePriority"   
-            ]
+                "coincWindow"    , "sortBeforeBuild", "typePriority"   
+            ], 
+            "additionalProperties": false
         }, 
         "delay": {
             "type": "object", 
             "properties": {
                 "energyThreshold": {"type": "integer"}, 
                 "histBins": {"type": "integer"}, 
-                "histRangeNs": {
+                "histRange": {
                     "type": "array", 
                     "items": {"type": "integer"}, 
                     "minItems": 2, 
@@ -50,10 +52,11 @@
                 "refType": {"type": "integer"}
             }, 
             "required": [
-                "energyThreshold", "histBins"       , "histRangeNs"    , 
+                "energyThreshold", "histBins"       , "histRange"      , 
                 "outFileName"    , "refLUT"         , "refTimeOffset"  , 
                 "refType"        
-            ]
+            ], 
+            "additionalProperties": false
         }, 
         "detector": {
             "type": "object", 
@@ -62,7 +65,7 @@
                     "type": "array", 
                     "items": { "type": "array", "items": {"type": "integer"} }
                 }, 
-                "delayNs": {
+                "delay": {
                     "type": "array", 
                     "items": { "type": "array", "items": {"type": "integer"} }
                 }, 
@@ -75,7 +78,8 @@
                     "items": { "type": "array", "items": {"type": "integer"} }
                 }
             }, 
-            "required": ["coincPairs", "delayNs", "lut", "type"]
+            "required": ["coincPairs", "delay", "lut", "type"], 
+            "additionalProperties": false
         }, 
         "gasp": {
             "type": "object", 
@@ -87,8 +91,10 @@
                         "enum": [
                             "noType"               , 
                             "detector"             , 
+                            "detectorRaw"          , 
                             "psdDetector"          , 
                             "suppressedDetector"   , 
+                            "suppressedDetectorRaw", 
                             "suppressedPsdDetector"  
                         ]
                     }
@@ -100,9 +106,14 @@
             "type": "object", 
             "properties": {
                 "maxCores": {"type": "integer"}, 
-                "run"     : {"type": "string" }  
+                "run": {"type": "string"}, 
+                "configTimeUnit": {
+                    "type": "string", 
+                    "enum": ["", "kilo", "mega"]
+                }
             }, 
-            "required": ["maxCores", "run"]
+            "required": ["maxCores", "run"], 
+            "additionalProperties": false
         }, 
         "input": {
             "type": "object", 
@@ -125,7 +136,8 @@
             "required": [
                 "eventCount"    , "fileFormat"    , "fileIdentifier", 
                 "keepIndex"     , "liveBuild"     , "path"          
-            ]
+            ], 
+            "additionalProperties": false
         }, 
         "output": {
             "type": "object", 
@@ -133,8 +145,10 @@
                 "fileFormat": { "type": "string", "enum": ["gasp", "root"] }, 
                 "path"      : { "type": "string"                           }  
             }, 
-            "required": ["fileFormat", "path"]
+            "required": ["fileFormat", "path"], 
+            "additionalProperties": false
         }
     }, 
-    "required": ["build", "delay", "detector", "gasp", "general"]
+    "required": ["build", "delay", "detector", "gasp", "general"], 
+    "additionalProperties": false
 }

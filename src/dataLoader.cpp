@@ -8,7 +8,7 @@ deque<event *> rootLoader::readEvents()
     vector<vector<uint8_t>> boards = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
     vector<vector<uint8_t>> channels = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
@@ -115,7 +115,7 @@ deque<event *> protoLoader::readEvents()
 
     auto fd = open(fileName.c_str(), O_RDONLY);
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
@@ -180,7 +180,7 @@ deque<event *> delilaLoader::readEvents()
 {
 
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
 
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
@@ -266,7 +266,7 @@ deque<event *> delilaLoader::readEvents()
 deque<event *> threeMVLoader::readEvents()
 {
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
@@ -343,7 +343,7 @@ deque<event *> capLoader::readEvents()
 
     auto fd = open(fileName.c_str(), O_RDONLY);
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
 
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
@@ -410,9 +410,8 @@ deque<event *> capLoader::readEvents()
                                     }
 
                                     if constexpr (is_same_v<T,  RawTimeEvent::Reader>){   
-
-                                        uint16_t fineTs = proEvent[i].getFineTimestamp() * 1000 / 1024;
-                                        uint64_t ts = proEvent[i].getTimestamp() * 1000 + fineTs ;
+                                                                                
+                                        uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
 
                                         uint64_t delayedTime = ts - delay[brd][ch];
                                       
@@ -496,7 +495,7 @@ vector<delayEvent> rootLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
 
     for (int i = 0; i < eventNumb; i++)
     {
@@ -536,7 +535,7 @@ vector<delayEvent> protoLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
 
     for (auto fileName : files)
     {
@@ -628,7 +627,7 @@ vector<delayEvent> threeMVLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
 
     for (int i = 0; i < eventNumb; i++)
     {
@@ -676,7 +675,7 @@ vector<delayEvent> capLoader::readDelayEvents()
 
     int tresh = config["delay"]["energyThreshold"];
 
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
 
     for (auto fileName : files)
     {
@@ -773,15 +772,15 @@ vector<delayEvent> capLoader::readDelayEvents()
     return events;
 }
 
-vector<vector<int>> dataLoader::getDelayVector(json delay)
+vector<vector<int>> dataLoader::getDelayVector(json &config)
 {
-    vector<vector<int>> tempDelay = delay.get<vector<vector<int>>>();
+    vector<vector<int>> tempDelay = config["detector"]["delay"].get<vector<vector<int>>>();
 
     for (auto &board : tempDelay)
     {
         for (auto &ch : board)
         {
-            ch = ch * 1000;
+            ch = ch * units[config["general"]["configTimeUnit"]];
         }
     }
 
@@ -860,7 +859,7 @@ map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> dataLoader::findCoincPairTyp
 deque<event *> bellLoader::readEvents()
 {
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();

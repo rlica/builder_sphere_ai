@@ -16,15 +16,14 @@
 #include <variant>
 #include <limits>
 #include "dataLoader.h"
-
+#include <filesystem>
 #include "TApplication.h"
 
 using json = nlohmann::json;
 using namespace std;
+namespace fs = std::filesystem;
 
-typedef unsigned __int128 uint128_t;
-typedef __float128 float128_t;
-
+namespace fs = std::filesystem;
 void addToCheckMask(vector<int> &checkMask, event &evt);
 void preProcessEvent(json &config, deque<event *> &events);
 void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt);
@@ -153,14 +152,7 @@ void buildRun(json config)
 
     auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
 
-    auto pos = fileName.find_last_of("/") + 1;
-    auto nSize = 6;
-
-    fileName = fileName.substr(pos, fileName.size());
-
-    pos = fileName.find_last_of(".");
-
-    fileName = fileName.substr(0, pos);
+    fileName = fs::path(fileName).stem().string();
 
     fileName = string(config["output"]["path"]) + "/" + fileName;
 
@@ -175,7 +167,8 @@ void buildRun(json config)
 
     writer->setConfig(config);
 
-    uint32_t coincWindow = uint32_t(config["build"]["coincWindowNs"]) * 1000;
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * units[config["general"]["configTimeUnit"]];
+
     vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
     vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
@@ -408,17 +401,13 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     // set relative times
 
-    uint32_t coincWindow = uint32_t(config["build"]["coincWindowNs"]) * 1000;
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * units[config["general"]["configTimeUnit"]];
 
     for (int i = 0; i < tempList.size(); i++)
     {
-        double relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + coincWindow;
+        int32_t relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + coincWindow;
 
-        uint16_t timeNs = int(relativeTime) / 1000;
-        uint16_t timePs = int(relativeTime) % 1000;
-
-        tempList[i]->setRelativeTimeNs(timeNs);
-        tempList[i]->setRelativeTimePs(timePs);
+        tempList[i]->setRelativeTime(relativeTime);
     }
 
     // build events with anticoincidence
@@ -446,8 +435,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
                 evt->setDetectorLut(lut);
 
                 evt->setEnergy(0);
-                evt->setRelativeTimeNs(0);
-                evt->setRelativeTimePs(0);
+                evt->setRelativeTime(0);
                 evt->setPSD(0);
 
                 if (val.second[0]->getAntiCoincFlag()) // first signal is the anti-coinc flag -> push front
@@ -571,16 +559,16 @@ void delayRun(json config)
             string name = "type_" + to_string(get<0>(evt)) + "_lut_" + to_string(get<1>(evt));
 
             int bins = config["delay"]["histBins"];
-            auto range = config["delay"]["histRangeNs"].get<vector<double>>();
+            auto range = config["delay"]["histRange"].get<vector<double>>();
 
-            transform(range.begin(), range.end(), range.begin(), [](auto rg)
-                      { return rg * 1000; });
+            transform(range.begin(), range.end(), range.begin(), [&](auto rg)
+                      { return rg * units[config["general"]["configTimeUnit"]]; });
 
             hists[id] = make_shared<TH1I>(TH1I(name.c_str(), name.c_str(), bins, range[0], range[1]));
         }
     }
 
-    vector<vector<int>> delay = config["detector"]["delayNs"];
+    vector<vector<int>> delay = config["detector"]["delay"];
 
     for (auto hist : hists)
     {
@@ -599,14 +587,14 @@ void delayRun(json config)
             }
             else
             {
-                time += int(config["delay"]["refTimeOffset"]);
+                time += int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
             }
 
-            delay[brdCh.first][brdCh.second] = time / 1000;
+            delay[brdCh.first][brdCh.second] = time / units[config["general"]["configTimeUnit"]];
         }
     }
 
-    config["detector"]["delayNs"] = delay;
+    config["detector"]["delay"] = delay;
 
     config.erase("crtFile");
     config.erase("crtRun");
