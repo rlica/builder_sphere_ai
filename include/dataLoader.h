@@ -38,6 +38,8 @@ protected:
     vector<vector<int>> getDelayVector(json delay);
     pair<uint8_t, uint8_t> findBoardChannel(uint8_t type, uint8_t lut);
     pair<uint8_t, uint8_t> findCoincPairType(uint8_t brd, uint8_t ch);
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> findCoincPairTypes();
 };
 
 class rootLoader : public dataLoader
@@ -99,6 +101,17 @@ private:
                                     {3, "DUAL_WAVE_DATA"},
                                     {4, "FULL_DATA"},
                                     {5, "RAW_TIME_DATA"}};
+};
+
+class bellLoader : public dataLoader
+{
+
+public:
+    bellLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+private:
 };
 
 #endif

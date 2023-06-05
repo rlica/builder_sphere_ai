@@ -17,7 +17,8 @@ inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"proto", ".cap"},
                                              {"cap", ".cap"},
                                              {"delila", ".root"},
-                                             {"gasp", ""}};
+                                             {"gasp", ""},
+                                             {"bell", ".root"}};
 
 class event
 {
@@ -126,4 +127,216 @@ inline uint64_t getCrtTime()
 
     return uint64_t(nanos);
 }
+
+class SaxPrinter
+{
+public:
+    SaxPrinter(ostream &oStr) : stream(oStr)
+    {
+    }
+    ~SaxPrinter()
+    {
+        assert(first_value.empty());
+    }
+
+    bool null()
+    {
+        print_comma();
+        stream << "null";
+        return true;
+    }
+
+    bool boolean(bool value)
+    {
+        print_comma();
+        stream << (value ? "true" : "false");
+        return true;
+    }
+
+    bool number_integer(json::number_integer_t value)
+    {
+        print_comma();
+        stream << value;
+        return true;
+    }
+
+    bool number_unsigned(json::number_unsigned_t value)
+    {
+        print_comma();
+        stream << value;
+        return true;
+    }
+
+    bool number_float(json::number_float_t value, const std::string & /*unused*/)
+    {
+        print_comma();
+        stream << value;
+        return true;
+    }
+
+    bool string(const std::string &value)
+    {
+        print_comma();
+
+        stream << "\"" << value << "\"";
+        return true;
+    }
+
+    bool binary(std::vector<std::uint8_t> & /*unused*/)
+    {
+        return true;
+    }
+
+    bool start_object(std::size_t /*unused*/)
+    {
+        print_comma();
+        if (accSpace)
+        {
+            stream << " ";
+        }
+        accSpace = true;
+
+        stream << "{" << endl;
+
+        first_value.push_back(true);
+        deepth++;
+        return true;
+    }
+
+    bool key(const std::string &key)
+    {
+        print_comma();
+        first_value.back() = true; // do not print a comma when printing the value following this key
+
+        for (int i = 0; i < deepth; i++)
+        {
+            stream << spacer;
+        }
+
+        stream << "\"" << key << "\":";
+        return true;
+    }
+
+    bool end_object()
+    {
+        deepth--;
+
+        stream << endl;
+        for (int i = 0; i < deepth; i++)
+        {
+            stream << spacer;
+        }
+        stream << "}";
+        first_value.pop_back();
+        return true;
+    }
+
+    bool start_array(std::size_t /*unused*/)
+    {
+        print_comma();
+
+        switch (arrayDepth)
+        {
+        case 0:
+            stream << "[";
+            break;
+        case 1:
+
+            deepth++;
+            stream << endl;
+            for (int i = 0; i < deepth; i++)
+            {
+                stream << spacer;
+            }
+
+            stream << "[";
+            break;
+        }
+
+        arrayDepth++;
+
+        if (arrayDepth == 2)
+        {
+            db = true;
+        }
+
+        first_value.push_back(true);
+        return true;
+    }
+
+    bool end_array()
+    {
+
+        switch (arrayDepth)
+        {
+        case 1:
+            if (db)
+            {
+                stream << endl;
+                for (int i = 0; i < deepth; i++)
+                {
+                    stream << spacer;
+                }
+                stream << "]";
+                db = false;
+            }
+            else
+            {
+                stream << "]";
+            }
+
+            break;
+        case 2:
+            stream << "]";
+            deepth--;
+            break;
+        }
+        arrayDepth--;
+
+        first_value.pop_back();
+
+        return true;
+    }
+
+    bool parse_error(std::size_t /*unused*/, const std::string & /*unused*/, const json::exception & /*unused*/)
+    {
+        return false;
+    }
+
+private:
+    std::ostream &stream;
+
+    std::vector<bool> first_value;
+
+    int deepth = 0;
+    int arrayDepth = 0;
+    bool db = false;
+
+    bool accSpace = false;
+
+    std::string spacer = "  ";
+
+    void print_comma()
+    {
+        if (!first_value.empty())
+        {
+            if (first_value.back())
+            {
+                first_value.back() = false;
+            }
+            else
+            {
+                if (arrayDepth)
+                {
+                    stream << ",";
+                }
+                else
+                {
+                    stream << "," << endl;
+                }
+            }
+        }
+    }
+};
+
 #endif

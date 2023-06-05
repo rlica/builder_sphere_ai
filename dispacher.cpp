@@ -276,7 +276,7 @@ vector<string> generateInputFiles(json &config)
 
         string extension = fileExtensions[string(config["output"]["fileFormat"])];
 
-        auto outFiles = getPathFiles(config["output"]["outputPath"], config["input"]["fileIdentifier"], extension);
+        auto outFiles = getPathFiles(config["output"]["path"], config["input"]["fileIdentifier"], extension);
 
         auto finalFiles = removeAlreadyBuilt(inpFiles, outFiles);
 
@@ -339,11 +339,11 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 
     for (auto &str : inpFiles)
     {
-        auto pos = str.find_last_of(".cap");
+        fs::path p(str);
 
-        auto fName = str.substr(pos - 9, 6);
+        string stem = fs::path(str).stem().string();
 
-        auto index = stoi(fName);
+        auto index = stoi(stem.substr(stem.length() - 6));
 
         if (index >= start && index <= stop)
         {

@@ -110,7 +110,7 @@
                 "eventCount": {"type": "integer"}, 
                 "fileFormat": {
                     "type": "string", 
-                    "enum": ["root", "proto", "cap", "delila", "3MV"]
+                    "enum": ["root", "proto", "cap", "delila", "3MV", "bell"]
                 }, 
                 "fileIdentifier": {"type": "string"}, 
                 "keepIndex": {
@@ -131,9 +131,9 @@
             "type": "object", 
             "properties": {
                 "fileFormat": { "type": "string", "enum": ["gasp", "root"] }, 
-                "outputPath": { "type": "string"                           }  
+                "path"      : { "type": "string"                           }  
             }, 
-            "required": ["fileFormat", "outputPath"]
+            "required": ["fileFormat", "path"]
         }
     }, 
     "required": ["build", "delay", "detector", "gasp", "general"]

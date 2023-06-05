@@ -97,6 +97,10 @@ void initializeDataLoader(json &config)
     {
         loader = make_shared<capLoader>(config);
     }
+    else if (dataType == "bell")
+    {
+        loader = make_shared<bellLoader>(config);
+    }
     else
     {
         throw invalid_argument("Invalid data type");
@@ -158,7 +162,7 @@ void buildRun(json config)
 
     fileName = fileName.substr(0, pos);
 
-    fileName = string(config["output"]["outputPath"]) + "/" + fileName;
+    fileName = string(config["output"]["path"]) + "/" + fileName;
 
     if (config["output"]["fileFormat"] == "gasp")
     {
@@ -306,7 +310,7 @@ void addToCheckMask(vector<int> &checkMask, event &evt)
 {
     if (evt.getDetectorType() < checkMask.size())
     {
-        checkMask.at(evt.getDetectorType())++;
+        checkMask[evt.getDetectorType()]++;
     }
 }
 
@@ -315,7 +319,7 @@ bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask)
 
     for (uint i = 0; i < coincMask.size(); i++)
     {
-        if (checkMask.at(i) < coincMask.at(i))
+        if (checkMask[i] < coincMask[i])
         {
             return false;
         }
@@ -328,7 +332,7 @@ bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask)
 
     for (uint i = 0; i < coincMask.size(); i++)
     {
-        if (validateSingleMask(coincMask.at(i), checkMask))
+        if (validateSingleMask(coincMask[i], checkMask))
         {
             return true;
         }
@@ -342,7 +346,9 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    if (format == "proto" || format == "root" || format == "cap")
+    vector<string> sFormat = {"proto", "root", "cap", "bell"};
+
+    if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
         auto pos = a.find_last_of(".");
         auto nSize = 6;
@@ -425,6 +431,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     for (auto &val : coincMap)
     {
+
         // the zero mappings do not have pairs
         if (val.first != 0)
         {
@@ -538,7 +545,7 @@ void delayRun(json config)
 
     double refTimeStamp = 0;
 
-    map<pair<int, int>, shared_ptr<TH1D>> hists;
+    map<pair<int, int>, shared_ptr<TH1I>> hists;
 
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
@@ -569,7 +576,7 @@ void delayRun(json config)
             transform(range.begin(), range.end(), range.begin(), [](auto rg)
                       { return rg * 1000; });
 
-            hists[id] = make_shared<TH1D>(TH1D(name.c_str(), name.c_str(), bins, range[0], range[1]));
+            hists[id] = make_shared<TH1I>(TH1I(name.c_str(), name.c_str(), bins, range[0], range[1]));
         }
     }
 
@@ -604,17 +611,21 @@ void delayRun(json config)
     config.erase("crtFile");
     config.erase("crtRun");
 
-    std::ofstream outConfigFile("config.json");
-    outConfigFile << std::setw(2) << config << std::endl;
+    auto oFile = ofstream("config.json");
+    SaxPrinter pretty(oFile);
 
-    string outFileName = config["delay"]["outFileName"];
+    json::sax_parse(config.dump(), &pretty);
 
-    auto outFile = TFile(outFileName.c_str(), "RECREATE");
-
-    for (auto &hist : hists)
+    if (config["output"]["fileFormat"] == "gasp")
     {
-        hist.second->Write();
+        writer = new gaspDataWriter();
+    }
+    else if (config["output"]["fileFormat"] == "root")
+    {
+        writer = new rootDataWriter();
     }
 
-    outFile.Close();
+    writer->setConfig(config);
+
+    writer->writeDelayResults(hists);
 }

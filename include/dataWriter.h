@@ -11,6 +11,7 @@
 #include <climits>
 #include "TFile.h"
 #include "TTree.h"
+#include "TH1I.h"
 
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
@@ -38,6 +39,8 @@ public:
     virtual void writeData(){};
     virtual void closeFile(){};
 
+    virtual void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist){};
+
     virtual void setConfig(json config);
 
     string getFileName() { return varFileName; }
@@ -57,9 +60,13 @@ class rootDataWriter : public dataWriter
 {
 
 public:
+    rootDataWriter(){};
+
     rootDataWriter(string file, int numb);
     void initializeOutputFile();
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+
+    void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
 
     void closeFile();
 
@@ -89,12 +96,15 @@ class gaspDataWriter : public dataWriter
 {
 
 public:
+    gaspDataWriter(){};
     gaspDataWriter(string file, int numb);
 
     void initializeOutputFile();
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
 
     void writeData();
+    void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
+
     void closeFile();
 
     void setConfig(json config);

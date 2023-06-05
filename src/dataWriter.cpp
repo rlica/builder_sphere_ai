@@ -372,3 +372,56 @@ void rootDataWriter::closeFile()
     varEventTree->Write();
     varOutFile->Close();
 }
+
+void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
+{
+
+    string outFileName = string(varConfig["output"]["path"]) + "/";
+    outFileName += string(varConfig["delay"]["outFileName"]) + ".root";
+
+    auto outFile = TFile(outFileName.c_str(), "RECREATE");
+
+    for (auto &hist : delayHist)
+    {
+        hist.second->Write();
+    }
+
+    outFile.Close();
+
+    cout << "results output: " << outFileName << endl;
+}
+
+void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
+{
+    string outFileName = string(varConfig["output"]["path"]) + "/";
+    outFileName += string(varConfig["delay"]["outFileName"]);
+
+    vector<short> varBlockBuffer;
+
+    for (auto &hist : delayHist)
+    {
+        for (int i = 0; i < pow(2, 16); i++)
+        {
+            if (i < hist.second->GetNbinsX())
+            {
+                int binContent = hist.second->GetBinContent(i + 1);
+
+                varBlockBuffer.push_back(binContent & 0xFFFF);
+                varBlockBuffer.push_back((binContent >> 16) & 0xFFFF);
+            }
+            else
+            {
+                varBlockBuffer.push_back(0);
+                varBlockBuffer.push_back(0);
+            }
+        }
+    }
+
+    ofstream outFile(outFileName.c_str());
+
+    outFile.write((char *)&varBlockBuffer[0], varBlockBuffer.size() * sizeof(short));
+
+    outFile.close();
+
+    cout << "results output: " << outFileName << endl;
+}
