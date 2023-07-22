@@ -23,7 +23,6 @@ using json = nlohmann::json;
 using namespace std;
 namespace fs = std::filesystem;
 
-namespace fs = std::filesystem;
 void addToCheckMask(vector<int> &checkMask, event &evt);
 void preProcessEvent(json &config, deque<event *> &events);
 void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt);
@@ -167,7 +166,7 @@ void buildRun(json config)
 
     writer->setConfig(config);
 
-    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * units[config["general"]["configTimeUnit"]];
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
 
     vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
@@ -401,7 +400,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     // set relative times
 
-    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * units[config["general"]["configTimeUnit"]];
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (int i = 0; i < tempList.size(); i++)
     {
@@ -562,7 +561,7 @@ void delayRun(json config)
             auto range = config["delay"]["histRange"].get<vector<double>>();
 
             transform(range.begin(), range.end(), range.begin(), [&](auto rg)
-                      { return rg * units[config["general"]["configTimeUnit"]]; });
+                      { return rg * int(config["general"]["timeUnitMultiplier"]); });
 
             hists[id] = make_shared<TH1I>(TH1I(name.c_str(), name.c_str(), bins, range[0], range[1]));
         }
@@ -587,10 +586,10 @@ void delayRun(json config)
             }
             else
             {
-                time += int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
+                time += int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
             }
 
-            delay[brdCh.first][brdCh.second] = time / units[config["general"]["configTimeUnit"]];
+            delay[brdCh.first][brdCh.second] = time / int(config["general"]["timeUnitMultiplier"]);
         }
     }
 

@@ -81,11 +81,8 @@ public:
 
     vector<uint16_t> varVetoEnergy;
 
-    vector<uint16_t> varRelativeNsTime;
-    vector<uint16_t> varRelativePsTime;
-
-    vector<uint16_t> varVetoRelativeNsTime;
-    vector<uint16_t> varVetoRelativePsTime;
+    vector<uint32_t> varRelativeTime;
+    vector<uint32_t> varVetoRelativeTime;
 
 private:
     void initializeTree();

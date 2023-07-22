@@ -23,10 +23,6 @@ inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"gasp", ""},
                                              {"bell", ".root"}};
 
-inline map<string, int> units = {{"", 1},
-                                 {"kilo", 1000},
-                                 {"mega", 1000000}};
-
 class event
 {
 

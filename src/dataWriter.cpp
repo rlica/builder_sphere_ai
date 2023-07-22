@@ -88,8 +88,8 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
             int32_t time = sig[0]->getRelativeTime();
 
-            uint16_t sTime = time & 0xFF;
-            uint16_t fTime = (time >> 8) & 0xFFFF;
+            uint16_t sTime = time & 0x3FF;
+            uint16_t fTime = (time >> 10) & 0xFFFF;
 
             eventBuffer.push_back(fTime);
             eventBuffer.push_back(sTime);
@@ -131,8 +131,8 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
             int32_t time = sig[0]->getRelativeTime();
 
-            uint16_t sTime = time & 0xFF;
-            uint16_t fTime = (time >> 8) & 0xFFFF;
+            uint16_t sTime = time & 0x3FF;
+            uint16_t fTime = (time >> 10) & 0xFFFF;
 
             eventBuffer.push_back(fTime);
             eventBuffer.push_back(sTime);
@@ -143,10 +143,12 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
                 exit(1);
             }
 
+            eventBuffer.push_back(sig[1]->getEnergy());
+
             time = sig[1]->getRelativeTime();
 
-            sTime = time & 0xFF;
-            fTime = (time >> 8) & 0xFFFF;
+            sTime = time & 0x3FF;
+            fTime = (time >> 10) & 0xFFFF;
 
             eventBuffer.push_back(fTime);
             eventBuffer.push_back(sTime);
@@ -390,11 +392,9 @@ void rootDataWriter::initializeTree()
 
     varEventTree->Branch("vetoEnergy", &varVetoEnergy);
 
-    varEventTree->Branch("relativeNsTime", &varRelativeNsTime);
-    varEventTree->Branch("relativePsTime", &varRelativePsTime);
+    varEventTree->Branch("relativeTime", &varRelativeTime);
 
-    varEventTree->Branch("vetoRelativeNsTime", &varVetoRelativeNsTime);
-    varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
+    varEventTree->Branch("vetoRelativeTime", &varVetoRelativeTime);
 }
 
 void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
@@ -409,11 +409,8 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
     varVetoEnergy.clear();
 
-    varRelativeNsTime.clear();
-    varRelativePsTime.clear();
-
-    varVetoRelativeNsTime.clear();
-    varVetoRelativePsTime.clear();
+    varRelativeTime.clear();
+    varVetoRelativeTime.clear();
 
     for (auto &sig : *events)
     {
@@ -427,25 +424,17 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
         uint16_t fTime = sig[0]->getRelativeTime() / 1000;
         uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-        varRelativeNsTime.push_back(fTime);
-        varRelativePsTime.push_back(sTime);
+        varRelativeTime.push_back(sig[0]->getRelativeTime());
 
         if (sig.size() == 2)
         {
             varVetoEnergy.push_back(sig[1]->getEnergy());
-
-            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
-            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
-
-            varVetoRelativeNsTime.push_back(fVetoTime);
-            varVetoRelativePsTime.push_back(sVetoTime);
+            varVetoRelativeTime.push_back(sig[1]->getRelativeTime());
         }
         else
         {
             varVetoEnergy.push_back(0);
-
-            varVetoRelativeNsTime.push_back(0);
-            varVetoRelativePsTime.push_back(0);
+            varVetoRelativeTime.push_back(0);
         }
     }
 

@@ -105,12 +105,9 @@
         "general": {
             "type": "object", 
             "properties": {
-                "maxCores": {"type": "integer"}, 
-                "run": {"type": "string"}, 
-                "configTimeUnit": {
-                    "type": "string", 
-                    "enum": ["", "kilo", "mega"]
-                }
+                "maxCores"          : {"type": "integer"}, 
+                "run"               : {"type": "string" }, 
+                "timeUnitMultiplier": {"type": "integer"}  
             }, 
             "required": ["maxCores", "run"], 
             "additionalProperties": false

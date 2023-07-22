@@ -418,7 +418,6 @@ deque<event *> capLoader::readEvents()
                                         ev->setTimeStamp(delayedTime);
 
                                     } else {
-                                        
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
                                         ev->setTimeStamp(delayedTime);
                                         
@@ -495,7 +494,7 @@ vector<delayEvent> rootLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (int i = 0; i < eventNumb; i++)
     {
@@ -535,7 +534,7 @@ vector<delayEvent> protoLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (auto fileName : files)
     {
@@ -627,7 +626,7 @@ vector<delayEvent> threeMVLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (int i = 0; i < eventNumb; i++)
     {
@@ -675,7 +674,7 @@ vector<delayEvent> capLoader::readDelayEvents()
 
     int tresh = config["delay"]["energyThreshold"];
 
-    int offset = int(config["delay"]["refTimeOffset"]) * units[config["general"]["configTimeUnit"]];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (auto fileName : files)
     {
@@ -691,11 +690,9 @@ vector<delayEvent> capLoader::readDelayEvents()
 
             dataReader dts = message.getRoot<PlainData>();
 
-            int evtType;
-
             visit([&](auto &data)
                   { 
-                    
+
                    switch(data.getType()){
                     case 0:
                         break;
@@ -709,7 +706,7 @@ vector<delayEvent> capLoader::readDelayEvents()
                         break;
 
                     default:
-                        cout << "Unsupported data type: " << dataTypeMap[evtType] << endl;
+                        cout << "Unsupported data type: " << dataTypeMap[data.getType()] << endl;
                         abort();
                         break;
 
@@ -723,7 +720,7 @@ vector<delayEvent> capLoader::readDelayEvents()
 
                       for (uint i = 0; i < proEvent.size(); i++)
                       {
-                        
+
                           using T = decay_t<decltype(proEvent[i])>;
 
                           auto brd = proEvent[i].getBoard();
@@ -742,8 +739,8 @@ vector<delayEvent> capLoader::readDelayEvents()
                                    uint16_t fineTs = proEvent[i].getFineTimestamp() * 1000 / 1024;
                                    timeStamp = proEvent[i].getTimestamp() * 1000 + fineTs ;
 
-                               } else {                            
-                                   timeStamp = proEvent[i].getTimestamp();
+                               } else {       
+                                  timeStamp = proEvent[i].getTimestamp();
                                }
 
                               if (dType == refType && dLut == refLUT)
@@ -780,7 +777,7 @@ vector<vector<int>> dataLoader::getDelayVector(json &config)
     {
         for (auto &ch : board)
         {
-            ch = ch * units[config["general"]["configTimeUnit"]];
+            ch = ch * int(config["general"]["timeUnitMultiplier"]);
         }
     }
 
