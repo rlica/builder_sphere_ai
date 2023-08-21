@@ -6,7 +6,7 @@ INCLUDE += -Iinclude
 LIBS = -L$(ROOT_BASE)/lib
 
 
-LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -lcapnp -lkj
+LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -lcapnp -lkj -ltbb
 #LDLIBS = `root-config --cflags --glibs` -fopenmp -lcapnp -lkj
 
 SOURCE_DIR := src

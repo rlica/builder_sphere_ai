@@ -115,4 +115,15 @@ public:
 private:
 };
 
+class compassLoader : public dataLoader
+{
+
+public:
+    compassLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+private:
+};
+
 #endif

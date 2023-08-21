@@ -17,7 +17,8 @@
 #include <limits>
 #include "dataLoader.h"
 #include <filesystem>
-#include "TApplication.h"
+#include <algorithm>
+#include <execution>
 
 using json = nlohmann::json;
 using namespace std;
@@ -50,11 +51,8 @@ shared_ptr<dataLoader> loader;
 int main(int argc, char **argv)
 {
 
-    TApplication theApp("theApp", &argc, argv);
-
     if (argc > 1)
     {
-
         json config = json::parse(argv[1]);
 
         initializeDataLoader(config);
@@ -99,6 +97,10 @@ void initializeDataLoader(json &config)
     {
         loader = make_shared<bellLoader>(config);
     }
+    else if (dataType == "compass")
+    {
+        loader = make_shared<compassLoader>(config);
+    }
     else
     {
         throw invalid_argument("Invalid data type");
@@ -134,9 +136,13 @@ void preProcessEvent(json &config, deque<event *> &events)
 
     if (bool(config["build"]["sortBeforeBuild"]))
     {
-        __gnu_parallel::sort(events.begin(), events.end(),
-                             [](event *i, event *j)
-                             { return (i->getTimeStamp() < j->getTimeStamp()); });
+        // __gnu_parallel::sort(events.begin(), events.end(),
+        //                      [](event *i, event *j)
+        //                      { return (i->getTimeStamp() < j->getTimeStamp()); });
+
+        std::sort(std::execution::par, events.begin(), events.end(),
+                  [](event *i, event *j)
+                  { return (i->getTimeStamp() < j->getTimeStamp()); });
     }
 }
 
@@ -338,7 +344,7 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    vector<string> sFormat = {"proto", "root", "cap", "bell"};
+    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass"};
 
     if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
@@ -349,8 +355,6 @@ string extractNumbers(const string &a, string format)
     }
     else if (format == "delila")
     {
-        // this wil most likely not work
-
         auto fPos = a.find_first_of("_") + 1;
         auto lPos = a.find_last_of("_");
 
@@ -531,6 +535,7 @@ void delayRun(json config)
          { return (get<2>(i) < get<2>(j)); });
 
     double refTimeStamp = 0;
+    bool refTimeFound = false;
 
     map<pair<int, int>, shared_ptr<TH1I>> hists;
 
@@ -543,6 +548,7 @@ void delayRun(json config)
         if (get<0>(evt) == refType && get<1>(evt) == refLUT)
         {
             refTimeStamp = get<2>(evt);
+            refTimeFound = true;
         }
 
         double timeDif = double(get<2>(evt)) - refTimeStamp;
@@ -565,6 +571,12 @@ void delayRun(json config)
 
             hists[id] = make_shared<TH1I>(TH1I(name.c_str(), name.c_str(), bins, range[0], range[1]));
         }
+    }
+
+    if (refTimeFound == false)
+    {
+        cout << "delay run failed: reference time not found" << endl;
+        exit(0);
     }
 
     vector<vector<int>> delay = config["detector"]["delay"];

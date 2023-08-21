@@ -930,3 +930,77 @@ vector<delayEvent> bellLoader::readDelayEvents()
     abort();
     return {};
 }
+
+deque<event *> compassLoader::readEvents()
+{
+
+    vector<vector<int>> delay = getDelayVector(config);
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes = findCoincPairTypes();
+
+    string fileName = config["crtFile"];
+
+    auto tFile = new TFile(fileName.c_str());
+
+    auto chain = (TTree *)tFile->Get("Data_R");
+
+    uint16_t ch;
+    uint16_t board;
+    ULong64_t timeStamp;
+    uint16_t energy;
+
+    chain->SetBranchAddress("Channel", &ch);
+    chain->SetBranchAddress("Board", &board);
+    chain->SetBranchAddress("Timestamp", &timeStamp);
+    chain->SetBranchAddress("Energy", &energy);
+
+    deque<event *> events;
+
+    int eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = chain->GetEntries();
+    }
+
+    for (int i = 0; i < eventNumb; i++)
+    {
+
+        chain->GetEntry(i);
+
+        auto delayedTime = timeStamp - delay[board][ch];
+
+        events.push_back(new event());
+
+        events.back()->setDetectorType(mask[board][ch]);
+        events.back()->setDetectorLut(lut[board][ch]);
+
+        events.back()->setEnergy(energy);
+        events.back()->setTimeStamp(delayedTime);
+        events.back()->setBoardNumb(board);
+        events.back()->setChannelNumb(ch);
+
+        events.back()->setPSD(0);
+        events.back()->setCoincPair(0);
+
+        events.back()->setCoincPairType(coincPairTypes[make_pair(board, ch)]);
+    }
+
+    chain->Reset();
+    delete chain;
+
+    tFile->Close();
+    delete tFile;
+
+    return events;
+}
+
+vector<delayEvent> compassLoader::readDelayEvents()
+{
+    cout << "compass loader delay is not implemented" << endl;
+    abort();
+    return {};
+}

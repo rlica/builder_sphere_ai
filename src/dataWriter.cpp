@@ -392,9 +392,11 @@ void rootDataWriter::initializeTree()
 
     varEventTree->Branch("vetoEnergy", &varVetoEnergy);
 
-    varEventTree->Branch("relativeTime", &varRelativeTime);
+    varEventTree->Branch("relativeNsTime", &varRelativeNsTime);
+    varEventTree->Branch("relativePsTime", &varRelativePsTime);
 
-    varEventTree->Branch("vetoRelativeTime", &varVetoRelativeTime);
+    varEventTree->Branch("vetoRelativeNsTime", &varVetoRelativeNsTime);
+    varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
 }
 
 void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
@@ -409,8 +411,11 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
     varVetoEnergy.clear();
 
-    varRelativeTime.clear();
-    varVetoRelativeTime.clear();
+    varRelativeNsTime.clear();
+    varRelativePsTime.clear();
+
+    varVetoRelativeNsTime.clear();
+    varVetoRelativePsTime.clear();
 
     for (auto &sig : *events)
     {
@@ -424,17 +429,24 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
         uint16_t fTime = sig[0]->getRelativeTime() / 1000;
         uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-        varRelativeTime.push_back(sig[0]->getRelativeTime());
+        varRelativeNsTime.push_back(fTime);
+        varRelativePsTime.push_back(sTime);
 
         if (sig.size() == 2)
         {
             varVetoEnergy.push_back(sig[1]->getEnergy());
-            varVetoRelativeTime.push_back(sig[1]->getRelativeTime());
+
+            uint16_t fTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[1]->getRelativeTime() % 1000;
+
+            varVetoRelativeNsTime.push_back(fTime);
+            varVetoRelativePsTime.push_back(sTime);
         }
         else
         {
             varVetoEnergy.push_back(0);
-            varVetoRelativeTime.push_back(0);
+            varVetoRelativeNsTime.push_back(0);
+            varVetoRelativePsTime.push_back(0);
         }
     }
 
@@ -467,10 +479,7 @@ void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
 
 void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
 {
-    string outFileName = string(varConfig["output"]["path"]) + "/";
-    outFileName += string(varConfig["delay"]["outFileName"]);
-
-    vector<short> varBlockBuffer;
+    map<int, vector<short>> varBlockBuffers;
 
     for (auto &hist : delayHist)
     {
@@ -480,22 +489,30 @@ void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
             {
                 int binContent = hist.second->GetBinContent(i + 1);
 
-                varBlockBuffer.push_back(binContent & 0xFFFF);
-                varBlockBuffer.push_back((binContent >> 16) & 0xFFFF);
+                varBlockBuffers[hist.first.first].push_back(binContent & 0xFFFF);
+                varBlockBuffers[hist.first.first].push_back((binContent >> 16) & 0xFFFF);
             }
             else
             {
-                varBlockBuffer.push_back(0);
-                varBlockBuffer.push_back(0);
+                varBlockBuffers[hist.first.first].push_back(0);
+                varBlockBuffers[hist.first.first].push_back(0);
             }
         }
     }
 
-    ofstream outFile(outFileName.c_str());
+    string outFileBase = string(varConfig["output"]["path"]) + "/";
+    outFileBase += string(varConfig["delay"]["outFileName"]);
 
-    outFile.write((char *)&varBlockBuffer[0], varBlockBuffer.size() * sizeof(short));
+    for (auto &buff : varBlockBuffers)
+    {
+        string outFileName = outFileBase + "_" + to_string(buff.first);
 
-    outFile.close();
+        ofstream outFile(outFileName.c_str());
 
-    cout << "results output: " << outFileName << endl;
+        outFile.write((char *)&buff.second[0], buff.second.size() * sizeof(short));
+
+        outFile.close();
+    }
+
+    cout << "results output: " << outFileBase << "_#type" << endl;
 }

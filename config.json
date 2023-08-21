@@ -2,54 +2,30 @@
   "build": {
     "absoluteTime": {"resetGap": 5, "scalePower": -12},
     "antiCoincFlag": [2],
-    "coincMask": [ [1, 0, 0, 0, 0] ],
-    "coincWindow": 1000,
+    "coincMask": [ [2, 0, 0, 0] ],
+    "coincWindow": 50,
     "sortBeforeBuild": true,
-    "typePriority": [0, 1, 2, 3, 4]
+    "typePriority": [0, 1, 2, 3]
   },
   "delay": {
     "energyThreshold": 50,
-    "histBins": 1000,
+    "histBins": 100000,
     "histRange": [0, 4000],
     "outFileName": "results",
-    "refLUT": 2,
+    "refLUT": 0,
     "refTimeOffset": -10,
-    "refType": 1
+    "refType": 0
   },
   "detector": {
-    "coincPairs": [
-      [1, 2, 3, 4,  5, 16, 17, 18, 19, 20, 0, 0, 0, 0, 0, 0],
-      [1, 2, 3, 4,  5, 16, 17, 18, 19, 20, 0, 0, 0, 0, 0, 0],
-      [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0],
-      [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0]
-    ],
-    "delay": [
-      [ 96,  68, 180,  96,  68, 100,  96, 100, 112,  72, 0, 0, 0, 0, 0, 0],
-      [ 76,  76,  76,  84,  76,  60,  68,  68,  68,  68, 0, 0, 0, 0, 0, 0],
-      [316, 340, 208, 192,   0,   0, 340, 180, 312, 148, 0, 0, 0, 0, 0, 0],
-      [  0,   0,   0,   0,   0,  -4,   0,   0,   8,   4, 0, 0, 0, 0, 0, 0],
-      [292, 284, 284, 288, 284, 288, 280, 280, 272, 288, 0, 0, 0, 0, 0, 0]
-    ],
-    "lut": [
-      [ 0,  1,  2,  3,  4, 15, 16, 17, 18, 19, -1, -1,  0,  1,  2, -1],
-      [ 0,  1,  2,  3,  4, 15, 16, 17, 18, 19, -1, -1, -1, -1, -1, -1],
-      [ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, -1, -1,  3,  4,  5, -1],
-      [-1, -1, -1, -1, -1,  0,  1,  2,  3,  4, -1, -1, -1, -1, -1, -1],
-      [ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, -1, -1, -1, -1, -1, -1]
-    ],
-    "type": [
-      [ 0,  0,  0,  0,  0, 0, 0, 0, 0, 0, -1, -1,  3,  3,  3, -1],
-      [ 2,  2,  2,  2,  2, 2, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1],
-      [ 0,  0,  0,  0,  0, 0, 0, 0, 0, 0, -1, -1,  3,  3,  3, -1],
-      [-1, -1, -1, -1, -1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1],
-      [ 2,  2,  2,  2,  2, 2, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1]
-    ]
+    "coincPairs": [ [0,  0, 0, 0, 0, 0, 0, 0] ],
+    "delay"     : [ [0, 10, 0, 0, 0, 0, 0, 0] ],
+    "lut"       : [ [0,  1, 0, 0, 0, 0, 0, 0] ],
+    "type"      : [ [0,  0, 0, 0, 0, 0, 0, 0] ]
   },
   "gasp": {
     "description": {
       "detector": ["energy", "time/1000", "time%1000"],
-      "detectorRaw": ["energy", "time[32-10]", "time[9-0]"],
+      "detectorRaw": ["energy", "time[23-8]", "time[7-0]"],
       "noType": [
         "no types, defined for BGO mostly, which is not written in gasp"
       ],
@@ -59,8 +35,8 @@
         "vetoTime/1000", "vetoTime%1000"
       ],
       "suppressedDetectorRaw": [
-        "energy"         , "time[32-10]"    , "time[9-0]"      ,
-        "vetoEnergy"     , "vetoTime[32-10]", "vetoTime[9-0]"
+        "energy"        , "time[23-8]"    , "time[7-0]"     , "vetoEnergy"    ,
+        "vetoTime[23-8]", "vetoTime[7-0]"
       ],
       "suppressedPsdDetector": [
         "energy"       , "time/1000"    , "time%1000"    , "psd"          ,
@@ -74,14 +50,17 @@
       "detectorRaw"
     ]
   },
-  "general": {"maxCores": 8, "run": "delay", "timeUnitMultiplier": 1000},
+  "general": {"maxCores": 10, "run": "build", "timeUnitMultiplier": 1000},
   "input": {
     "eventCount": 0,
-    "fileFormat": "cap",
-    "fileIdentifier": "test_",
-    "keepIndex": [35, 35],
+    "fileFormat": "compass",
+    "fileIdentifier": "DataR_run_1_z_sus_down",
+    "keepIndex": [1, 1],
     "liveBuild": false,
-    "path": "input"
+    "path": "/home/gabriel/Programare/mihaiChallenge/data"
   },
-  "output": {"fileFormat": "root", "path": "output"}
+  "output": {
+    "fileFormat": "root"                                         ,
+    "path"      : "/home/gabriel/Programare/mihaiChallenge/build"
+  }
 }

@@ -3,7 +3,6 @@
 #include <fstream>
 #include "TH1D.h"
 #include "TFile.h"
-#include "TApplication.h"
 #include <filesystem>
 #include <future>
 #include "TTree.h"
@@ -35,8 +34,6 @@ void printStatus(int finished, int total);
 
 int main(int argc, char **argv)
 {
-    TApplication theApp("theApp", &argc, argv);
-
     json config = readConfigFile("config.json");
 
     try
