@@ -32,6 +32,8 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
     vector<short> eventBuffer;
     eventBuffer.reserve(2 + eventMask.size());
 
+    eventBuffer.push_back(0);
+
     int size = 0;
 
     // size of header and detector mask
