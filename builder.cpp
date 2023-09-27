@@ -44,9 +44,15 @@ pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vect
 double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
 
 void initializeDataLoader(json &config);
+void initializeGlobals(json &config);
 
 dataWriter *writer;
 shared_ptr<dataLoader> loader;
+
+vector<int> typePriority;
+uint32_t coincWindow;
+vector<vector<uint8_t>> lutVect;
+vector<vector<uint8_t>> bTypeVect;
 
 int main(int argc, char **argv)
 {
@@ -57,6 +63,8 @@ int main(int argc, char **argv)
 
         initializeDataLoader(config);
 
+        initializeGlobals(config);
+
         if (config["crtRun"] == "build")
         {
             buildRun(config);
@@ -66,6 +74,15 @@ int main(int argc, char **argv)
             delayRun(config);
         }
     }
+}
+
+void initializeGlobals(json &config)
+{
+    typePriority = config["build"]["typePriority"].get<vector<int>>();
+    coincWindow = config["build"]["coincWindow"].get<uint32_t>() * config["general"]["timeUnitMultiplier"].get<uint32_t>();
+
+    lutVect = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    bTypeVect = config["detector"]["type"].get<vector<vector<uint8_t>>>();
 }
 
 void initializeDataLoader(json &config)
@@ -110,9 +127,6 @@ void initializeDataLoader(json &config)
 pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut)
 {
 
-    vector<vector<uint8_t>> lutVect = config["detector"]["lut"];
-    vector<vector<uint8_t>> bTypeVect = config["detector"]["type"];
-
     for (int i = 0; i < lutVect.size(); i++)
     {
         for (int o = 0; o < lutVect[0].size(); o++)
@@ -136,10 +150,6 @@ void preProcessEvent(json &config, deque<event *> &events)
 
     if (bool(config["build"]["sortBeforeBuild"]))
     {
-        // __gnu_parallel::sort(events.begin(), events.end(),
-        //                      [](event *i, event *j)
-        //                      { return (i->getTimeStamp() < j->getTimeStamp()); });
-
         std::sort(std::execution::par, events.begin(), events.end(),
                   [](event *i, event *j)
                   { return (i->getTimeStamp() < j->getTimeStamp()); });
@@ -207,7 +217,7 @@ void buildRun(json config)
 
     if (eventPos.size())
     {
-        for (int i = 0; i < eventPos.size() - 1; i++)
+        for (size_t i = 0; i < eventPos.size() - 1; i++)
         {
             int cnt = 1;
 
@@ -238,7 +248,7 @@ void buildRun(json config)
         }
     }
 
-    for (auto i : varEventPool)
+    for (auto &i : varEventPool)
     {
         delete i;
     }
@@ -257,7 +267,7 @@ pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vect
     vector<int> evtSize;
     int maxValue = 0;
 
-    for (auto evt : events)
+    for (auto &evt : events)
     {
         evtSize.push_back(distance(evt.first, evt.second));
 
@@ -315,7 +325,7 @@ void addToCheckMask(vector<int> &checkMask, event &evt)
 bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask)
 {
 
-    for (uint i = 0; i < coincMask.size(); i++)
+    for (size_t i = 0; i < coincMask.size(); i++)
     {
         if (checkMask[i] < coincMask[i])
         {
@@ -328,7 +338,7 @@ bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask)
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask)
 {
 
-    for (uint i = 0; i < coincMask.size(); i++)
+    for (size_t i = 0; i < coincMask.size(); i++)
     {
         if (validateSingleMask(coincMask[i], checkMask))
         {
@@ -391,7 +401,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     // sort by (type and timestamp)
     auto start = tempList.begin();
-    for (auto val : config["build"]["typePriority"])
+    for (auto &val : typePriority)
     {
         auto it = std::partition(start, tempList.end(), [val](event *ev)
                                  { return ev->getDetectorType() == val; });
@@ -403,9 +413,6 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
     }
 
     // set relative times
-
-    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
-
     for (int i = 0; i < tempList.size(); i++)
     {
         int32_t relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + coincWindow;
@@ -483,7 +490,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
     }
     // build events with anticoincidence
 
-    std::sort(eventList.begin(), eventList.end(), [](auto i, auto j)
+    std::sort(eventList.begin(), eventList.end(), [](auto &i, auto &j)
               { return (i[0]->getDetectorType() < j[0]->getDetectorType()); });
 
     writer->addBuiltEvent(&eventList, absTime);
@@ -542,7 +549,7 @@ void delayRun(json config)
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
 
-    for (auto evt : events)
+    for (auto &evt : events)
     {
 
         if (get<0>(evt) == refType && get<1>(evt) == refLUT)

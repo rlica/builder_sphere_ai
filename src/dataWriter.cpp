@@ -29,8 +29,8 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
         eventMask[dist] += 1;
     }
 
-    // set a default 0 value for the start of the event
-    vector<short> eventBuffer = vector<short>(1, 0);
+    vector<short> eventBuffer;
+    eventBuffer.reserve(2 + eventMask.size());
 
     int size = 0;
 
@@ -61,6 +61,8 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
     // fill the proper event start value
     eventBuffer[0] = 0xF000 + size;
+
+    eventBuffer.reserve(size + 1);
 
     for (auto &sig : *events)
     {
