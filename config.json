@@ -77,9 +77,9 @@
   },
   "general": {"maxCores": 10, "run": "build", "timeUnitMultiplier": 1000},
   "input": {
-    "eventCount": 10000000,
+    "eventCount": 10000,
     "fileFormat": "cap",
-    "fileIdentifier": "run_50MeV",
+    "fileIdentifier": "Run_old",
     "keepIndex": [1, 1000],
     "liveBuild": false,
     "path": "input"

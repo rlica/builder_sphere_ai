@@ -1,5 +1,4 @@
-#ifndef datawriter_h
-#define datawriter_h
+#pragma once
 
 #include <deque>
 #include <memory>
@@ -142,5 +141,3 @@ private:
 
     map<int, int> varOutputTypes; // detector type - gasp output type
 };
-
-#endif

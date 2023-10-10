@@ -1,5 +1,4 @@
-#ifndef utils_h
-#define utils_h
+#pragma once
 
 #include <chrono>
 #include <iostream>
@@ -338,5 +337,3 @@ private:
         }
     }
 };
-
-#endif

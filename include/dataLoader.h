@@ -1,5 +1,4 @@
-#ifndef dataloader_h
-#define dataloader_h
+#pragma once
 
 #include <iostream>
 #include <fcntl.h>
@@ -22,7 +21,7 @@
 
 using json = nlohmann::json;
 
-typedef variant<PlainData::Reader, PsdData::Reader, RawTimeData::Reader> dataReader;
+typedef variant<PlainData::Reader, WaveData::Reader, PsdData::Reader, RawTimeData::Reader> dataReader;
 typedef tuple<int, int, uint64_t> delayEvent;
 
 class dataLoader
@@ -125,5 +124,3 @@ public:
 
 private:
 };
-
-#endif

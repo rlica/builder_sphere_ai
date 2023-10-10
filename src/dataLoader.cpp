@@ -1,5 +1,6 @@
 #include "dataLoader.h"
 #include <random>
+#include "waveformProcess.h"
 
 deque<event *> rootLoader::readEvents()
 {
@@ -371,9 +372,15 @@ deque<event *> capLoader::readEvents()
         case 1:
             dts = message.getRoot<PsdData>();
             break;
+
+        case 2:
+            dts = message.getRoot<WaveData>();
+            break;
+
         case 5:
             dts = message.getRoot<RawTimeData>();
             break;
+
         default:
             cout << "Unsupported data type: " << dataTypeMap[evtType] << endl;
             abort();
@@ -417,10 +424,31 @@ deque<event *> capLoader::readEvents()
                                       
                                         ev->setTimeStamp(delayedTime);
 
+                                    }  else if constexpr (is_same_v<T, WaveEvent::Reader>) {
+                                        
+                                        uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
+                                        ev->setTimeStamp(delayedTime);
+
+
+                                        // some procedure to extract from waveform
+                                        // auto wave = proEvent[i].getWaveform1();
+
+                                        // if(wave.size()){   
+
+                                        //     vector<int16_t> vecWave = vector<int16_t>(wave.size(), 0);
+
+                                        //     for(int i = 0; i < vecWave.size(); i++)
+                                        //     {
+                                        //         vecWave[i] = wave[i];    
+                                        //     }     
+
+                                        //     extractTime(vecWave);
+                                        // }
+
+
                                     } else {
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
                                         ev->setTimeStamp(delayedTime);
-                                        
                                     }
 
 
@@ -699,6 +727,10 @@ vector<delayEvent> capLoader::readDelayEvents()
 
                     case 1:
                         dts = message.getRoot<PsdData>();
+                        break;
+
+                    case 2:
+                        dts = message.getRoot<WaveData>();
                         break;
 
                     case 5:
