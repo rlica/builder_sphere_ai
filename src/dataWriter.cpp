@@ -484,22 +484,33 @@ void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
 void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
 {
     map<int, vector<short>> varBlockBuffers;
+    vector<short> source = vector<short>(pow(2, 17), 0);
 
     for (auto &hist : delayHist)
     {
+        auto handle = hist.first.first;
+        auto lut = hist.first.second;
+
+        auto target = hist.first.second * pow(2, 17);
+
+        while (varBlockBuffers[handle].size() != target)
+        {
+            std::move(source.begin(), source.end(), std::back_inserter(varBlockBuffers[handle]));
+        }
+
         for (int i = 0; i < pow(2, 16); i++)
         {
             if (i < hist.second->GetNbinsX())
             {
                 int binContent = hist.second->GetBinContent(i + 1);
 
-                varBlockBuffers[hist.first.first].push_back(binContent & 0xFFFF);
-                varBlockBuffers[hist.first.first].push_back((binContent >> 16) & 0xFFFF);
+                varBlockBuffers[handle].push_back(binContent & 0xFFFF);
+                varBlockBuffers[handle].push_back((binContent >> 16) & 0xFFFF);
             }
             else
             {
-                varBlockBuffers[hist.first.first].push_back(0);
-                varBlockBuffers[hist.first.first].push_back(0);
+                varBlockBuffers[handle].push_back(0);
+                varBlockBuffers[handle].push_back(0);
             }
         }
     }
