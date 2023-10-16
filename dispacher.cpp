@@ -3,7 +3,6 @@
 #include <fstream>
 #include "TH1D.h"
 #include "TFile.h"
-#include "TApplication.h"
 #include <filesystem>
 #include <future>
 #include "TTree.h"
@@ -28,7 +27,6 @@ void delayRun(json &config);
 
 vector<string> removeKeepFiles(vector<string> input, json config);
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
-pair<int, int> findBoardChannel(json &config, int detType, int lut);
 vector<string> getPathFiles(string path, string identifier = "", string extension = "");
 void dispatchThread(json config);
 vector<string> generateInputFiles(json &config);
@@ -36,8 +34,6 @@ void printStatus(int finished, int total);
 
 int main(int argc, char **argv)
 {
-    TApplication theApp("theApp", &argc, argv);
-
     json config = readConfigFile("config.json");
 
     try
@@ -242,26 +238,6 @@ vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output)
     return input;
 }
 
-pair<int, int> findBoardChannel(json &config, int detType, int lut)
-{
-
-    vector<vector<int>> lutVect = config["detector"]["lut"];
-    vector<vector<int>> bTypeVect = config["detector"]["type"];
-
-    for (int i = 0; i < lutVect.size(); i++)
-    {
-        for (int o = 0; o < lutVect[0].size(); o++)
-        {
-            if (lutVect[i][o] == lut && bTypeVect[i][o] == detType)
-            {
-                return make_pair(i, o);
-            }
-        }
-    }
-
-    return {};
-}
-
 void dispatchThread(json config)
 {
     string dump = config.dump();
@@ -297,7 +273,7 @@ vector<string> generateInputFiles(json &config)
 
         string extension = fileExtensions[string(config["output"]["fileFormat"])];
 
-        auto outFiles = getPathFiles(config["output"]["outputPath"], config["input"]["fileIdentifier"], extension);
+        auto outFiles = getPathFiles(config["output"]["path"], config["input"]["fileIdentifier"], extension);
 
         auto finalFiles = removeAlreadyBuilt(inpFiles, outFiles);
 
@@ -360,11 +336,11 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 
     for (auto &str : inpFiles)
     {
-        auto pos = str.find_last_of(".cap");
+        fs::path p(str);
 
-        auto fName = str.substr(pos - 9, 6);
+        string stem = fs::path(str).stem().string();
 
-        auto index = stoi(fName);
+        auto index = stoi(stem.substr(stem.length() - 6));
 
         if (index >= start && index <= stop)
         {

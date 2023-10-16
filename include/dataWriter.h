@@ -1,5 +1,4 @@
-#ifndef datawriter_h
-#define datawriter_h
+#pragma once
 
 #include <deque>
 #include <memory>
@@ -11,6 +10,7 @@
 #include <climits>
 #include "TFile.h"
 #include "TTree.h"
+#include "TH1I.h"
 
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
@@ -20,6 +20,8 @@
 #define PSD_DETECTOR 2
 #define SUPPRESED_PSD_DETECTOR 3
 #define NO_TYPE 4
+#define DETECTOR_RAW 5
+#define SUPPRESED_DETECTOR_RAW 6
 
 using namespace std;
 using json = nlohmann::json;
@@ -33,10 +35,12 @@ public:
     ~dataWriter(){};
 
     virtual void initializeOutputFile(){};
-    virtual void addBuiltEvent(vector<event *> *events, int64_t time){};
+    virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time){};
 
     virtual void writeData(){};
     virtual void closeFile(){};
+
+    virtual void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist){};
 
     virtual void setConfig(json config);
 
@@ -57,9 +61,14 @@ class rootDataWriter : public dataWriter
 {
 
 public:
+    rootDataWriter(){};
+
     rootDataWriter(string file, int numb);
     void initializeOutputFile();
-    void addBuiltEvent(vector<event *> *events, int64_t time);
+    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+
+    void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
+
     void closeFile();
 
     vector<uint16_t> varDetectorLUT;
@@ -88,12 +97,15 @@ class gaspDataWriter : public dataWriter
 {
 
 public:
+    gaspDataWriter(){};
     gaspDataWriter(string file, int numb);
 
     void initializeOutputFile();
-    void addBuiltEvent(vector<event *> *events, int64_t time);
+    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
 
     void writeData();
+    void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
+
     void closeFile();
 
     void setConfig(json config);
@@ -119,13 +131,13 @@ private:
     int64_t resetTime = std::numeric_limits<int64_t>::min();
     int64_t prevTime = std::numeric_limits<int64_t>::min();
 
-    map<string, int> detectorTypes = {{"detector", 4},
-                                      {"suppressedDetector", 7},
-                                      {"psdDetector", 5},
-                                      {"suppressedPsdDetector", 8}};
+    map<int, int> detectorTypeSize = {{DETECTOR, 4},
+                                      {DETECTOR_RAW, 4},
+                                      {SUPPRESED_DETECTOR, 7},
+                                      {SUPPRESED_DETECTOR_RAW, 7},
+                                      {PSD_DETECTOR, 5},
+                                      {SUPPRESED_PSD_DETECTOR, 8},
+                                      {NO_TYPE, 0}};
 
-    vector<int> varParamMask;
-    vector<int> varOutputTypes;
+    map<int, int> varOutputTypes; // detector type - gasp output type
 };
-
-#endif

@@ -92,3 +92,14 @@ struct Dataset {
         waveform @5: List(Int16);
     }
 }
+
+struct DispatchState{
+    id @0: UInt16;
+    state @1: Text;
+    progress @2: Float32;
+    time @3: UInt32;    
+}
+
+interface BuilderState{
+    update @0 (state: DispatchState) -> ();
+}

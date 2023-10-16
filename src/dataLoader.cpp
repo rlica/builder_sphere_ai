@@ -1,17 +1,19 @@
 #include "dataLoader.h"
 #include <random>
+#include "waveformProcess.h"
 
 deque<event *> rootLoader::readEvents()
 {
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
 
-    vector<vector<int>> boards = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> channels = vector<vector<int>>(5, vector<int>(50, -100));
-    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<uint8_t>> boards = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
+    vector<vector<uint8_t>> channels = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
+
+    vector<vector<int>> delay = getDelayVector(config);
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
 
     uint16_t lut;
     uint16_t dType;
@@ -49,7 +51,7 @@ deque<event *> rootLoader::readEvents()
         auto board = boards[dType][lut];
         auto ch = channels[dType][lut];
 
-        if (board == -100)
+        if (board == 255)
         {
 
             auto boardChannel = findBoardChannel(dType, lut);
@@ -63,12 +65,13 @@ deque<event *> rootLoader::readEvents()
         events.push_back(new event());
 
         events.back()->setDetectorType(dType);
+        events.back()->setDetectorLut(lut);
+
         events.back()->setEnergy(energy);
         events.back()->setTimeStamp(delayedTime);
         events.back()->setBoardNumb(board);
         events.back()->setChannelNumb(ch);
 
-        events.back()->setLutNumb(lut);
         events.back()->setCoincPair(coincPairs[board][ch]);
 
         events.back()->setPSD(psd * 10000);
@@ -113,11 +116,12 @@ deque<event *> protoLoader::readEvents()
 
     auto fd = open(fileName.c_str(), O_RDONLY);
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    vector<vector<int>> delay = getDelayVector(config);
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes = findCoincPairTypes();
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
     kj::FdInputStream fdStream(fd);
@@ -141,7 +145,8 @@ deque<event *> protoLoader::readEvents()
 
             ev->setBoardNumb(brd);
             ev->setChannelNumb(ch);
-            ev->setLutNumb(lut[brd][ch]);
+
+            ev->setDetectorLut(lut[brd][ch]);
             ev->setDetectorType(mask[brd][ch]);
 
             ev->setEnergy(proEvent[i].getEnergy());
@@ -151,16 +156,9 @@ deque<event *> protoLoader::readEvents()
             ev->setTimeStamp(delayedTime);
 
             // coinc
-            ev->setCoincPair(coincPair[brd][ch]);
+            ev->setCoincPair(coincPairs[brd][ch]);
 
-            auto findPair = make_pair(brd, ch);
-
-            if (!coincPairTypes.count(findPair))
-            {
-                coincPairTypes[findPair] = findCoincPairType(brd, ch);
-            }
-
-            ev->setCoincPairType(coincPairTypes[findPair]);
+            ev->setCoincPairType(coincPairTypes[make_pair(brd, ch)]);
 
             if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
             {
@@ -183,11 +181,14 @@ deque<event *> delilaLoader::readEvents()
 {
 
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
+    vector<vector<int>> delay = getDelayVector(config);
+
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
 
     string fileName = config["crtFile"];
 
@@ -225,20 +226,18 @@ deque<event *> delilaLoader::readEvents()
         int board = Mod;
         int ch = Ch;
 
-        auto lut = config["detector"]["lut"][board][ch];
-        auto dType = config["detector"]["type"][board][ch];
-
         uint64_t delayedTime = timeStamp - delay[board][ch];
 
         events.push_back(new event());
 
-        events.back()->setDetectorType(dType);
+        events.back()->setDetectorLut(lut[board][ch]);
+        events.back()->setDetectorType(mask[board][ch]);
+
         events.back()->setEnergy(energy);
         events.back()->setTimeStamp(delayedTime);
         events.back()->setBoardNumb(board);
         events.back()->setChannelNumb(ch);
 
-        events.back()->setLutNumb(lut);
         events.back()->setCoincPair(coincPairs[board][ch]);
 
         auto findPair = make_pair(board, ch);
@@ -268,9 +267,9 @@ deque<event *> delilaLoader::readEvents()
 deque<event *> threeMVLoader::readEvents()
 {
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+    vector<vector<int>> delay = getDelayVector(config);
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
 
     uint16_t ch;
@@ -310,12 +309,12 @@ deque<event *> threeMVLoader::readEvents()
         events.push_back(new event());
 
         events.back()->setDetectorType(mask[board][ch]);
+        events.back()->setDetectorLut(lut[board][ch]);
+
         events.back()->setEnergy(energy);
         events.back()->setTimeStamp(delayedTime);
         events.back()->setBoardNumb(board);
         events.back()->setChannelNumb(ch);
-
-        events.back()->setLutNumb(lut[board][ch]);
 
         events.back()->setPSD(psd);
     }
@@ -345,11 +344,14 @@ deque<event *> capLoader::readEvents()
 
     auto fd = open(fileName.c_str(), O_RDONLY);
 
-    vector<vector<int>> delay = getDelayVector(config["detector"]["delayNs"]);
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-    vector<vector<int>> coincPair = config["detector"]["coincPairs"].get<vector<vector<int>>>();
-    map<pair<int, int>, pair<int, int>> coincPairTypes;
+    vector<vector<int>> delay = getDelayVector(config);
+
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
+
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
     kj::FdInputStream fdStream(fd);
@@ -370,9 +372,15 @@ deque<event *> capLoader::readEvents()
         case 1:
             dts = message.getRoot<PsdData>();
             break;
+
+        case 2:
+            dts = message.getRoot<WaveData>();
+            break;
+
         case 5:
             dts = message.getRoot<RawTimeData>();
             break;
+
         default:
             cout << "Unsupported data type: " << dataTypeMap[evtType] << endl;
             abort();
@@ -396,7 +404,8 @@ deque<event *> capLoader::readEvents()
 
                                     ev->setBoardNumb(brd);
                                     ev->setChannelNumb(ch);
-                                    ev->setLutNumb(lut[brd][ch]);
+
+                                    ev->setDetectorLut(lut[brd][ch]);
                                     ev->setDetectorType(mask[brd][ch]);
 
                                     ev->setEnergy(proEvent[i].getEnergy());
@@ -408,27 +417,43 @@ deque<event *> capLoader::readEvents()
                                     }
 
                                     if constexpr (is_same_v<T,  RawTimeEvent::Reader>){   
-
-                                        uint16_t fineTs = proEvent[i].getFineTimestamp() * 1000 / 1024;
-                                        uint64_t ts = proEvent[i].getTimestamp() * 1000 + fineTs ;
+                                                                                
+                                        uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
 
                                         uint64_t delayedTime = ts - delay[brd][ch];
-
-                                        ev->setRawTs(proEvent[i].getTimestamp());
-                                        ev->setRawFineTs(proEvent[i].getFineTimestamp());
-                                        
+                                      
                                         ev->setTimeStamp(delayedTime);
 
-                                    } else {
+                                    }  else if constexpr (is_same_v<T, WaveEvent::Reader>) {
                                         
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
                                         ev->setTimeStamp(delayedTime);
-                                        
+
+
+                                        // some procedure to extract from waveform
+                                        // auto wave = proEvent[i].getWaveform1();
+
+                                        // if(wave.size()){   
+
+                                        //     vector<int16_t> vecWave = vector<int16_t>(wave.size(), 0);
+
+                                        //     for(int i = 0; i < vecWave.size(); i++)
+                                        //     {
+                                        //         vecWave[i] = wave[i];    
+                                        //     }     
+
+                                        //     extractTime(vecWave);
+                                        // }
+
+
+                                    } else {
+                                        uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
+                                        ev->setTimeStamp(delayedTime);
                                     }
 
 
                                     // coinc
-                                    ev->setCoincPair(coincPair[brd][ch]);
+                                    ev->setCoincPair(coincPairs[brd][ch]);
 
                                     auto findPair = make_pair(brd, ch);
 
@@ -497,7 +522,7 @@ vector<delayEvent> rootLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (int i = 0; i < eventNumb; i++)
     {
@@ -537,7 +562,7 @@ vector<delayEvent> protoLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (auto fileName : files)
     {
@@ -629,7 +654,7 @@ vector<delayEvent> threeMVLoader::readDelayEvents()
     int refLUT = config["delay"]["refLUT"];
     int refType = config["delay"]["refType"];
     int tresh = config["delay"]["energyThreshold"];
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (int i = 0; i < eventNumb; i++)
     {
@@ -677,7 +702,7 @@ vector<delayEvent> capLoader::readDelayEvents()
 
     int tresh = config["delay"]["energyThreshold"];
 
-    int offset = config["delay"]["refTimeOffset"];
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
 
     for (auto fileName : files)
     {
@@ -693,11 +718,9 @@ vector<delayEvent> capLoader::readDelayEvents()
 
             dataReader dts = message.getRoot<PlainData>();
 
-            int evtType;
-
             visit([&](auto &data)
                   { 
-                    
+
                    switch(data.getType()){
                     case 0:
                         break;
@@ -706,12 +729,16 @@ vector<delayEvent> capLoader::readDelayEvents()
                         dts = message.getRoot<PsdData>();
                         break;
 
+                    case 2:
+                        dts = message.getRoot<WaveData>();
+                        break;
+
                     case 5:
                         dts = message.getRoot<RawTimeData>();
                         break;
 
                     default:
-                        cout << "Unsupported data type: " << dataTypeMap[evtType] << endl;
+                        cout << "Unsupported data type: " << dataTypeMap[data.getType()] << endl;
                         abort();
                         break;
 
@@ -725,7 +752,7 @@ vector<delayEvent> capLoader::readDelayEvents()
 
                       for (uint i = 0; i < proEvent.size(); i++)
                       {
-                        
+
                           using T = decay_t<decltype(proEvent[i])>;
 
                           auto brd = proEvent[i].getBoard();
@@ -744,8 +771,8 @@ vector<delayEvent> capLoader::readDelayEvents()
                                    uint16_t fineTs = proEvent[i].getFineTimestamp() * 1000 / 1024;
                                    timeStamp = proEvent[i].getTimestamp() * 1000 + fineTs ;
 
-                               } else {                            
-                                   timeStamp = proEvent[i].getTimestamp();
+                               } else {       
+                                  timeStamp = proEvent[i].getTimestamp();
                                }
 
                               if (dType == refType && dLut == refLUT)
@@ -774,22 +801,22 @@ vector<delayEvent> capLoader::readDelayEvents()
     return events;
 }
 
-vector<vector<int>> dataLoader::getDelayVector(json delay)
+vector<vector<int>> dataLoader::getDelayVector(json &config)
 {
-    vector<vector<int>> tempDelay = delay.get<vector<vector<int>>>();
+    vector<vector<int>> tempDelay = config["detector"]["delay"].get<vector<vector<int>>>();
 
     for (auto &board : tempDelay)
     {
         for (auto &ch : board)
         {
-            ch = ch * 1000;
+            ch = ch * int(config["general"]["timeUnitMultiplier"]);
         }
     }
 
     return tempDelay;
 }
 
-pair<int, int> dataLoader::findBoardChannel(int detType, int lut)
+pair<uint8_t, uint8_t> dataLoader::findBoardChannel(uint8_t detType, uint8_t lut)
 {
 
     vector<vector<int>> lutVect = config["detector"]["lut"];
@@ -813,32 +840,199 @@ pair<int, int> dataLoader::findBoardChannel(int detType, int lut)
     return {-1, -1};
 }
 
-pair<int, int> dataLoader::findCoincPairType(int brd, int ch)
+pair<uint8_t, uint8_t> dataLoader::findCoincPairType(uint8_t brd, uint8_t ch)
 {
 
-    int foundBrd = 0;
+    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
 
-    int pair = config["detector"]["coincPairs"][brd][ch];
+    int pair = coincPairs[brd][ch];
 
-    for (auto i : config["detector"]["coincPairs"])
+    if (pair != 0)
     {
-        auto pos = find(i.begin(), i.end(), pair);
-
-        if (pos != i.end())
+        for (int iBr = 0; iBr < coincPairs.size(); iBr++)
         {
-
-            if (brd != foundBrd || ch != distance(i.begin(), pos))
+            for (int iCh = 0; iCh < coincPairs[0].size(); iCh++)
             {
-
-                auto p = make_pair(config["detector"]["type"][foundBrd][distance(i.begin(), pos)],
-                                   config["detector"]["lut"][foundBrd][distance(i.begin(), pos)]);
-
-                return p;
+                if (coincPairs[iBr][iCh] == pair && !(iBr == brd && iCh == ch))
+                {
+                    return make_pair(mask[iBr][iCh], lut[iBr][iCh]);
+                }
             }
         }
-
-        foundBrd += 1;
     }
 
-    return make_pair(0, -100);
+    return make_pair(-1, -1);
+}
+
+map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> dataLoader::findCoincPairTypes()
+{
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairs;
+
+    vector<vector<int>> lutVect = config["detector"]["lut"];
+    vector<vector<int>> bTypeVect = config["detector"]["type"];
+
+    for (int i = 0; i < lutVect.size(); i++)
+    {
+        for (int o = 0; o < lutVect[0].size(); o++)
+        {
+            coincPairs[make_pair(i, o)] = findCoincPairType(i, o);
+        }
+    }
+
+    return coincPairs;
+}
+
+deque<event *> bellLoader::readEvents()
+{
+
+    vector<vector<int>> delay = getDelayVector(config);
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes = findCoincPairTypes();
+
+    uint16_t dLut;
+    uint16_t energy;
+    ULong64_t timeStamp;
+
+    string fileName = config["crtFile"];
+
+    auto tFile = new TFile(fileName.c_str());
+
+    auto chain = (TTree *)tFile->Get("events");
+
+    chain->SetBranchAddress("energy", &energy);
+    chain->SetBranchAddress("boardTimeStamp", &timeStamp);
+    chain->SetBranchAddress("detectorLUT", &dLut);
+
+    deque<event *> events;
+
+    int eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = chain->GetEntries();
+    }
+
+    int board = 0;
+    int entry = 0;
+    int ch = 0;
+
+    for (int i = 0; i < eventNumb; i++)
+    {
+
+        chain->GetEntry(i);
+
+        ch = dLut;
+
+        auto delayedTime = timeStamp - delay[board][ch];
+
+        events.push_back(new event());
+
+        events.back()->setDetectorType(mask[board][ch]);
+        events.back()->setDetectorLut(lut[board][ch]);
+
+        events.back()->setEnergy(energy);
+        events.back()->setTimeStamp(delayedTime);
+        events.back()->setBoardNumb(board);
+        events.back()->setChannelNumb(ch);
+
+        events.back()->setPSD(0);
+        events.back()->setCoincPair(0);
+
+        events.back()->setCoincPairType(coincPairTypes[make_pair(board, ch)]);
+    }
+
+    chain->Reset();
+    delete chain;
+
+    tFile->Close();
+    delete tFile;
+
+    return events;
+}
+
+vector<delayEvent> bellLoader::readDelayEvents()
+{
+    cout << "bell loader delay is not implemented" << endl;
+    abort();
+    return {};
+}
+
+deque<event *> compassLoader::readEvents()
+{
+
+    vector<vector<int>> delay = getDelayVector(config);
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<int>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<int>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes = findCoincPairTypes();
+
+    string fileName = config["crtFile"];
+
+    auto tFile = new TFile(fileName.c_str());
+
+    auto chain = (TTree *)tFile->Get("Data_R");
+
+    uint16_t ch;
+    uint16_t board;
+    ULong64_t timeStamp;
+    uint16_t energy;
+
+    chain->SetBranchAddress("Channel", &ch);
+    chain->SetBranchAddress("Board", &board);
+    chain->SetBranchAddress("Timestamp", &timeStamp);
+    chain->SetBranchAddress("Energy", &energy);
+
+    deque<event *> events;
+
+    int eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = chain->GetEntries();
+    }
+
+    for (int i = 0; i < eventNumb; i++)
+    {
+
+        chain->GetEntry(i);
+
+        auto delayedTime = timeStamp - delay[board][ch];
+
+        events.push_back(new event());
+
+        events.back()->setDetectorType(mask[board][ch]);
+        events.back()->setDetectorLut(lut[board][ch]);
+
+        events.back()->setEnergy(energy);
+        events.back()->setTimeStamp(delayedTime);
+        events.back()->setBoardNumb(board);
+        events.back()->setChannelNumb(ch);
+
+        events.back()->setPSD(0);
+        events.back()->setCoincPair(0);
+
+        events.back()->setCoincPairType(coincPairTypes[make_pair(board, ch)]);
+    }
+
+    chain->Reset();
+    delete chain;
+
+    tFile->Close();
+    delete tFile;
+
+    return events;
+}
+
+vector<delayEvent> compassLoader::readDelayEvents()
+{
+    cout << "compass loader delay is not implemented" << endl;
+    abort();
+    return {};
 }

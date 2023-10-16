@@ -5,3 +5,4 @@ build
 builder
 rootInput
 *.root
+src/*.o

@@ -1,143 +1,154 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#", 
-    "type": "object", 
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
     "properties": {
         "build": {
-            "type": "object", 
+            "type": "object",
             "properties": {
                 "absoluteTime": {
-                    "type": "object", 
+                    "type": "object",
                     "properties": {
-                        "resetGap"  : {"type": "integer"}, 
-                        "scalePower": {"type": "integer"}  
-                    }, 
-                    "required": ["resetGap", "scalePower"]
-                }, 
+                        "resetGap"  : {"type": "integer"},
+                        "scalePower": {"type": "integer"}
+                    },
+                    "required": ["resetGap", "scalePower"],
+                    "additionalProperties": false
+                },
                 "antiCoincFlag": {
-                    "type": "array", 
+                    "type": "array",
                     "items": {"type": "integer"}
-                }, 
+                },
                 "coincMask": {
-                    "type": "array", 
+                    "type": "array",
                     "items": { "type": "array", "items": {"type": "integer"} }
-                }, 
-                "coincWindow": {"type": "integer"}, 
-                "sortBeforeBuild": {"type": "boolean"}, 
+                },
+                "coincWindow": {"type": "integer"},
+                "sortBeforeBuild": {"type": "boolean"},
                 "typePriority": {
-                    "type": "array", 
+                    "type": "array",
                     "items": {"type": "integer"}
                 }
-            }, 
+            },
             "required": [
-                "absoluteTime"   , "antiCoincFlag"  , "coincMask"      , 
-                "coincWindow"    , "sortBeforeBuild", "typePriority"   
-            ]
-        }, 
+                "absoluteTime"   , "antiCoincFlag"  , "coincMask"      ,
+                "coincWindow"    , "sortBeforeBuild", "typePriority"
+            ],
+            "additionalProperties": false
+        },
         "delay": {
-            "type": "object", 
+            "type": "object",
             "properties": {
-                "energyThreshold": {"type": "integer"}, 
-                "histBins": {"type": "integer"}, 
+                "energyThreshold": {"type": "integer"},
+                "histBins": {"type": "integer"},
                 "histRange": {
-                    "type": "array", 
-                    "items": {"type": "integer"}, 
-                    "minItems": 2, 
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 2,
                     "maxItems": 2
-                }, 
-                "outFileName": {"type": "string"}, 
-                "refLUT": {"type": "integer"}, 
-                "refTimeOffset": {"type": "integer"}, 
+                },
+                "outFileName": {"type": "string"},
+                "refLUT": {"type": "integer"},
+                "refTimeOffset": {"type": "integer"},
                 "refType": {"type": "integer"}
-            }, 
+            },
             "required": [
-                "energyThreshold", "histBins"       , "histRange"      , 
-                "outFileName"    , "refLUT"         , "refTimeOffset"  , 
-                "refType"        
-            ]
-        }, 
+                "energyThreshold", "histBins"       , "histRange"      ,
+                "outFileName"    , "refLUT"         , "refTimeOffset"  ,
+                "refType"
+            ],
+            "additionalProperties": false
+        },
         "detector": {
-            "type": "object", 
+            "type": "object",
             "properties": {
                 "coincPairs": {
-                    "type": "array", 
-                    "items": {
-                        "type": "array", 
-                        "items": {"type": "integer", "minimum": 0, "maximum": 1}
-                    }
-                }, 
-                "delayNs": {
-                    "type": "array", 
+                    "type": "array",
                     "items": { "type": "array", "items": {"type": "integer"} }
-                }, 
+                },
+                "delay": {
+                    "type": "array",
+                    "items": { "type": "array", "items": {"type": "integer"} }
+                },
                 "lut": {
-                    "type": "array", 
+                    "type": "array",
                     "items": { "type": "array", "items": {"type": "integer"} }
-                }, 
+                },
                 "type": {
-                    "type": "array", 
+                    "type": "array",
                     "items": { "type": "array", "items": {"type": "integer"} }
                 }
-            }, 
-            "required": ["coincPairs", "delayNs", "lut", "type"]
-        }, 
+            },
+            "required": ["coincPairs", "delay", "lut", "type"],
+            "additionalProperties": false
+        },
         "gasp": {
-            "type": "object", 
+            "type": "object",
             "properties": {
                 "typeOutputFormat": {
-                    "type": "array", 
+                    "type": "array",
                     "items": {
-                        "type": "string", 
+                        "type": "string",
                         "enum": [
-                            "noType"               , 
-                            "detector"             , 
-                            "psdDetector"          , 
-                            "suppressedDetector"   , 
-                            "suppressedPsdDetector"  
+                            "noType"               ,
+                            "detector"             ,
+                            "detectorRaw"          ,
+                            "psdDetector"          ,
+                            "suppressedDetector"   ,
+                            "suppressedDetectorRaw",
+                            "suppressedPsdDetector"
                         ]
                     }
                 }
-            }, 
+            },
             "required": ["typeOutputFormat"]
-        }, 
+        },
         "general": {
-            "type": "object", 
+            "type": "object",
             "properties": {
-                "maxCores": {"type": "integer"}, 
-                "run"     : {"type": "string" }  
-            }, 
-            "required": ["maxCores", "run"]
-        }, 
+                "maxCores"          : {"type": "integer"},
+                "run"               : {"type": "string" },
+                "timeUnitMultiplier": {"type": "integer"}
+            },
+            "required": ["maxCores", "run", "timeUnitMultiplier"],
+            "additionalProperties": false
+        },
         "input": {
-            "type": "object", 
+            "type": "object",
             "properties": {
-                "eventCount": {"type": "integer"}, 
+                "eventCount": {"type": "integer"},
                 "fileFormat": {
-                    "type": "string", 
-                    "enum": ["root", "proto", "cap", "delila", "3MV"]
-                }, 
-                "fileIdentifier": {"type": "string"}, 
+                    "type": "string",
+                    "enum": [
+                        "root"   , "proto"  , "cap"    , "delila" , "3MV"    ,
+                        "bell"   , "compass"
+                    ]
+                },
+                "fileIdentifier": {"type": "string"},
                 "keepIndex": {
-                    "type": "array", 
-                    "items": {"type": "integer"}, 
-                    "minItems": 2, 
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 2,
                     "maxItems": 2
-                }, 
-                "liveBuild": {"type": "boolean"}, 
+                },
+                "liveBuild": {"type": "boolean"},
                 "path": {"type": "string"}
-            }, 
+            },
             "required": [
-                "eventCount"    , "fileFormat"    , "fileIdentifier", 
-                "keepIndex"     , "liveBuild"     , "path"          
-            ]
-        }, 
+                "eventCount"    , "fileFormat"    , "fileIdentifier",
+                "keepIndex"     , "liveBuild"     , "path"
+            ],
+            "additionalProperties": false
+        },
         "output": {
-            "type": "object", 
+            "type": "object",
             "properties": {
-                "fileFormat": { "type": "string", "enum": ["gasp", "root"] }, 
-                "outputPath": { "type": "string"                           }  
-            }, 
-            "required": ["fileFormat", "outputPath"]
+                "fileFormat": { "type": "string", "enum": ["gasp", "root"] },
+                "path"      : { "type": "string"                           }
+            },
+            "required": ["fileFormat", "path"],
+            "additionalProperties": false
         }
-    }, 
-    "required": ["build", "delay", "detector", "gasp", "general"]
+    },
+    "required": ["build", "delay", "detector", "gasp", "general"],
+    "additionalProperties": false
 }

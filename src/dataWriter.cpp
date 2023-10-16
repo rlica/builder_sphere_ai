@@ -16,26 +16,28 @@ gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
     initializeRecordHeader();
 }
 
-void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
+void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
 {
+    vector<int> eventMask = vector<int>(varOutputTypes.size(), 0);
 
-    vector<int> eventMask = vector<int>(varConfig["gasp"]["detectorTypes"], 0);
-
-    for (auto i : *events)
+    for (auto &sig : *events)
     {
-        eventMask[i->getDetectorType()] += 1;
+        auto it = varOutputTypes.find(sig[0]->getDetectorType());
+
+        auto dist = distance(varOutputTypes.begin(), it);
+
+        eventMask[dist] += 1;
     }
 
-    // pop bgo from event mask
-    eventMask.erase(eventMask.begin() + 2);
+    vector<short> eventBuffer;
+    eventBuffer.reserve(2 + eventMask.size());
 
-    // set a default 0 value for the start of the event
-    vector<short> eventBuffer = vector<short>(1, 0);
+    eventBuffer.push_back(0);
 
     int size = 0;
 
     // size of header and detector mask
-    size += varEventHeaderSize + varParamMask.size();
+    size += varEventHeaderSize + varOutputTypes.size();
 
     // this should be from config
     if (time > (prevTime + resetGap))
@@ -47,83 +49,171 @@ void gaspDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
 
     short scaledTime = (time - resetTime) * timeScale;
 
-    // fill header parameters for now they are empty set abs time in 10s per sample
+    // fill header parameters
     eventBuffer.push_back(scaledTime);
 
     // fill detector mask
     for (uint i = 0; i < eventMask.size(); i++)
     {
-        size += eventMask[i] * varParamMask[i];
+        auto it = std::next(varOutputTypes.begin(), i);
+
+        size += eventMask[i] * detectorTypeSize[(*it).second];
         eventBuffer.push_back(eventMask[i]);
     }
 
     // fill the proper event start value
     eventBuffer[0] = 0xF000 + size;
 
-    for (int i = 0; i < events->size(); i++)
+    eventBuffer.reserve(size + 1);
+
+    for (auto &sig : *events)
     {
 
-        switch (varOutputTypes[events->at(i)->getDetectorType()])
+        switch (varOutputTypes[sig[0]->getDetectorType()])
         {
         case DETECTOR:
+        {
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
             break;
+        }
+        case DETECTOR_RAW:
+        {
 
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            int32_t time = sig[0]->getRelativeTime();
+
+            uint16_t sTime = time & 0x3FF;
+            uint16_t fTime = (time >> 10) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
         case SUPPRESED_DETECTOR:
+        {
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-            eventBuffer.push_back(events->at(i)->getVetoEnergy());
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
+            if (sig.size() != 2)
+            {
+                cout << "error: Suppressed detector event must have two signals" << endl;
+                exit(1);
+            }
+
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fVetoTime);
+            eventBuffer.push_back(sVetoTime);
             break;
+        }
+        case SUPPRESED_DETECTOR_RAW:
+        {
 
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            int32_t time = sig[0]->getRelativeTime();
+
+            uint16_t sTime = time & 0x3FF;
+            uint16_t fTime = (time >> 10) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            if (sig.size() != 2)
+            {
+                cout << "error: Suppressed detector raw event must have two signals" << endl;
+                exit(1);
+            }
+
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            time = sig[1]->getRelativeTime();
+
+            sTime = time & 0x3FF;
+            fTime = (time >> 10) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
         case PSD_DETECTOR:
+        {
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-            eventBuffer.push_back(events->at(i)->getPSD());
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
+            eventBuffer.push_back(sig[0]->getPSD());
+        }
         case SUPPRESED_PSD_DETECTOR:
+        {
 
-            eventBuffer.push_back(events->at(i)->getLutNumb());
-            eventBuffer.push_back(events->at(i)->getEnergy());
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
 
-            eventBuffer.push_back(events->at(i)->getRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getRelativeTimePs());
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-            eventBuffer.push_back(events->at(i)->getPSD());
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
 
-            eventBuffer.push_back(events->at(i)->getVetoEnergy());
+            eventBuffer.push_back(sig[0]->getPSD());
 
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimeNs());
-            eventBuffer.push_back(events->at(i)->getVetoRelativeTimePs());
+            if (sig.size() != 2)
+            {
+                cout << "error: Suppressed detector event must have two signals" << endl;
+                exit(1);
+            }
 
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fVetoTime);
+            eventBuffer.push_back(sVetoTime);
             break;
-
+        }
         case NO_TYPE:
+        {
+        }
         default:
+        {
 
-            cout << "default value, is not implemented: " << events->at(i)->getDetectorType() << endl;
+            cout << "default value, is not implemented: " << sig[0]->getDetectorType() << endl;
 
             abort();
 
             break;
+        }
         }
     }
 
@@ -227,10 +317,7 @@ void gaspDataWriter::setConfig(json config)
             typeCount[ch]++;
         }
     }
-
     typeCount.erase(-1);
-
-    varConfig["gasp"]["detectorTypes"] = typeCount.size();
 
     auto outTypes = varConfig["gasp"]["typeOutputFormat"].get<vector<string>>();
 
@@ -240,37 +327,45 @@ void gaspDataWriter::setConfig(json config)
         abort();
     }
 
-    for (auto count : typeCount)
+    for (auto [type, count] : typeCount)
     {
-        auto parSize = detectorTypes[outTypes[count.first]];
 
-        varParamMask.push_back(parSize);
-
-        if (outTypes[count.first] == "suppressedDetector")
+        if (outTypes[type] == "detector")
         {
-            varOutputTypes.push_back(SUPPRESED_DETECTOR);
+            varOutputTypes[type] = DETECTOR;
         }
-        else if (outTypes[count.first] == "detector")
+        else if (outTypes[type] == "detectorRaw")
         {
-            varOutputTypes.push_back(DETECTOR);
+            varOutputTypes[type] = DETECTOR_RAW;
         }
-        else if (outTypes[count.first] == "psdDetector")
+        else if (outTypes[type] == "suppressedDetector")
         {
-            varOutputTypes.push_back(PSD_DETECTOR);
+            varOutputTypes[type] = SUPPRESED_DETECTOR;
         }
-        else if (outTypes[count.first] == "suppresedPsdDetector")
+        else if (outTypes[type] == "suppressedDetectorRaw")
         {
-            varOutputTypes.push_back(SUPPRESED_PSD_DETECTOR);
+            varOutputTypes[type] = SUPPRESED_DETECTOR_RAW;
+        }
+        else if (outTypes[type] == "psdDetector")
+        {
+            varOutputTypes[type] = PSD_DETECTOR;
+        }
+        else if (outTypes[type] == "suppresedPsdDetector")
+        {
+            varOutputTypes[type] = SUPPRESED_PSD_DETECTOR;
         }
         else
         {
-            varOutputTypes.push_back(NO_TYPE);
+            varOutputTypes[type] = NO_TYPE;
         }
     }
 
-    // pop bgo from event mask
-    varParamMask.erase(varParamMask.begin() + 2);
-    varOutputTypes.erase(varOutputTypes.begin() + 2);
+    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
+
+    for (auto m : antiCoincFlags)
+    {
+        varOutputTypes.erase(m);
+    }
 }
 
 rootDataWriter::rootDataWriter(string file, int numb) : dataWriter(file, numb)
@@ -308,7 +403,7 @@ void rootDataWriter::initializeTree()
     varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
 }
 
-void rootDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
+void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
 {
 
     varDetectorLUT.clear();
@@ -326,23 +421,37 @@ void rootDataWriter::addBuiltEvent(vector<event *> *events, int64_t time)
     varVetoRelativeNsTime.clear();
     varVetoRelativePsTime.clear();
 
-    for (uint i = 0; i < events->size(); i++)
+    for (auto &sig : *events)
     {
 
-        varDetectorLUT.push_back(events->at(i)->getLutNumb());
-        varDetectorType.push_back(events->at(i)->getDetectorType());
+        varDetectorLUT.push_back(sig[0]->getDetectorLut());
+        varDetectorType.push_back(sig[0]->getDetectorType());
 
-        varEnergy.push_back(events->at(i)->getEnergy());
+        varEnergy.push_back(sig[0]->getEnergy());
+        varPsd.push_back(sig[0]->getPSD());
 
-        varPsd.push_back(events->at(i)->getPSD());
+        uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+        uint16_t sTime = sig[0]->getRelativeTime() % 1000;
 
-        varVetoEnergy.push_back(events->at(i)->getVetoEnergy());
+        varRelativeNsTime.push_back(fTime);
+        varRelativePsTime.push_back(sTime);
 
-        varRelativeNsTime.push_back(events->at(i)->getRelativeTimeNs());
-        varRelativePsTime.push_back(events->at(i)->getRelativeTimePs());
+        if (sig.size() == 2)
+        {
+            varVetoEnergy.push_back(sig[1]->getEnergy());
 
-        varVetoRelativeNsTime.push_back(events->at(i)->getVetoRelativeTimeNs());
-        varVetoRelativePsTime.push_back(events->at(i)->getVetoRelativeTimePs());
+            uint16_t fTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[1]->getRelativeTime() % 1000;
+
+            varVetoRelativeNsTime.push_back(fTime);
+            varVetoRelativePsTime.push_back(sTime);
+        }
+        else
+        {
+            varVetoEnergy.push_back(0);
+            varVetoRelativeNsTime.push_back(0);
+            varVetoRelativePsTime.push_back(0);
+        }
     }
 
     varEventTree->Fill();
@@ -352,4 +461,73 @@ void rootDataWriter::closeFile()
 {
     varEventTree->Write();
     varOutFile->Close();
+}
+
+void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
+{
+
+    string outFileName = string(varConfig["output"]["path"]) + "/";
+    outFileName += string(varConfig["delay"]["outFileName"]) + ".root";
+
+    auto outFile = TFile(outFileName.c_str(), "RECREATE");
+
+    for (auto &hist : delayHist)
+    {
+        hist.second->Write();
+    }
+
+    outFile.Close();
+
+    cout << "results output: " << outFileName << endl;
+}
+
+void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
+{
+    map<int, vector<short>> varBlockBuffers;
+    vector<short> source = vector<short>(pow(2, 17), 0);
+
+    for (auto &hist : delayHist)
+    {
+        auto handle = hist.first.first;
+        auto lut = hist.first.second;
+
+        auto target = hist.first.second * pow(2, 17);
+
+        while (varBlockBuffers[handle].size() != target)
+        {
+            std::move(source.begin(), source.end(), std::back_inserter(varBlockBuffers[handle]));
+        }
+
+        for (int i = 0; i < pow(2, 16); i++)
+        {
+            if (i < hist.second->GetNbinsX())
+            {
+                int binContent = hist.second->GetBinContent(i + 1);
+
+                varBlockBuffers[handle].push_back(binContent & 0xFFFF);
+                varBlockBuffers[handle].push_back((binContent >> 16) & 0xFFFF);
+            }
+            else
+            {
+                varBlockBuffers[handle].push_back(0);
+                varBlockBuffers[handle].push_back(0);
+            }
+        }
+    }
+
+    string outFileBase = string(varConfig["output"]["path"]) + "/";
+    outFileBase += string(varConfig["delay"]["outFileName"]);
+
+    for (auto &buff : varBlockBuffers)
+    {
+        string outFileName = outFileBase + "_" + to_string(buff.first);
+
+        ofstream outFile(outFileName.c_str());
+
+        outFile.write((char *)&buff.second[0], buff.second.size() * sizeof(short));
+
+        outFile.close();
+    }
+
+    cout << "results output: " << outFileBase << "_#type" << endl;
 }

@@ -1,5 +1,4 @@
-#ifndef dataloader_h
-#define dataloader_h
+#pragma once
 
 #include <iostream>
 #include <fcntl.h>
@@ -22,7 +21,7 @@
 
 using json = nlohmann::json;
 
-typedef variant<PlainData::Reader, PsdData::Reader, RawTimeData::Reader> dataReader;
+typedef variant<PlainData::Reader, WaveData::Reader, PsdData::Reader, RawTimeData::Reader> dataReader;
 typedef tuple<int, int, uint64_t> delayEvent;
 
 class dataLoader
@@ -35,9 +34,12 @@ public:
 
 protected:
     json config;
-    vector<vector<int>> getDelayVector(json delay);
-    pair<int, int> findBoardChannel(int detType, int lut);
-    pair<int, int> findCoincPairType(int brd, int ch);
+    vector<vector<int>> getDelayVector(json &config);
+
+    pair<uint8_t, uint8_t> findBoardChannel(uint8_t type, uint8_t lut);
+    pair<uint8_t, uint8_t> findCoincPairType(uint8_t brd, uint8_t ch);
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> findCoincPairTypes();
 };
 
 class rootLoader : public dataLoader
@@ -101,4 +103,24 @@ private:
                                     {5, "RAW_TIME_DATA"}};
 };
 
-#endif
+class bellLoader : public dataLoader
+{
+
+public:
+    bellLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+private:
+};
+
+class compassLoader : public dataLoader
+{
+
+public:
+    compassLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+private:
+};
