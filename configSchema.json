@@ -120,7 +120,7 @@
                     "type": "string",
                     "enum": [
                         "root"   , "proto"  , "cap"    , "delila" , "3MV"    ,
-                        "bell"   , "compass"
+                        "bell"   , "compass", "test"
                     ]
                 },
                 "fileIdentifier": {"type": "string"},

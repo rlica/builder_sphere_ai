@@ -103,6 +103,25 @@ private:
                                     {5, "RAW_TIME_DATA"}};
 };
 
+class testLoader : public dataLoader
+{
+
+public:
+    testLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+private:
+    map<int, string> dataTypeMap = {{0, "FULL_DATA"},
+                                    {1, "PLAIN_DATA"},
+                                    {2, "PSD_DATA"},
+                                    {3, "WAVE_DATA"},
+                                    {4, "DUAL_WAVE_DATA"},
+                                    {5, "RAW_TIME_DATA"},
+                                    {6, "CROSS_DATA"},
+                                    {7, "PSD_WAVE_DATA"}};
+};
+
 class bellLoader : public dataLoader
 {
 

@@ -9,6 +9,8 @@ deque<event *> rootLoader::readEvents()
     vector<vector<uint8_t>> boards = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
     vector<vector<uint8_t>> channels = vector<vector<uint8_t>>(coincPairs.size(), vector<uint8_t>(coincPairs[0].size(), 255));
 
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> boardChannel;
+
     vector<vector<int>> delay = getDelayVector(config);
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
@@ -48,17 +50,15 @@ deque<event *> rootLoader::readEvents()
     {
         chain->GetEntry(i);
 
-        auto board = boards[dType][lut];
-        auto ch = channels[dType][lut];
+        auto [iter, ok] = boardChannel.emplace(make_pair(dType, lut), make_pair(0, 0));
 
-        if (board == 255)
+        if (ok)
         {
-
-            auto boardChannel = findBoardChannel(dType, lut);
-
-            board = boards[dType][lut] = get<0>(boardChannel);
-            ch = channels[dType][lut] = get<1>(boardChannel);
+            iter->second = findBoardChannel(dType, lut);
         }
+
+        auto board = iter->second.first;
+        auto ch = iter->second.second;
 
         auto delayedTime = timeStamp - delay[board][ch];
 
@@ -818,7 +818,6 @@ vector<vector<int>> dataLoader::getDelayVector(json &config)
 
 pair<uint8_t, uint8_t> dataLoader::findBoardChannel(uint8_t detType, uint8_t lut)
 {
-
     vector<vector<int>> lutVect = config["detector"]["lut"];
     vector<vector<int>> bTypeVect = config["detector"]["type"];
 
@@ -1035,4 +1034,200 @@ vector<delayEvent> compassLoader::readDelayEvents()
     cout << "compass loader delay is not implemented" << endl;
     abort();
     return {};
+}
+
+deque<event *> testLoader::readEvents()
+{
+
+    deque<event *> events;
+
+    uint eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = numeric_limits<uint>::max();
+    }
+
+    string fileName = config["crtFile"];
+
+    auto fd = open(fileName.c_str(), O_RDONLY);
+
+    vector<vector<int>> delay = getDelayVector(config);
+
+    vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
+    vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
+
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
+
+    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
+
+    kj::FdInputStream fdStream(fd);
+    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+    while (bufferedStream.tryGetReadBuffer() != nullptr)
+    {
+        capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
+
+        auto data = message.getRoot<DataPacket>();
+
+        switch (data.which())
+        {
+
+        case DataPacket::RAW_TIME_EVENTS:
+        {
+            auto proEvent = data.getRawTimeEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+                auto ev = new event();
+                auto brd = proEvent[i].getBoard();
+                auto ch = proEvent[i].getChannel();
+
+                ev->setBoardNumb(brd);
+                ev->setChannelNumb(ch);
+
+                ev->setDetectorLut(lut[brd][ch]);
+                ev->setDetectorType(mask[brd][ch]);
+
+                ev->setEnergy(proEvent[i].getEnergy());
+
+                uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
+
+                uint64_t delayedTime = ts - delay[brd][ch];
+
+                ev->setTimeStamp(delayedTime);
+
+                // coinc
+                ev->setCoincPair(coincPairs[brd][ch]);
+
+                auto findPair = make_pair(brd, ch);
+
+                if (!coincPairTypes.count(findPair))
+                {
+                    coincPairTypes[findPair] = findCoincPairType(brd, ch);
+                }
+
+                ev->setCoincPairType(coincPairTypes[findPair]);
+
+                if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
+                {
+                    ev->setAntiCoincFlag(true);
+                }
+
+                events.push_back(ev);
+
+                if (events.size() == eventNumb)
+                {
+                    return events;
+                }
+            }
+
+            break;
+        }
+        default:
+        {
+
+            cout << "Unsupported data type: " << dataTypeMap[data.which()] << " " << data.which() << endl;
+
+            abort();
+            break;
+        }
+        }
+    }
+
+    return events;
+}
+
+vector<delayEvent> testLoader::readDelayEvents()
+{
+    vector<tuple<int, int, uint64_t>> events;
+
+    uint eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = numeric_limits<uint>::max();
+    }
+
+    auto files = config["crtFile"].get<vector<string>>();
+
+    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+
+    int refLUT = config["delay"]["refLUT"];
+    int refType = config["delay"]["refType"];
+
+    int tresh = config["delay"]["energyThreshold"];
+
+    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+
+    for (auto fileName : files)
+    {
+
+        auto fd = open(fileName.c_str(), O_RDONLY);
+
+        kj::FdInputStream fdStream(fd);
+        kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+        while (bufferedStream.tryGetReadBuffer() != nullptr)
+        {
+            capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
+
+            auto data = message.getRoot<DataPacket>();
+
+            switch (data.which())
+            {
+
+            case DataPacket::RAW_TIME_EVENTS:
+            {
+
+                auto proEvent = data.getRawTimeEvents();
+
+                for (uint i = 0; i < proEvent.size(); i++)
+                {
+
+                    auto brd = proEvent[i].getBoard();
+                    auto ch = proEvent[i].getChannel();
+
+                    auto dType = mask[brd][ch];
+                    auto dLut = lut[brd][ch];
+
+                    if (proEvent[i].getEnergy() > tresh)
+                    {
+
+                        uint64_t timeStamp = 0;
+
+                        uint16_t fineTs = proEvent[i].getFineTimestamp() * 1000 / 1024;
+                        timeStamp = proEvent[i].getTimestamp() * 1000 + fineTs;
+
+                        if (dType == refType && dLut == refLUT)
+                        {
+                            timeStamp += offset;
+                        }
+
+                        events.push_back(make_tuple(dType, dLut, timeStamp));
+
+                        if (events.size() == eventNumb)
+                        {
+                            return events;
+                        }
+                    }
+                }
+                break;
+            }
+
+            default:
+            {
+
+                cout << "Unsupported data type: " << dataTypeMap[data.which()] << " " << data.which() << endl;
+
+                abort();
+                break;
+            }
+            }
+        }
+    }
+
+    return events;
 }

@@ -118,6 +118,10 @@ void initializeDataLoader(json &config)
     {
         loader = make_shared<compassLoader>(config);
     }
+    else if (dataType == "test")
+    {
+        loader = make_shared<testLoader>(config);
+    }
     else
     {
         throw invalid_argument("Invalid data type");
@@ -354,7 +358,7 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass"};
+    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "test"};
 
     if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
