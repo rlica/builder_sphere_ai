@@ -615,9 +615,72 @@ vector<delayEvent> protoLoader::readDelayEvents()
 
 vector<delayEvent> delilaLoader::readDelayEvents()
 {
-    cout << "delila delay calculation not yet implemented" << endl;
-    abort();
-    return {};
+
+    vector<delayEvent> events;
+
+    auto files = config["crtFile"].get<vector<string>>();
+
+    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+
+    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+
+    string fileName = config["crtFile"][0];
+
+    for (auto fileName : files)
+    {
+
+        auto tFile = new TFile(fileName.c_str());
+
+        auto chain = (TTree *)tFile->Get("ELIADE_Tree");
+
+        UChar_t brd;
+        UChar_t ch;
+        uint16_t energy;
+        ULong64_t timeStamp;
+        double fineTs;
+
+        chain->SetBranchAddress("Mod", &brd);
+
+        chain->SetBranchAddress("Ch", &ch);
+
+        chain->SetBranchAddress("ChargeLong", &energy);
+
+        chain->SetBranchAddress("TimeStamp", &timeStamp);
+
+        chain->SetBranchAddress("FineTS", &fineTs);
+
+        uint eventNumb = config["input"]["eventCount"];
+
+        if (eventNumb == 0)
+        {
+            eventNumb = chain->GetEntries();
+        }
+
+        int refLUT = config["delay"]["refLUT"];
+        int refType = config["delay"]["refType"];
+        int tresh = config["delay"]["energyThreshold"];
+        int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+
+        for (int i = 0; i < eventNumb; i++)
+        {
+            chain->GetEntry(i);
+
+            if (energy > tresh)
+            {
+                auto dType = mask[brd][ch];
+                auto dLut = lut[brd][ch];
+
+                if (dType == refType && dLut == refLUT)
+                {
+                    fineTs += offset;
+                }
+
+                events.push_back(make_tuple(dType, dLut, fineTs));
+            }
+        }
+    }
+
+    return events;
 }
 
 vector<delayEvent> threeMVLoader::readDelayEvents()
@@ -1125,6 +1188,55 @@ deque<event *> testLoader::readEvents()
 
             break;
         }
+        case DataPacket::PLAIN_EVENTS:
+        {
+            auto proEvent = data.getPlainEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+                auto ev = new event();
+                auto brd = proEvent[i].getBoard();
+                auto ch = proEvent[i].getChannel();
+
+                ev->setBoardNumb(brd);
+                ev->setChannelNumb(ch);
+
+                ev->setDetectorLut(lut[brd][ch]);
+                ev->setDetectorType(mask[brd][ch]);
+
+                ev->setEnergy(proEvent[i].getEnergy());
+
+                uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
+                ev->setTimeStamp(delayedTime);
+
+                // coinc
+                ev->setCoincPair(coincPairs[brd][ch]);
+
+                auto findPair = make_pair(brd, ch);
+
+                if (!coincPairTypes.count(findPair))
+                {
+                    coincPairTypes[findPair] = findCoincPairType(brd, ch);
+                }
+
+                ev->setCoincPairType(coincPairTypes[findPair]);
+
+                if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
+                {
+                    ev->setAntiCoincFlag(true);
+                }
+
+                events.push_back(ev);
+
+                if (events.size() == eventNumb)
+                {
+                    return events;
+                }
+            }
+
+            break;
+        }
+
         default:
         {
 
@@ -1200,6 +1312,41 @@ vector<delayEvent> testLoader::readDelayEvents()
 
                         uint16_t fineTs = proEvent[i].getFineTimestamp() * 1000 / 1024;
                         timeStamp = proEvent[i].getTimestamp() * 1000 + fineTs;
+
+                        if (dType == refType && dLut == refLUT)
+                        {
+                            timeStamp += offset;
+                        }
+
+                        events.push_back(make_tuple(dType, dLut, timeStamp));
+
+                        if (events.size() == eventNumb)
+                        {
+                            return events;
+                        }
+                    }
+                }
+                break;
+            }
+
+            case DataPacket::PLAIN_EVENTS:
+            {
+
+                auto proEvent = data.getPlainEvents();
+
+                for (uint i = 0; i < proEvent.size(); i++)
+                {
+
+                    auto brd = proEvent[i].getBoard();
+                    auto ch = proEvent[i].getChannel();
+
+                    auto dType = mask[brd][ch];
+                    auto dLut = lut[brd][ch];
+
+                    if (proEvent[i].getEnergy() > tresh)
+                    {
+
+                        uint64_t timeStamp = proEvent[i].getTimestamp();
 
                         if (dType == refType && dLut == refLUT)
                         {

@@ -6,3 +6,4 @@ builder
 rootInput
 *.root
 src/*.o
+analysis/*

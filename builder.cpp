@@ -162,7 +162,6 @@ void preProcessEvent(json &config, deque<event *> &events)
 
 void buildRun(json config)
 {
-
     deque<event *> varEventPool = loader->readEvents();
 
     preProcessEvent(config, varEventPool);
@@ -537,6 +536,7 @@ overload(Ts...) -> overload<Ts...>;
 
 void delayRun(json config)
 {
+
     string dataType = config["input"]["fileFormat"];
 
     vector<tuple<int, int, uint64_t>> events = loader->readDelayEvents();

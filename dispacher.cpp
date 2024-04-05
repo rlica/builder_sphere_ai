@@ -340,7 +340,19 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 
         string stem = fs::path(str).stem().string();
 
-        auto index = stoi(stem.substr(stem.length() - 6));
+        int index = 0;
+
+        if (config["input"]["fileFormat"] == "delila")
+        {
+            auto fPos = stem.find_first_of("_") + 1;
+            auto lPos = stem.find_last_of("_");
+
+            index = stoi(stem.substr(fPos, lPos - fPos));
+        }
+        else
+        {
+            index = stoi(stem.substr(stem.length() - 6));
+        }
 
         if (index >= start && index <= stop)
         {
