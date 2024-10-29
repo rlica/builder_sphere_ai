@@ -172,6 +172,8 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
             eventBuffer.push_back(sTime);
 
             eventBuffer.push_back(sig[0]->getPSD());
+
+            break;
         }
         case SUPPRESED_PSD_DETECTOR:
         {
@@ -204,6 +206,7 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
         }
         case NO_TYPE:
         {
+            break;
         }
         default:
         {

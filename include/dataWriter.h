@@ -29,18 +29,18 @@ using json = nlohmann::json;
 class dataWriter
 {
 public:
-    dataWriter(){};
+    dataWriter() {};
 
     dataWriter(string file, int numb);
-    ~dataWriter(){};
+    ~dataWriter() {};
 
-    virtual void initializeOutputFile(){};
-    virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time){};
+    virtual void initializeOutputFile() {};
+    virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time) {};
 
-    virtual void writeData(){};
-    virtual void closeFile(){};
+    virtual void writeData() {};
+    virtual void closeFile() {};
 
-    virtual void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist){};
+    virtual void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist) {};
 
     virtual void setConfig(json config);
 
@@ -61,7 +61,7 @@ class rootDataWriter : public dataWriter
 {
 
 public:
-    rootDataWriter(){};
+    rootDataWriter() {};
 
     rootDataWriter(string file, int numb);
     void initializeOutputFile();
@@ -97,7 +97,7 @@ class gaspDataWriter : public dataWriter
 {
 
 public:
-    gaspDataWriter(){};
+    gaspDataWriter() {};
     gaspDataWriter(string file, int numb);
 
     void initializeOutputFile();

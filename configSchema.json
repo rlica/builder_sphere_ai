@@ -119,8 +119,10 @@
                 "fileFormat": {
                     "type": "string",
                     "enum": [
-                        "root"   , "proto"  , "cap"    , "delila" , "3MV"    ,
-                        "bell"   , "compass", "test"
+                        "root"       , "proto"      , "cap"        ,
+                        "delila"     , "3MV"        , "bell"       ,
+                        "compass"    , "test"       , "compassWave",
+                        "timepix"
                     ]
                 },
                 "fileIdentifier": {"type": "string"},
@@ -146,6 +148,12 @@
                 "path"      : { "type": "string"                           }
             },
             "required": ["fileFormat", "path"],
+            "additionalProperties": false
+        },
+        "timepix": {
+            "type": "object",
+            "properties": { "path": {"type": "string"} },
+            "required": ["path"],
             "additionalProperties": false
         }
     },

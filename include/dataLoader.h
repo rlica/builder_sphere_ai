@@ -7,6 +7,7 @@
 
 #include "json.hpp"
 #include "utils.h"
+#include "waveformUtils.h"
 
 #include "TROOT.h"
 #include "TFile.h"
@@ -18,8 +19,11 @@
 #include "eventProto.capnp.h"
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
+#include <filesystem>
 
 using json = nlohmann::json;
+
+namespace fs = std::filesystem;
 
 typedef variant<PlainData::Reader, WaveData::Reader, PsdData::Reader, RawTimeData::Reader> dataReader;
 typedef tuple<int, int, uint64_t> delayEvent;
@@ -27,7 +31,7 @@ typedef tuple<int, int, uint64_t> delayEvent;
 class dataLoader
 {
 public:
-    dataLoader(json cfg) : config(cfg){};
+    dataLoader(json cfg) : config(cfg) {};
 
     virtual deque<event *> readEvents() = 0;
     virtual vector<delayEvent> readDelayEvents() = 0;
@@ -142,4 +146,36 @@ public:
     vector<delayEvent> readDelayEvents();
 
 private:
+};
+
+class compassWaveLoader : public dataLoader
+{
+
+public:
+    compassWaveLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+private:
+};
+
+class timepixLoader : public dataLoader
+{
+
+public:
+    timepixLoader(json cfg) : dataLoader(cfg) {}
+    deque<event *> readEvents();
+    vector<delayEvent> readDelayEvents();
+
+    bool checkTimepixFile();
+
+private:
+    map<int, string> dataTypeMap = {{0, "FULL_DATA"},
+                                    {1, "PLAIN_DATA"},
+                                    {2, "PSD_DATA"},
+                                    {3, "WAVE_DATA"},
+                                    {4, "DUAL_WAVE_DATA"},
+                                    {5, "RAW_TIME_DATA"},
+                                    {6, "CROSS_DATA"},
+                                    {7, "PSD_WAVE_DATA"}};
 };

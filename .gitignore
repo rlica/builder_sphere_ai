@@ -7,3 +7,4 @@ rootInput
 *.root
 src/*.o
 analysis/*
+viewWaveform.py

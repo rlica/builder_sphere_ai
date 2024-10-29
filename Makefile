@@ -24,8 +24,8 @@ FLAGS = -std=c++17
 
 
 all: $(OBJECTS)
-	$(CPP)  dispacher.cpp $^ $(INCLUDE) $(LIBS) $(LDLIBS) $(FLAGS) $(LDLIBS) -o build
-	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(LDLIBS) $(FLAGS) $(LDLIBS) -o builder
+	$(CPP)  dispacher.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o build
+	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o builder
 
 $(SOURCE_DIR)/%.o: $(SOURCE_DIR)/%.cpp 
 	$(CPP) $(INCLUDE) -c $< -o $@ $(FLAGS)

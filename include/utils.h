@@ -22,6 +22,8 @@ inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"gasp", ""},
                                              {"bell", ".root"},
                                              {"compass", ".root"},
+                                             {"compassWave", ".root"},
+                                             {"timepix", ".cap"},
                                              {"test", ".cap"}};
 
 class event

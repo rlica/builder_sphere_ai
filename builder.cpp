@@ -118,9 +118,17 @@ void initializeDataLoader(json &config)
     {
         loader = make_shared<compassLoader>(config);
     }
+    else if (dataType == "compassWave")
+    {
+        loader = make_shared<compassWaveLoader>(config);
+    }
     else if (dataType == "test")
     {
         loader = make_shared<testLoader>(config);
+    }
+    else if (dataType == "timepix")
+    {
+        loader = make_shared<timepixLoader>(config);
     }
     else
     {
@@ -357,7 +365,7 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "test"};
+    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "compassWave", "test", "timepix"};
 
     if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
@@ -491,8 +499,8 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
             eventList.push_back(vector<event *>(val.second.begin(), val.second.end()));
         }
     }
-    // build events with anticoincidence
 
+    // build events with anticoincidence
     std::sort(eventList.begin(), eventList.end(), [](auto &i, auto &j)
               { return (i[0]->getDetectorType() < j[0]->getDetectorType()); });
 
