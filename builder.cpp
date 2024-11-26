@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <execution>
+#include "TApplication.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -30,6 +31,8 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
 void buildRun(json config);
 void delayRun(json config);
+void convertRun(json config);
+
 bool validateEvent(vector<event *> *events);
 
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
@@ -57,12 +60,14 @@ vector<vector<uint8_t>> bTypeVect;
 int main(int argc, char **argv)
 {
 
+    TApplication theApp("App", &argc, argv);
+
     if (argc > 1)
     {
         json config = json::parse(argv[1]);
 
         initializeDataLoader(config);
-
+        initializeDataWriter(config);
         initializeGlobals(config);
 
         if (config["crtRun"] == "build")
@@ -72,6 +77,14 @@ int main(int argc, char **argv)
         else if (config["crtRun"] == "delay")
         {
             delayRun(config);
+        }
+        else if (config["crtRun"] == "convert")
+        {
+            convertRun(config);
+        }
+        else
+        {
+            cout << "unknown run option, available options: build, delay" << endl;
         }
     }
 }
@@ -189,6 +202,10 @@ void buildRun(json config)
     else if (config["output"]["fileFormat"] == "root")
     {
         writer = new rootDataWriter(fileName, runNumber);
+    }
+    else if (config["output"]["fileFormat"] == "cap")
+    {
+        writer = new capDataWriter(fileName, runNumber);
     }
 
     writer->setConfig(config);
@@ -365,7 +382,7 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "compassWave", "test", "timepix"};
+    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "compassWave", "test", "timepix", "delila"};
 
     if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
@@ -374,13 +391,13 @@ string extractNumbers(const string &a, string format)
 
         numberString = a.substr(pos - nSize, nSize);
     }
-    else if (format == "delila")
-    {
-        auto fPos = a.find_first_of("_") + 1;
-        auto lPos = a.find_last_of("_");
+    // else if (format == "delila")
+    // {
+    //     auto fPos = a.find_first_of("_") + 1;
+    //     auto lPos = a.find_last_of("_");
 
-        numberString = a.substr(fPos, lPos - fPos);
-    }
+    //     numberString = a.substr(fPos, lPos - fPos);
+    // }
     else if (format == "3MV")
     {
         auto fPos = a.find_last_of("_") + 1;
@@ -642,8 +659,116 @@ void delayRun(json config)
     {
         writer = new rootDataWriter();
     }
+    else if (config["output"]["fileFormat"] == "cap")
+    {
+        writer = new capDataWriter();
+    }
 
     writer->setConfig(config);
 
     writer->writeDelayResults(hists);
+}
+
+void convertRun(json config)
+{
+    deque<event *> varEventPool = loader->readEvents();
+
+    string fileName = config["crtFile"];
+
+    auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
+
+    fileName = fs::path(fileName).stem().string();
+
+    fileName = string(config["output"]["path"]) + "/" + fileName;
+
+    string format = config["output"]["fileFormat"];
+
+    config["run"] = {};
+    config["run"]["runNumber"] = runNumber;
+    config["run"]["fileName"] = fileName;
+
+    if (format == "root")
+    {
+        writer = new rootDataWriter(config);
+    }
+    else
+    {
+        cout << "output format" + format + "not supported : " << endl;
+        exit(1);
+    }
+
+    writer->setConfig(config);
+
+    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
+
+    vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
+
+    vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
+
+    for (auto i = varEventPool.begin(); i != varEventPool.end(); i++)
+    {
+        auto crtPos = i;
+
+        auto interval = (*crtPos)->getTimeStamp() - (*i)->getTimeStamp();
+        vector<int> checkMask(coincMask[0].size(), 0);
+
+        while (interval < coincWindow)
+        {
+            addToCheckMask(checkMask, *(*crtPos));
+
+            crtPos++;
+
+            if (crtPos == varEventPool.end())
+            {
+                break;
+            }
+
+            interval = (*crtPos)->getTimeStamp() - (*i)->getTimeStamp();
+        }
+
+        if (validateCheckMask(coincMask, checkMask))
+        {
+            eventPos.push_back(make_pair(i, crtPos));
+        }
+    }
+
+    if (eventPos.size())
+    {
+        for (size_t i = 0; i < eventPos.size() - 1; i++)
+        {
+            int cnt = 1;
+
+            auto d1 = distance(eventPos[i].first, eventPos[i].second);
+            auto d2 = distance(eventPos[i].first, eventPos[i + cnt].first);
+
+            vector<pair<deque<event *>::iterator, deque<event *>::iterator>> overlapEvents;
+            overlapEvents.push_back(eventPos[i]);
+
+            while (d2 < d1)
+            {
+                overlapEvents.push_back(eventPos[i + cnt]);
+
+                cnt++;
+
+                if (i + cnt >= eventPos.size())
+                {
+                    break;
+                }
+                d2 = distance(eventPos[i].first, eventPos[i + cnt].first);
+            }
+
+            i += overlapEvents.size() - 1;
+
+            auto evt = selectOverlapEvent(overlapEvents);
+
+            postProcessEvent(config, evt);
+        }
+    }
+
+    for (auto &i : varEventPool)
+    {
+        delete i;
+    }
+
+    writer->closeFile();
 }

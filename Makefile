@@ -40,6 +40,5 @@ proto:
 	mv eventProto.capnp.h include/eventProto.capnp.h
 	mv eventProto.capnp.c++ src/eventProto.capnp.c++
 
-
 clean:
 	@rm -rf $(SOURCE_DIR)/*.o builder build

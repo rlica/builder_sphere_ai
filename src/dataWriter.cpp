@@ -276,7 +276,6 @@ void gaspDataWriter::initializeRecordHeader()
 
 void gaspDataWriter::closeFile()
 {
-
     varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
     writeData();
 
@@ -533,4 +532,98 @@ void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
     }
 
     cout << "results output: " << outFileBase << "_#type" << endl;
+}
+
+void capDataWriter::initializeOutputFile()
+{
+    string fName = getFileName() + ".cap";
+
+    setFileDescriptor(open(fName.c_str(), O_WRONLY | O_CREAT, 0644));
+}
+
+void capDataWriter::closeFile()
+{
+    close(getFileDescriptor());
+}
+
+void capDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
+{
+    cout << "write delay results is not currently implemented" << endl;
+}
+
+void capDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
+{
+
+    message.reset(new MallocMessageBuilder());
+
+    auto outEvent = message->initRoot<BuiltEvent>();
+
+    auto signals = outEvent.initSignals(events->size());
+
+    vector<vector<event *>> twoEvents;
+    vector<vector<event *>> fourEvents;
+
+    for (size_t i = 0; i < events->size(); i++)
+    {
+        if (events->at(i).at(0)->getBoardNumb() == 4)
+        {
+            if (events->at(i).at(0)->getChannelNumb() >= 0 && events->at(i).at(0)->getChannelNumb() < 3)
+            {
+                if (events->at(i).at(0)->getEnergy() > 200)
+                {
+                    twoEvents.push_back({events->at(i).at(0)});
+                }
+            }
+        }
+
+        if (events->at(i).at(0)->getBoardNumb() == 2)
+        {
+            if (events->at(i).at(0)->getChannelNumb() >= 0 && events->at(i).at(0)->getChannelNumb() < 3)
+            {
+                if (events->at(i).at(0)->getEnergy() > 200)
+                {
+                    fourEvents.push_back({events->at(i).at(0)});
+                }
+            }
+        }
+        // auto sig = signals[i];
+
+        // sig.setType(events->at(i).at(0)->getDetectorType());
+        // sig.setLut(events->at(i).at(0)->getDetectorLut());
+
+        // sig.setEnergy(events->at(i).at(0)->getEnergy());
+
+        // sig.setTimestamp(events->at(i).at(0)->getTimeStamp());
+
+        // uint16_t fTime = events->at(i).at(0)->getTimeStamp() / 1000;
+        // uint16_t sTime = events->at(i).at(0)->getTimeStamp() % 1000;
+
+        // sig.setRelativeNsTime(fTime);
+        // sig.setRelativePsTime(sTime);
+
+        // sig.initWaveform(events->at(i).at(0)->getWaveform().size());
+
+        // sig.setWaveform(kj::arrayPtr(events->at(i).at(0)->getWaveform().data(), events->at(i).at(0)->getWaveform().size()));
+    }
+
+    if (twoEvents.size() == 3)
+    {
+        cout << twoEvents.at(0).at(0)->getTimeStamp()
+             << " " << static_cast<uint32_t>(twoEvents.at(0).at(0)->getBoardNumb())
+             << " " << static_cast<uint32_t>(twoEvents.at(0).at(0)->getChannelNumb()) << endl;
+    }
+
+    if (fourEvents.size() == 3)
+    {
+        cout << fourEvents.at(0).at(0)->getTimeStamp()
+             << " " << static_cast<uint32_t>(fourEvents.at(0).at(0)->getBoardNumb())
+             << " " << static_cast<uint32_t>(fourEvents.at(0).at(0)->getChannelNumb()) << endl;
+    }
+
+    writePackedMessageToFd(getFileDescriptor(), *message);
+}
+
+capDataWriter::capDataWriter(string file, int numb) : dataWriter(file, numb)
+{
+    initializeOutputFile();
 }

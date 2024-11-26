@@ -133,3 +133,19 @@ struct Dataset {
         waveform @5: List(Int16);
     }
 }
+
+struct BuiltEvent{
+
+    signals @0: List(Signal);
+
+    struct Signal{
+        type @0 :UInt8;
+        lut @1 :UInt8;
+        energy @2: UInt16;
+        timestamp @3: UInt64;
+        waveform @4: List(Int16);
+        relativeNsTime @5: UInt16;
+        relativePsTime @6: UInt16;
+    }
+
+}

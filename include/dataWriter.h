@@ -11,6 +11,11 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TH1I.h"
+#include <fcntl.h>
+
+#include "eventProto.capnp.h"
+#include <capnp/message.h>
+#include <capnp/serialize-packed.h>
 
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
@@ -25,6 +30,7 @@
 
 using namespace std;
 using json = nlohmann::json;
+using namespace capnp;
 
 class dataWriter
 {
@@ -140,4 +146,27 @@ private:
                                       {NO_TYPE, 0}};
 
     map<int, int> varOutputTypes; // detector type - gasp output type
+};
+
+class capDataWriter : public dataWriter
+{
+
+public:
+    capDataWriter() {};
+
+    capDataWriter(string file, int numb);
+    void initializeOutputFile();
+
+    void setFileDescriptor(int fd) { fileDescriptor = fd; }
+    int getFileDescriptor() { return fileDescriptor; }
+
+    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+
+    void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
+
+    void closeFile();
+
+private:
+    int fileDescriptor;
+    std::shared_ptr<MallocMessageBuilder> message;
 };

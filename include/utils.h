@@ -65,6 +65,19 @@ public:
     double getPSD() { return varPSD; }
     void setPSD(double psd) { varPSD = psd; }
 
+    void setWaveform(vector<int16_t> wave) { waveform = wave; }
+    vector<int16_t> getWaveform() { return waveform; }
+
+    void setWaveform(shared_ptr<vector<double>> wave)
+    {
+        waveform = vector<int16_t>(wave->size());
+
+        for (int i = 0; i < wave->size(); i++)
+        {
+            waveform[i] = wave->at(i);
+        }
+    }
+
 private:
     uint64_t timeStamp = 0;
 
@@ -83,6 +96,8 @@ private:
     pair<uint8_t, uint8_t> varCoincPairType;
 
     bool varAntiCoincFlag = false;
+
+    vector<int16_t> waveform;
 };
 
 inline void validateJsonSchema(json configFile, json schemaFile)

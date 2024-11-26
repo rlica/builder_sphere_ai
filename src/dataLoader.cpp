@@ -1,6 +1,7 @@
 #include "dataLoader.h"
 #include <random>
 #include "waveformProcess.h"
+#include <memory>
 
 deque<event *> rootLoader::readEvents()
 {
@@ -835,6 +836,9 @@ vector<delayEvent> capLoader::readDelayEvents()
                                    timeStamp = proEvent[i].getTimestamp() * 1000 + fineTs ;
 
                                } else {       
+
+                                cout << "here" << endl;
+
                                   timeStamp = proEvent[i].getTimestamp();
                                }
 
@@ -1357,20 +1361,32 @@ deque<event *> testLoader::readEvents()
 
                     ev->setEnergy(proEvent[i].getEnergy());
 
+                    int32_t diff = 0;
                     auto capWave = proEvent[i].getWaveform1();
 
-                    vector<double> wave;
-
-                    for (int w = 0; w < capWave.size(); w++)
+                    if (capWave.size())
                     {
-                        wave.push_back(capWave[w]);
+
+                        shared_ptr<vector<double>> wave = make_shared<vector<double>>(proEvent[i].getWaveform1().size());
+
+                        for (int w = 0; w < capWave.size(); w++)
+                        {
+                            wave->at(w) = capWave[w];
+                        }
+
+                        // auto ret = constantFractionDiscriminator(wave);
+
+                        // if (ret)
+                        // {
+                        //     diff = ret - 200;
+                        // }
+
+                        ev->setWaveform(wave);
                     }
 
                     auto timeStamp = proEvent[i].getTimestamp();
-                    timeStamp = getCFDTime(wave, timeStamp);
-                    // timeStamp = getWaveFraction(wave, timeStamp);
 
-                    // timeStamp = getEletTime(wave, timeStamp);
+                    // timeStamp += diff;
 
                     uint64_t delayedTime = timeStamp - delay[brd][ch];
                     ev->setTimeStamp(delayedTime);
@@ -1424,6 +1440,11 @@ deque<event *> testLoader::readEvents()
 vector<delayEvent> testLoader::readDelayEvents()
 {
 
+    bool found0 = false;
+    bool found1 = false;
+    int16_t crtBrd = -1;
+    vector<uint64_t> times;
+
     vector<tuple<int, int, uint64_t>> events;
 
     uint eventNumb = config["input"]["eventCount"];
@@ -1443,7 +1464,7 @@ vector<delayEvent> testLoader::readDelayEvents()
 
     int tresh = config["delay"]["energyThreshold"];
 
-    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+    int64_t offset = int64_t(config["delay"]["refTimeOffset"]) * int64_t(config["general"]["timeUnitMultiplier"]);
 
     for (auto fileName : files)
     {
@@ -1605,6 +1626,7 @@ vector<delayEvent> testLoader::readDelayEvents()
 
             case DataPacket::WAVE_EVENTS:
             {
+
                 auto proEvent = data.getWaveEvents();
 
                 for (uint i = 0; i < proEvent.size(); i++)

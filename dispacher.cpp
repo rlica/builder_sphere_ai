@@ -24,6 +24,7 @@ namespace fs = std::filesystem;
 json readConfigFile(string fileName);
 void buildRun(json &config);
 void delayRun(json &config);
+void convertRun(json &config);
 
 vector<string> removeKeepFiles(vector<string> input, json config);
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
@@ -58,6 +59,10 @@ int main(int argc, char **argv)
     {
         delayRun(config);
     }
+    else if (config["general"]["run"] == "convert")
+    {
+        convertRun(config);
+    }
     else
     {
         cout << "unknown run option, available options: build, delay" << endl;
@@ -75,13 +80,13 @@ json readConfigFile(string fileName)
 
 void buildRun(json &config)
 {
-
     auto inpFiles = generateInputFiles(config);
 
     vector<shared_future<void>> futures;
 
     int maxCores = config["general"]["maxCores"];
 
+    cout << "build run:" << endl;
     cout << "requested: " << inpFiles.size() << " file/s" << endl;
     cout << "building on: " << maxCores << " core/s" << endl;
 
@@ -148,13 +153,13 @@ void buildRun(json &config)
 
 void printStatus(int finished, int total)
 {
-    // string doneStr = "000000" + to_string(finished);
-    // doneStr = doneStr.substr(doneStr.size() - 6);
+    string doneStr = "000000" + to_string(finished);
+    doneStr = doneStr.substr(doneStr.size() - 6);
 
-    // string totalStr = "000000" + to_string(total);
-    // totalStr = totalStr.substr(totalStr.size() - 6);
+    string totalStr = "000000" + to_string(total);
+    totalStr = totalStr.substr(totalStr.size() - 6);
 
-    // cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
+    cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
 }
 
 vector<string> getPathFiles(string path, string identifier, string extension)
@@ -214,6 +219,7 @@ vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output)
 
     for (auto out : output)
     {
+
         auto pos = out.find_last_of("/") + 1;
         auto tempOut = out.substr(pos);
 
@@ -316,6 +322,80 @@ void delayRun(json &config)
     }
 }
 
+void convertRun(json &config)
+{
+
+    auto inpFiles = generateInputFiles(config);
+
+    vector<shared_future<void>> futures;
+
+    int maxCores = config["general"]["maxCores"];
+
+    cout << "convert run:" << endl;
+    cout << "requested: " << inpFiles.size() << " file/s" << endl;
+    cout << "building on: " << maxCores << " core/s" << endl;
+
+    int finished = 0;
+
+    config["crtRun"] = "convert";
+
+    for (int i = 0; i < inpFiles.size(); i++)
+    {
+        config["crtFile"] = inpFiles[i];
+
+        futures.push_back(async(std::launch::async, [config]()
+                                { dispatchThread(config); })
+                              .share());
+
+        while (futures.size() == maxCores)
+        {
+            int pos = -1;
+
+            for (int o = 0; o < futures.size(); o++)
+            {
+                if (futures[o].wait_for(10ms) == std::future_status::ready)
+                {
+                    pos = o;
+                }
+            }
+
+            if (pos != -1)
+            {
+                futures.erase(futures.begin() + pos);
+                finished++;
+            }
+        }
+        printStatus(finished, inpFiles.size());
+    }
+
+    while (futures.size())
+    {
+
+        int pos = -1;
+
+        for (int o = 0; o < futures.size(); o++)
+        {
+            if (futures[o].wait_for(10ms) == std::future_status::ready)
+            {
+                pos = o;
+            }
+        }
+
+        if (pos != -1)
+        {
+            futures.erase(futures.begin() + pos);
+            finished++;
+        }
+
+        printStatus(finished, inpFiles.size());
+    }
+
+    if (finished)
+    {
+        cout << endl;
+    }
+}
+
 vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 {
 
@@ -342,14 +422,14 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 
         int index = 0;
 
-        if (config["input"]["fileFormat"] == "delila")
-        {
-            auto fPos = stem.find_first_of("_") + 1;
-            auto lPos = stem.find_last_of("_");
+        // if (config["input"]["fileFormat"] == "delila")
+        // {
+        //     auto fPos = stem.find_first_of("_") + 1;
+        //     auto lPos = stem.find_last_of("_");
 
-            index = stoi(stem.substr(fPos, lPos - fPos));
-        }
-        else
+        //     index = stoi(stem.substr(fPos, lPos - fPos));
+        // }
+        // else
         {
             index = stoi(stem.substr(stem.length() - 6));
         }

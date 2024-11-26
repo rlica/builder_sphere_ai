@@ -144,8 +144,11 @@
         "output": {
             "type": "object",
             "properties": {
-                "fileFormat": { "type": "string", "enum": ["gasp", "root"] },
-                "path"      : { "type": "string"                           }
+                "fileFormat": {
+                    "type": "string",
+                    "enum": ["gasp", "root", "cap"]
+                },
+                "path": {"type": "string"}
             },
             "required": ["fileFormat", "path"],
             "additionalProperties": false
@@ -154,6 +157,22 @@
             "type": "object",
             "properties": { "path": {"type": "string"} },
             "required": ["path"],
+            "additionalProperties": false
+        },
+        "convert": {
+            "type": "object",
+            "properties": {
+                "root": {
+                    "type": "object",
+                    "properties": {
+                        "addHistogram": {"type": "boolean"},
+                        "addList"     : {"type": "boolean"},
+                        "addTotalTime": {"type": "boolean"}
+                    },
+                    "required": ["addHistogram", "addList", "addTotalTime"],
+                    "additionalProperties": false
+                }
+            },
             "additionalProperties": false
         }
     },

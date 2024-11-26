@@ -10,6 +10,8 @@
 #include "TPad.h"
 #include <algorithm>
 #include <iomanip>
+#include <random>
+#include "TGraph.h"
 
 using namespace std;
 
@@ -88,6 +90,237 @@ inline vector<double> uniformFilter(vector<double> &wave, int window = 3)
         filter.push_back(sum / window);
     }
     return filter;
+}
+
+template <typename T>
+typename vector<T>::iterator leadingEdgeTrigger(const shared_ptr<vector<T>> &values, int16_t threshold, bool draw = false)
+{
+
+    function<bool(T)> checkFunc;
+
+    if (threshold > 0)
+    {
+        checkFunc = [threshold](T element)
+        { return element > threshold; };
+    }
+    else
+    {
+        checkFunc = [threshold](T element)
+        { return element < threshold; };
+    }
+
+    auto it = find_if(values->begin(), values->end(), checkFunc);
+
+    if (it == values->end())
+    {
+        return values->end();
+    }
+
+    return it;
+}
+
+template <typename T>
+shared_ptr<vector<T>> subtractBackground(const shared_ptr<vector<T>> &values, int16_t noiseSamples)
+{
+    shared_ptr<vector<T>> result = make_shared<vector<T>>(values->size());
+
+    double meanBackground = (accumulate(values->begin(), values->begin() + noiseSamples, static_cast<T>(0))) / noiseSamples;
+
+    transform(values->begin(), values->end(),
+              result->begin(), [meanBackground](T element)
+              { return element - meanBackground; });
+
+    return result;
+}
+
+template <typename T>
+shared_ptr<vector<T>> reverseWaveform(const shared_ptr<vector<T>> &values)
+{
+
+    shared_ptr<vector<T>> reverse = make_shared<vector<T>>(values->size());
+
+    transform(values->begin(), values->end(), reverse->begin(), [](auto element)
+              { return -element; });
+
+    return reverse;
+}
+
+template <typename T>
+shared_ptr<vector<T>> attenuateWaveform(const shared_ptr<vector<T>> &values, double_t attenuation)
+{
+    shared_ptr<vector<T>> attenuated = make_shared<vector<T>>(values->size());
+
+    transform(values->begin(), values->end(), attenuated->begin(), [attenuation](T element)
+              { return static_cast<T>(attenuation * element); });
+    return attenuated;
+}
+
+template <typename T>
+shared_ptr<vector<T>> addWaveform(const shared_ptr<vector<T>> &wave1, const shared_ptr<vector<T>> &wave2)
+{
+
+    shared_ptr<vector<T>> add = make_shared<vector<T>>(wave1->size());
+
+    transform(wave1->begin(), wave1->end(), wave2->begin(), add->begin(), [](auto wave1, auto wave2)
+              { return wave1 + wave2; });
+
+    return add;
+}
+
+template <typename T>
+shared_ptr<vector<T>> smoothWaveform(const shared_ptr<vector<T>> &values, int window, bool draw)
+{
+    shared_ptr<vector<T>> smooth = make_shared<vector<T>>(values->size());
+
+    for (int i = 0; i < values->size(); i++)
+    {
+        if (i < window || i >= values->size() - window)
+        {
+            (*smooth)[i] = (*values)[i];
+            continue;
+        }
+
+        auto sum = accumulate(values->begin() + i, values->begin() + i + window, static_cast<T>(0.0));
+
+        (*smooth)[i] = sum / window;
+    }
+
+    return smooth;
+}
+
+template <typename T>
+shared_ptr<vector<T>> getBackgroundSamples(const shared_ptr<vector<T>> &wave, int16_t samples)
+{
+    double sum = std::accumulate(wave->begin(), wave->begin() + samples, 0.0);
+    double mean = sum / samples;
+
+    std::vector<T> diff(samples);
+
+    std::transform(wave->begin(), wave->begin() + samples, diff.begin(), [mean](double x)
+                   { return x - mean; });
+
+    double sq_sum = std::inner_product(diff.begin(), diff.begin() + samples, diff.begin(), 0.0);
+    double stdev = std::sqrt(sq_sum / samples);
+
+    shared_ptr<vector<T>> result = make_shared<vector<T>>(samples);
+
+    std::default_random_engine generator;
+    normal_distribution<T> distribution(mean, stdev);
+    for (int i = 0; i < samples; i++)
+    {
+        result->at(i) = distribution(generator);
+    }
+
+    return result;
+}
+
+template <typename T>
+shared_ptr<vector<T>> delayWaveform(const shared_ptr<vector<T>> &values, int16_t delay)
+{
+    auto bkgSamples = getBackgroundSamples(values, 50);
+
+    bkgSamples->insert(bkgSamples->end(), values->begin(), values->end() - 50);
+
+    return bkgSamples;
+}
+
+template <typename T>
+shared_ptr<TGraph> getWaveformGraph(const shared_ptr<vector<T>> &values)
+{
+    shared_ptr<TGraph> graph(new TGraph(values->size()));
+
+    for (int pointIndex = 0; pointIndex < values->size(); pointIndex++)
+    {
+        graph->SetPoint(pointIndex, pointIndex, (*values)[pointIndex]);
+    }
+    return graph;
+}
+
+template <typename T>
+void drawWaveform(shared_ptr<vector<T>> &wave1)
+{
+    auto max_1 = *max_element(wave1->begin(), wave1->end());
+
+    auto min_1 = *min_element(wave1->begin(), wave1->end());
+
+    auto rightGraph = getWaveformGraph(wave1);
+
+    rightGraph->GetYaxis()->SetRangeUser(min_1 - 200, max_1 + 200);
+
+    rightGraph->SetTitle("accepted");
+
+    rightGraph->Draw("APLM");
+    gPad->Update();
+    gPad->WaitPrimitive("ggg");
+}
+
+template <typename T>
+void drawWaveform(shared_ptr<vector<T>> rightSub, shared_ptr<vector<T>> leftSub)
+{
+
+    auto max_1 = max_element(rightSub->begin(), rightSub->end());
+    auto max_2 = max_element(leftSub->begin(), leftSub->end());
+
+    auto min_1 = min_element(rightSub->begin(), rightSub->end());
+    auto min_2 = min_element(leftSub->begin(), leftSub->end());
+
+    auto max_val = max(*max_1, *max_2);
+    auto min_val = min(*min_1, *min_2);
+
+    auto rightGraph = getWaveformGraph(rightSub);
+    auto leftGraph = getWaveformGraph(leftSub);
+
+    rightGraph->GetYaxis()->SetRangeUser(min_val - 200, max_val + 200);
+
+    leftGraph->SetLineColor(kRed);
+    leftGraph->SetMarkerColor(kRed);
+
+    rightGraph->SetTitle("accepted");
+
+    rightGraph->Draw("APLM");
+    leftGraph->Draw("same");
+    gPad->Update();
+    gPad->WaitPrimitive("ggg");
+}
+
+inline int32_t constantFractionDiscriminator(shared_ptr<vector<double>> values)
+{
+
+    int16_t threshold = -10;
+    double_t attenuation = 0.5;
+    int16_t delay = 12;
+    int16_t smoothFactor = 8;
+    int16_t tSample = 2;
+
+    // drawWaveform(values);
+
+    auto subBkg = subtractBackground(values, 50);
+
+    auto inverted = reverseWaveform(subBkg);
+
+    auto delayed = delayWaveform(subBkg, delay);
+
+    auto attenuate = attenuateWaveform(inverted, attenuation);
+
+    auto add = addWaveform(attenuate, delayed);
+
+    auto smooth = smoothWaveform(add, smoothFactor, false);
+
+    auto armIt = leadingEdgeTrigger(smooth, threshold);
+
+    if (armIt == smooth->end())
+    {
+        return 0;
+    }
+
+    auto afterZero = find_if(armIt, smooth->end(), [](auto element)
+                             { return element > 0; });
+
+    auto beforeZero = afterZero - 1;
+
+    uint16_t tCoarse = distance(smooth->begin(), afterZero) * tSample * 1000; // to picoseconds
+
+    return tCoarse;
 }
 
 inline uint64_t getCFDTime(vector<double> &wave, ULong64_t timestamp)
