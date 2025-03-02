@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        cout << "unknown run option, available options: build, delay" << endl;
+        throw "unknown run option, available options: build, delay, and convert";
     }
 }
 

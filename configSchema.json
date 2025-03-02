@@ -155,7 +155,11 @@
         },
         "timepix": {
             "type": "object",
-            "properties": { "path": {"type": "string"} },
+            "properties": {
+                "path" : {"type": "string" },
+                "delay": {"type": "integer"},
+                "type" : {"type": "integer"}
+            },
             "required": ["path"],
             "additionalProperties": false
         },
@@ -167,9 +171,9 @@
                     "properties": {
                         "addHistogram": {"type": "boolean"},
                         "addList"     : {"type": "boolean"},
-                        "addTotalTime": {"type": "boolean"}
+                        "addRunTime"  : {"type": "boolean"}
                     },
-                    "required": ["addHistogram", "addList", "addTotalTime"],
+                    "required": ["addHistogram", "addList", "addRunTime"],
                     "additionalProperties": false
                 }
             },

@@ -2,6 +2,7 @@
 #include <random>
 #include "waveformProcess.h"
 #include <memory>
+#include <fstream>
 
 deque<event *> rootLoader::readEvents()
 {
@@ -383,8 +384,7 @@ deque<event *> capLoader::readEvents()
             break;
 
         default:
-            cout << "Unsupported data type: " << dataTypeMap[evtType] << endl;
-            abort();
+            throw "Unsupported data type: " + dataTypeMap[evtType];
             break;
         }
 
@@ -429,24 +429,6 @@ deque<event *> capLoader::readEvents()
                                         
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
                                         ev->setTimeStamp(delayedTime);
-
-
-                                        // some procedure to extract from waveform
-                                        // auto wave = proEvent[i].getWaveform1();
-
-                                        // if(wave.size()){   
-
-                                        //     vector<int16_t> vecWave = vector<int16_t>(wave.size(), 0);
-
-                                        //     for(int i = 0; i < vecWave.size(); i++)
-                                        //     {
-                                        //         vecWave[i] = wave[i];    
-                                        //     }     
-
-                                        //     extractTime(vecWave);
-                                        // }
-
-
                                     } else {
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
                                         ev->setTimeStamp(delayedTime);
@@ -802,8 +784,7 @@ vector<delayEvent> capLoader::readDelayEvents()
                         break;
 
                     default:
-                        cout << "Unsupported data type: " << dataTypeMap[data.getType()] << endl;
-                        abort();
+                        throw "Unsupported data type: " + dataTypeMap[data.getType()];
                         break;
 
                    } },
@@ -836,9 +817,6 @@ vector<delayEvent> capLoader::readDelayEvents()
                                    timeStamp = proEvent[i].getTimestamp() * 1000 + fineTs ;
 
                                } else {       
-
-                                cout << "here" << endl;
-
                                   timeStamp = proEvent[i].getTimestamp();
                                }
 
@@ -899,9 +877,7 @@ pair<uint8_t, uint8_t> dataLoader::findBoardChannel(uint8_t detType, uint8_t lut
         }
     }
 
-    cout << "Board and channel not found for detType: " << detType << " and lut: " << lut << endl;
-
-    abort();
+    throw "Board and channel not found for detType: " + to_string(detType) + " and lut: " + to_string(lut);
 
     return {-1, -1};
 }
@@ -1024,8 +1000,7 @@ deque<event *> bellLoader::readEvents()
 
 vector<delayEvent> bellLoader::readDelayEvents()
 {
-    cout << "bell loader delay is not implemented" << endl;
-    abort();
+    throw "bell loader delay is not implemented";
     return {};
 }
 
@@ -1098,8 +1073,8 @@ deque<event *> compassLoader::readEvents()
 
 vector<delayEvent> compassLoader::readDelayEvents()
 {
-    cout << "compass loader delay is not implemented" << endl;
-    abort();
+    throw "compass loader delay is not implemented";
+
     return {};
 }
 
@@ -1421,10 +1396,7 @@ deque<event *> testLoader::readEvents()
 
             default:
             {
-
-                cout << "Unsupported data type: " << dataTypeMap[data.which()] << " " << data.which() << endl;
-
-                abort();
+                throw "Unsupported data type: " + dataTypeMap[data.which()] + " " + to_string(data.which());
                 break;
             }
             }
@@ -1661,10 +1633,8 @@ vector<delayEvent> testLoader::readDelayEvents()
 
             default:
             {
+                throw "Unsupported data type: " + dataTypeMap[data.which()] + " " + to_string(data.which());
 
-                cout << "Unsupported data type: " << dataTypeMap[data.which()] << " " << data.which() << endl;
-
-                abort();
                 break;
             }
             }
@@ -1808,9 +1778,8 @@ deque<event *> compassWaveLoader::readEvents()
     return events;
 }
 
-deque<event *> timepixLoader::readEvents()
+[[deprecated("data type is not correct")]] deque<event *> timepixLoader::readEvents()
 {
-    cout << "check this: " << checkTimepixFile() << endl;
 
     if (checkTimepixFile())
     {
@@ -1892,6 +1861,9 @@ deque<event *> timepixLoader::readEvents()
 
                     if (events.size() == eventNumb)
                     {
+                        auto timepixEvents = readTimepixEvents();
+                        events.insert(events.end(), timepixEvents.begin(), timepixEvents.end());
+
                         return events;
                     }
                 }
@@ -1902,58 +1874,75 @@ deque<event *> timepixLoader::readEvents()
             default:
             {
 
-                cout << "Unsupported data type: " << dataTypeMap[data.which()] << " " << data.which() << endl;
+                throw "Unsupported data type: " + dataTypeMap[data.which()] + " " + to_string(data.which());
 
                 abort();
                 break;
             }
             }
         }
+
+        auto timepixEvents = readTimepixEvents();
+        events.insert(events.end(), timepixEvents.begin(), timepixEvents.end());
+
         return events;
     }
     else
     {
-        cout << "cannot find the associated timepix file: " << config["crtFile"] << endl;
-        exit(1);
+        throw "cannot find the associated timepix file: " + config["crtFile"].get<string>();
     }
 
     return {};
 }
 
-vector<delayEvent> timepixLoader::readDelayEvents()
+event *timepixLoader::parseStringEvent(string &line)
 {
-    vector<tuple<int, int, uint64_t>> events;
+    auto ev = new event();
 
-    uint eventNumb = config["input"]["eventCount"];
+    istringstream iss(line);
 
-    if (eventNumb == 0)
+    uint32_t temp;
+    uint64_t tempTime;
+
+    // detector type and lut
+    iss >> temp;
+
+    ev->setDetectorType(config["timepix"]["type"].get<int>());
+    ev->setDetectorLut(temp);
+
+    iss >> tempTime; // coarse time
+    iss >> temp;     // fine time
+
+    uint64_t coarseTime = (tempTime * 25) * 1000; // 25 ns unit moved to ps
+
+    double fineTime = (25 * 1000 / 16) * temp;
+
+    ev->setTimeStamp(coarseTime - fineTime);
+
+    iss >> temp;
+    ev->setEnergy(temp);
+    ev->setCoincPair(0);
+
+    return ev;
+}
+
+deque<event *> timepixLoader::readTimepixEvents()
+{
+    deque<event *> events;
+
+    for (auto &fileName : config["timepix"]["crtFile"])
     {
-        eventNumb = numeric_limits<uint>::max();
-    }
 
-    auto files = config["crtFile"].get<vector<string>>();
+        auto type = config["timepix"]["type"].get<int>();
 
-    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
-    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
-
-    int refLUT = config["delay"]["refLUT"];
-    int refType = config["delay"]["refType"];
-
-    int tresh = config["delay"]["energyThreshold"];
-
-    int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
-
-    for (auto fileName : files)
-    {
-
-        auto fd = open(fileName.c_str(), O_RDONLY);
+        auto fd = open(fileName.get<string>().c_str(), O_RDONLY);
 
         kj::FdInputStream fdStream(fd);
         kj::BufferedInputStreamWrapper bufferedStream(fdStream);
 
         while (bufferedStream.tryGetReadBuffer() != nullptr)
         {
-            capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
+            capnp::PackedMessageReader message(bufferedStream, {1000000000, 64});
 
             auto data = message.getRoot<DataPacket>();
 
@@ -1962,67 +1951,220 @@ vector<delayEvent> timepixLoader::readDelayEvents()
 
             case DataPacket::PLAIN_EVENTS:
             {
-
                 auto proEvent = data.getPlainEvents();
 
                 for (uint i = 0; i < proEvent.size(); i++)
                 {
 
+                    auto ev = new event();
                     auto brd = proEvent[i].getBoard();
                     auto ch = proEvent[i].getChannel();
 
-                    auto dType = mask[brd][ch];
-                    auto dLut = lut[brd][ch];
+                    ev->setBoardNumb(brd);
+                    ev->setChannelNumb(ch);
 
-                    if (proEvent[i].getEnergy() > tresh)
-                    {
+                    ev->setDetectorLut(ch);
+                    ev->setDetectorType(type);
 
-                        uint64_t timeStamp = proEvent[i].getTimestamp();
+                    ev->setTimeStamp(proEvent[i].getTimestamp());
 
-                        if (dType == refType && dLut == refLUT)
-                        {
-                            timeStamp += offset;
-                        }
-
-                        events.push_back(make_tuple(dType, dLut, timeStamp));
-
-                        if (events.size() == eventNumb)
-                        {
-                            return events;
-                        }
-                    }
+                    events.push_back(ev);
                 }
-                break;
-            }
-
-            default:
-            {
-
-                cout << "Unsupported data type: " << dataTypeMap[data.which()] << " " << data.which() << endl;
-
-                abort();
-                break;
             }
             }
         }
     }
+    return events;
+}
 
+vector<delayEvent> timepixLoader::readDelayEvents()
+{
+    vector<tuple<int, int, uint64_t>> events;
+
+    if (checkTimepixFile())
+    {
+
+        uint eventNumb = config["input"]["eventCount"];
+
+        if (eventNumb == 0)
+        {
+            eventNumb = numeric_limits<uint>::max();
+        }
+
+        auto files = config["crtFile"].get<vector<string>>();
+
+        vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+        vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+
+        int refLUT = config["delay"]["refLUT"];
+        int refType = config["delay"]["refType"];
+
+        int tresh = config["delay"]["energyThreshold"];
+
+        int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+
+        for (auto fileName : files)
+        {
+
+            auto fd = open(fileName.c_str(), O_RDONLY);
+
+            kj::FdInputStream fdStream(fd);
+            kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+            while (bufferedStream.tryGetReadBuffer() != nullptr)
+            {
+                capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
+
+                auto data = message.getRoot<DataPacket>();
+
+                switch (data.which())
+                {
+
+                case DataPacket::PLAIN_EVENTS:
+                {
+
+                    auto proEvent = data.getPlainEvents();
+
+                    for (uint i = 0; i < proEvent.size(); i++)
+                    {
+
+                        auto brd = proEvent[i].getBoard();
+                        auto ch = proEvent[i].getChannel();
+
+                        auto dType = mask[brd][ch];
+                        auto dLut = lut[brd][ch];
+
+                        if (proEvent[i].getEnergy() > tresh)
+                        {
+
+                            uint64_t timeStamp = proEvent[i].getTimestamp();
+
+                            if (dType == refType && dLut == refLUT)
+                            {
+                                timeStamp += offset;
+                            }
+
+                            events.push_back(make_tuple(dType, dLut, timeStamp));
+
+                            if (events.size() == eventNumb)
+                            {
+
+                                auto timepixEvents = readTimepixDelayEvents();
+                                events.insert(events.end(), timepixEvents.begin(), timepixEvents.end());
+
+                                return events;
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                default:
+                {
+                    throw "Unsupported data type: " + dataTypeMap[data.which()] + " " + to_string(data.which());
+                    break;
+                }
+                }
+            }
+        }
+    }
+
+    auto timepixEvents = readTimepixDelayEvents();
+    events.insert(events.end(), timepixEvents.begin(), timepixEvents.end());
+
+    return events;
+}
+
+vector<delayEvent> timepixLoader::readTimepixDelayEvents()
+{
+    vector<delayEvent> events;
+
+    for (auto &fileName : config["timepix"]["crtFile"])
+    {
+
+        auto dType = config["timepix"]["type"].get<int>();
+
+        int refLUT = config["delay"]["refLUT"];
+        int refType = config["delay"]["refType"];
+        int tresh = config["delay"]["energyThreshold"];
+        int offset = int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+
+        uint eventNumb = config["input"]["eventCount"];
+
+        if (eventNumb == 0)
+        {
+            eventNumb = numeric_limits<uint>::max();
+        }
+
+        auto fd = open(fileName.get<string>().c_str(), O_RDONLY);
+
+        kj::FdInputStream fdStream(fd);
+        kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+        while (bufferedStream.tryGetReadBuffer() != nullptr)
+        {
+            capnp::PackedMessageReader message(bufferedStream, {1000000000, 64});
+
+            auto data = message.getRoot<TimepixDataPacket>();
+
+            auto proEvent = data.getKatherineEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+
+                if (proEvent[i].getEnergy() > tresh)
+                {
+                    auto ch = proEvent[i].getChannel();
+                    uint64_t timeStamp = proEvent[i].getTimestamp();
+
+                    uint16_t lut = uint8_t(ch);
+
+                    if (dType == refType && lut == refLUT)
+                    {
+                        timeStamp += offset;
+                    }
+
+                    // if (lut < 100)
+                    {
+                        events.push_back(make_tuple(dType, 0, timeStamp));
+                    }
+
+                    if (events.size() == eventNumb)
+                    {
+                        return events;
+                    }
+                }
+            }
+        }
+    }
     return events;
 }
 
 bool timepixLoader::checkTimepixFile()
 {
 
-    auto path = fs::path(config["crtFile"]);
+    vector<bool> validFiles;
+    config["timepix"]["crtFile"] = json::array();
 
-    string filename = path.filename().replace_extension("");
+    for (auto &file : config["crtFile"])
+    {
+        auto path = fs::path(file);
 
-    auto filenumber = stoi(filename.substr(filename.size() - 6));
-    filename = filename.substr(0, filename.size() - 6) + to_string(filenumber) + ".txt";
+        string filename = path.filename();
 
-    string timepixPath = config["timepix"]["path"].get<string>() + "/" + filename;
+        string timepixPath = config["timepix"]["path"].get<string>() + "/" + filename;
 
-    config["timepix"]["crtFile"] = timepixPath;
+        config["timepix"]["crtFile"].push_back(timepixPath);
 
-    return fs::exists(timepixPath);
+        validFiles.push_back(fs::exists(timepixPath));
+    }
+
+    int cps = count(validFiles.begin(), validFiles.end(), true);
+
+    if (cps != validFiles.size())
+    {
+        return false;
+    }
+
+    return true;
 }

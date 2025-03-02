@@ -5,12 +5,19 @@
 #include <regex>
 #include <iomanip>
 
-dataWriter::dataWriter(string file, int numb) : varFileName(file), varRunNumb(numb)
+dataWriter::dataWriter(json &config) : varConfig(config)
 {
-}
+    auto runType = config["general"]["run"].get<string>();
 
-gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
+    if (runType == "build" || runType == "convert")
+    {
+        varFileName = config["run"]["fileName"].get<string>();
+        varRunNumb = config["run"]["runNumber"].get<int>();
+    }
+}
+gaspDataWriter::gaspDataWriter(json &config) : dataWriter(config)
 {
+    setConfig(config);
 
     initializeOutputFile();
     initializeRecordHeader();
@@ -114,8 +121,7 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
             if (sig.size() != 2)
             {
-                cout << "error: Suppressed detector event must have two signals" << endl;
-                exit(1);
+                throw "error: Suppressed detector event must have two signals";
             }
 
             eventBuffer.push_back(sig[1]->getEnergy());
@@ -143,8 +149,7 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
             if (sig.size() != 2)
             {
-                cout << "error: Suppressed detector raw event must have two signals" << endl;
-                exit(1);
+                throw "error: Suppressed detector raw event must have two signals";
             }
 
             eventBuffer.push_back(sig[1]->getEnergy());
@@ -191,8 +196,7 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
             if (sig.size() != 2)
             {
-                cout << "error: Suppressed detector event must have two signals" << endl;
-                exit(1);
+                throw "error: Suppressed detector event must have two signals";
             }
 
             eventBuffer.push_back(sig[1]->getEnergy());
@@ -210,11 +214,7 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
         }
         default:
         {
-
-            cout << "default value, is not implemented: " << sig[0]->getDetectorType() << endl;
-
-            abort();
-
+            throw "default value, is not implemented: " + to_string(sig[0]->getDetectorType());
             break;
         }
         }
@@ -293,15 +293,7 @@ void gaspDataWriter::initializeOutputFile()
     initializeFileHeader();
 }
 
-void dataWriter::setConfig(json config)
-{
-    varConfig = config;
-
-    resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
-    timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
-}
-
-void gaspDataWriter::setConfig(json config)
+void gaspDataWriter::setConfig(json &config)
 {
     varConfig = config;
 
@@ -325,8 +317,7 @@ void gaspDataWriter::setConfig(json config)
 
     if (outTypes.size() < typeCount.size())
     {
-        cout << "gasp typeOutputFormat are not set for all detector types" << endl;
-        abort();
+        throw "gasp typeOutputFormat are not set for all detector types";
     }
 
     for (auto [type, count] : typeCount)
@@ -370,22 +361,52 @@ void gaspDataWriter::setConfig(json config)
     }
 }
 
-rootDataWriter::rootDataWriter(string file, int numb) : dataWriter(file, numb)
+void rootDataWriter::setConfig(json &config)
 {
-    initializeOutputFile();
+    varAddHistogram = config["convert"]["root"]["addHistogram"].get<bool>();
+    varAddList = config["convert"]["root"]["addList"].get<bool>();
+    varAddRunTime = config["convert"]["root"]["addRunTime"].get<bool>();
 }
 
-void rootDataWriter::initializeOutputFile()
+rootDataWriter::rootDataWriter(json &config) : dataWriter(config)
+{
+    setConfig(config);
+
+    auto runType = config["general"]["run"].get<string>();
+
+    if (runType == "build")
+    {
+        initializeBuildOutputFile();
+    }
+    else if (runType == "convert")
+    {
+        initializeConvertOutputFile();
+    }
+}
+
+void rootDataWriter::initializeBuildOutputFile()
 {
 
     string fName = getFileName() + ".root";
 
     varOutFile = make_unique<TFile>(fName.c_str(), "RECREATE");
 
-    initializeTree();
+    initializeBuildTree();
 }
 
-void rootDataWriter::initializeTree()
+void rootDataWriter::initializeConvertOutputFile()
+{
+    string fName = getFileName() + ".root";
+
+    varOutFile = make_unique<TFile>(fName.c_str(), "RECREATE");
+
+    if (varAddList)
+    {
+        initializeConvertTree();
+    }
+}
+
+void rootDataWriter::initializeBuildTree()
 {
 
     varEventTree = new TTree("events", "events tree");
@@ -403,6 +424,17 @@ void rootDataWriter::initializeTree()
 
     varEventTree->Branch("vetoRelativeNsTime", &varVetoRelativeNsTime);
     varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
+}
+
+void rootDataWriter::initializeConvertTree()
+{
+    varEventTree = new TTree("signals", "signals tree");
+
+    varEventTree->Branch("board", &varConvBoard);
+    varEventTree->Branch("channel", &varConvChannel);
+
+    varEventTree->Branch("energy", &varConvEnergy);
+    varEventTree->Branch("timestamp", &varConvTimestamp);
 }
 
 void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
@@ -461,7 +493,28 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
 void rootDataWriter::closeFile()
 {
-    varEventTree->Write();
+
+    if (varAddList)
+    {
+        varEventTree->Write();
+    }
+
+    if (varAddHistogram)
+    {
+        for (auto &hist : varEnergyHist)
+        {
+            hist.second->Write();
+        }
+    }
+
+    if (varAddRunTime)
+    {
+        double time = double(stopTime - startTime) * pow(10, -12);
+        TParameter<double> varRunTime("runTime", time);
+
+        varRunTime.Write();
+    }
+
     varOutFile->Close();
 }
 
@@ -479,8 +532,6 @@ void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
     }
 
     outFile.Close();
-
-    cout << "results output: " << outFileName << endl;
 }
 
 void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
@@ -530,8 +581,6 @@ void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
 
         outFile.close();
     }
-
-    cout << "results output: " << outFileBase << "_#type" << endl;
 }
 
 void capDataWriter::initializeOutputFile()
@@ -548,7 +597,7 @@ void capDataWriter::closeFile()
 
 void capDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
 {
-    cout << "write delay results is not currently implemented" << endl;
+    throw "write delay results is not currently implemented";
 }
 
 void capDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
@@ -606,24 +655,51 @@ void capDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
         // sig.setWaveform(kj::arrayPtr(events->at(i).at(0)->getWaveform().data(), events->at(i).at(0)->getWaveform().size()));
     }
 
-    if (twoEvents.size() == 3)
-    {
-        cout << twoEvents.at(0).at(0)->getTimeStamp()
-             << " " << static_cast<uint32_t>(twoEvents.at(0).at(0)->getBoardNumb())
-             << " " << static_cast<uint32_t>(twoEvents.at(0).at(0)->getChannelNumb()) << endl;
-    }
-
-    if (fourEvents.size() == 3)
-    {
-        cout << fourEvents.at(0).at(0)->getTimeStamp()
-             << " " << static_cast<uint32_t>(fourEvents.at(0).at(0)->getBoardNumb())
-             << " " << static_cast<uint32_t>(fourEvents.at(0).at(0)->getChannelNumb()) << endl;
-    }
-
     writePackedMessageToFd(getFileDescriptor(), *message);
 }
 
-capDataWriter::capDataWriter(string file, int numb) : dataWriter(file, numb)
+capDataWriter::capDataWriter(json &config) : dataWriter(config)
 {
     initializeOutputFile();
+}
+
+void rootDataWriter::addConvertEvent(event *event)
+{
+    if (varAddList)
+    {
+        varConvBoard = event->getBoardNumb();
+        varConvChannel = event->getChannelNumb();
+
+        varConvEnergy = event->getEnergy();
+        varConvTimestamp = event->getTimeStamp();
+
+        varEventTree->Fill();
+    }
+
+    if (varAddHistogram)
+    {
+        auto target = make_pair(event->getBoardNumb(), event->getChannelNumb());
+
+        auto mapIt = varEnergyHist.find(target);
+
+        if (mapIt == varEnergyHist.end())
+        {
+            varEnergyHist[target] = make_shared<TH1D>(("brd_" + to_string(event->getBoardNumb()) + "_ch_" + to_string(event->getChannelNumb())).c_str(), "energy", pow(2, 14), 0, pow(2, 14));
+        }
+
+        varEnergyHist[target]->Fill(event->getEnergy());
+    }
+
+    if (varAddRunTime)
+    {
+        if (event->getTimeStamp() < startTime)
+        {
+            startTime = event->getTimeStamp();
+        }
+
+        if (event->getTimeStamp() > stopTime)
+        {
+            stopTime = event->getTimeStamp();
+        }
+    }
 }

@@ -147,5 +147,15 @@ struct BuiltEvent{
         relativeNsTime @5: UInt16;
         relativePsTime @6: UInt16;
     }
+}
 
+struct TimepixDataPacket{
+    katherineEvents @0: List(KatherineEvent);
+}
+
+struct KatherineEvent {
+    board @0 :UInt8;
+    channel @1 :UInt16;
+    energy @2: UInt16;
+    timestamp @3: UInt64;
 }

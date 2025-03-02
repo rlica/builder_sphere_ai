@@ -41,14 +41,14 @@ public:
     uint8_t getBoardNumb() { return boardNumb; }
     void setBoardNumb(uint8_t brd) { boardNumb = brd; }
 
-    uint8_t getChannelNumb() { return chNumb; }
-    void setChannelNumb(uint8_t ch) { chNumb = ch; }
+    uint16_t getChannelNumb() { return chNumb; }
+    void setChannelNumb(uint16_t ch) { chNumb = ch; }
 
-    uint8_t getDetectorType() { return detectorType; }
-    void setDetectorType(uint8_t tp) { detectorType = tp; }
+    uint16_t getDetectorType() { return detectorType; }
+    void setDetectorType(uint16_t tp) { detectorType = tp; }
 
-    uint8_t getDetectorLut() { return detectorLut; }
-    void setDetectorLut(uint8_t lut) { detectorLut = lut; }
+    uint16_t getDetectorLut() { return detectorLut; }
+    void setDetectorLut(uint16_t lut) { detectorLut = lut; }
 
     int32_t getRelativeTime() { return relativeTime; }
     void setRelativeTime(int32_t val) { relativeTime = val; }
@@ -85,10 +85,10 @@ private:
 
     int32_t relativeTime = 0;
 
-    uint8_t detectorType = 0;
-    uint8_t detectorLut = 0;
-    uint8_t boardNumb = 0;
-    uint8_t chNumb = 0;
+    uint16_t detectorType = 0;
+    uint16_t detectorLut = 0;
+    uint16_t boardNumb = 0;
+    uint16_t chNumb = 0;
     uint8_t varCoincPair;
 
     double varPSD;

@@ -39,6 +39,8 @@ CAPNP_DECLARE_SCHEMA(b01c95f91988e106);
 CAPNP_DECLARE_SCHEMA(e869bfbd6fa844db);
 CAPNP_DECLARE_SCHEMA(ab33fce03e2a3c93);
 CAPNP_DECLARE_SCHEMA(f5bcc5cc1c89385e);
+CAPNP_DECLARE_SCHEMA(d4c643408f982e7a);
+CAPNP_DECLARE_SCHEMA(ec8b4a276a3e2966);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -365,6 +367,36 @@ struct BuiltEvent::Signal {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(f5bcc5cc1c89385e, 2, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct TimepixDataPacket {
+  TimepixDataPacket() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(d4c643408f982e7a, 0, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct KatherineEvent {
+  KatherineEvent() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(ec8b4a276a3e2966, 2, 0)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -2435,6 +2467,178 @@ private:
 };
 #endif  // !CAPNP_LITE
 
+class TimepixDataPacket::Reader {
+public:
+  typedef TimepixDataPacket Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasKatherineEvents() const;
+  inline  ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Reader getKatherineEvents() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class TimepixDataPacket::Builder {
+public:
+  typedef TimepixDataPacket Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasKatherineEvents();
+  inline  ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Builder getKatherineEvents();
+  inline void setKatherineEvents( ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Builder initKatherineEvents(unsigned int size);
+  inline void adoptKatherineEvents(::capnp::Orphan< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>> disownKatherineEvents();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class TimepixDataPacket::Pipeline {
+public:
+  typedef TimepixDataPacket Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class KatherineEvent::Reader {
+public:
+  typedef KatherineEvent Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint8_t getBoard() const;
+
+  inline  ::uint16_t getChannel() const;
+
+  inline  ::uint16_t getEnergy() const;
+
+  inline  ::uint64_t getTimestamp() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class KatherineEvent::Builder {
+public:
+  typedef KatherineEvent Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint8_t getBoard();
+  inline void setBoard( ::uint8_t value);
+
+  inline  ::uint16_t getChannel();
+  inline void setChannel( ::uint16_t value);
+
+  inline  ::uint16_t getEnergy();
+  inline void setEnergy( ::uint16_t value);
+
+  inline  ::uint64_t getTimestamp();
+  inline void setTimestamp( ::uint64_t value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class KatherineEvent::Pipeline {
+public:
+  typedef KatherineEvent Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 // =======================================================================================
 
 inline  ::DataPacket::Which DataPacket::Reader::which() const {
@@ -4318,6 +4522,96 @@ inline  ::uint16_t BuiltEvent::Signal::Builder::getRelativePsTime() {
 inline void BuiltEvent::Signal::Builder::setRelativePsTime( ::uint16_t value) {
   _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool TimepixDataPacket::Reader::hasKatherineEvents() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool TimepixDataPacket::Builder::hasKatherineEvents() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Reader TimepixDataPacket::Reader::getKatherineEvents() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Builder TimepixDataPacket::Builder::getKatherineEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void TimepixDataPacket::Builder::setKatherineEvents( ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>::Builder TimepixDataPacket::Builder::initKatherineEvents(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void TimepixDataPacket::Builder::adoptKatherineEvents(
+    ::capnp::Orphan< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>> TimepixDataPacket::Builder::disownKatherineEvents() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::KatherineEvent,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline  ::uint8_t KatherineEvent::Reader::getBoard() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t KatherineEvent::Builder::getBoard() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void KatherineEvent::Builder::setBoard( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t KatherineEvent::Reader::getChannel() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t KatherineEvent::Builder::getChannel() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void KatherineEvent::Builder::setChannel( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t KatherineEvent::Reader::getEnergy() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t KatherineEvent::Builder::getEnergy() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void KatherineEvent::Builder::setEnergy( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint64_t KatherineEvent::Reader::getTimestamp() const {
+  return _reader.getDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint64_t KatherineEvent::Builder::getTimestamp() {
+  return _builder.getDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void KatherineEvent::Builder::setTimestamp( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 

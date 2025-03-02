@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <execution>
 #include "TApplication.h"
+#include <optional>
 
 using json = nlohmann::json;
 using namespace std;
@@ -38,7 +39,7 @@ bool validateEvent(vector<event *> *events);
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
 bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
 
-pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut);
+optional<pair<uint8_t, uint8_t>> findBoardChannel(json &config, uint8_t type, uint8_t lut);
 
 string extractNumbers(const string &a, string format = "proto");
 
@@ -47,6 +48,7 @@ pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vect
 double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
 
 void initializeDataLoader(json &config);
+void initializeDataWriter(json &config);
 void initializeGlobals(json &config);
 
 dataWriter *writer;
@@ -84,7 +86,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            cout << "unknown run option, available options: build, delay" << endl;
+            throw "unknown run option, available options: build, delay";
         }
     }
 }
@@ -149,7 +151,45 @@ void initializeDataLoader(json &config)
     }
 }
 
-pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut)
+void initializeDataWriter(json &config)
+{
+
+    auto runType = config["general"]["run"].get<string>();
+
+    if (runType == "build" || runType == "convert")
+    {
+        string fileName = config["crtFile"];
+
+        auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
+
+        fileName = fs::path(fileName).stem().string();
+
+        fileName = string(config["output"]["path"]) + "/" + fileName;
+
+        config["run"] = {};
+        config["run"]["fileName"] = fileName;
+        config["run"]["runNumber"] = runNumber;
+    }
+
+    if (config["output"]["fileFormat"] == "gasp")
+    {
+        writer = new gaspDataWriter(config);
+    }
+    else if (config["output"]["fileFormat"] == "root")
+    {
+        writer = new rootDataWriter(config);
+    }
+    else if (config["output"]["fileFormat"] == "cap")
+    {
+        writer = new capDataWriter(config);
+    }
+    else
+    {
+        throw "Invalid output file format: " + config["output"]["fileFormat"].get<string>();
+    }
+}
+
+optional<pair<uint8_t, uint8_t>> findBoardChannel(json &config, uint8_t type, uint8_t lut)
 {
 
     for (int i = 0; i < lutVect.size(); i++)
@@ -162,10 +202,6 @@ pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut)
             }
         }
     }
-
-    cout << "Board and channel not found for detType: " << type << " and lut: " << lut << endl;
-
-    abort();
 
     return {};
 }
@@ -186,29 +222,6 @@ void buildRun(json config)
     deque<event *> varEventPool = loader->readEvents();
 
     preProcessEvent(config, varEventPool);
-
-    string fileName = config["crtFile"];
-
-    auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
-
-    fileName = fs::path(fileName).stem().string();
-
-    fileName = string(config["output"]["path"]) + "/" + fileName;
-
-    if (config["output"]["fileFormat"] == "gasp")
-    {
-        writer = new gaspDataWriter(fileName, runNumber);
-    }
-    else if (config["output"]["fileFormat"] == "root")
-    {
-        writer = new rootDataWriter(fileName, runNumber);
-    }
-    else if (config["output"]["fileFormat"] == "cap")
-    {
-        writer = new capDataWriter(fileName, runNumber);
-    }
-
-    writer->setConfig(config);
 
     uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
 
@@ -494,8 +507,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
             }
             else
             {
-                cout << "more then two coincident signals found!" << endl;
-                abort();
+                throw "more then two coincident signals found!";
             }
         }
     }
@@ -612,7 +624,7 @@ void delayRun(json config)
     if (refTimeFound == false)
     {
         cout << "delay run failed: reference time not found" << endl;
-        exit(0);
+        exit(1);
     }
 
     vector<vector<int>> delay = config["detector"]["delay"];
@@ -626,18 +638,22 @@ void delayRun(json config)
 
             auto brdCh = findBoardChannel(config, hist.first.first, hist.first.second);
 
-            auto time = x;
-
-            if (hist.first.first == refType && hist.first.second == refLUT)
+            if (brdCh.has_value())
             {
-                time = 0;
-            }
-            else
-            {
-                time += int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
-            }
 
-            delay[brdCh.first][brdCh.second] = time / int(config["general"]["timeUnitMultiplier"]);
+                auto time = x;
+
+                if (hist.first.first == refType && hist.first.second == refLUT)
+                {
+                    time = 0;
+                }
+                else
+                {
+                    time += int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+                }
+
+                delay[brdCh.value().first][brdCh.value().second] = time / int(config["general"]["timeUnitMultiplier"]);
+            }
         }
     }
 
@@ -651,21 +667,6 @@ void delayRun(json config)
 
     json::sax_parse(config.dump(), &pretty);
 
-    if (config["output"]["fileFormat"] == "gasp")
-    {
-        writer = new gaspDataWriter();
-    }
-    else if (config["output"]["fileFormat"] == "root")
-    {
-        writer = new rootDataWriter();
-    }
-    else if (config["output"]["fileFormat"] == "cap")
-    {
-        writer = new capDataWriter();
-    }
-
-    writer->setConfig(config);
-
     writer->writeDelayResults(hists);
 }
 
@@ -673,101 +674,9 @@ void convertRun(json config)
 {
     deque<event *> varEventPool = loader->readEvents();
 
-    string fileName = config["crtFile"];
-
-    auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
-
-    fileName = fs::path(fileName).stem().string();
-
-    fileName = string(config["output"]["path"]) + "/" + fileName;
-
-    string format = config["output"]["fileFormat"];
-
-    config["run"] = {};
-    config["run"]["runNumber"] = runNumber;
-    config["run"]["fileName"] = fileName;
-
-    if (format == "root")
+    for (auto &evt : varEventPool)
     {
-        writer = new rootDataWriter(config);
-    }
-    else
-    {
-        cout << "output format" + format + "not supported : " << endl;
-        exit(1);
-    }
-
-    writer->setConfig(config);
-
-    uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
-
-    vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
-
-    vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
-
-    for (auto i = varEventPool.begin(); i != varEventPool.end(); i++)
-    {
-        auto crtPos = i;
-
-        auto interval = (*crtPos)->getTimeStamp() - (*i)->getTimeStamp();
-        vector<int> checkMask(coincMask[0].size(), 0);
-
-        while (interval < coincWindow)
-        {
-            addToCheckMask(checkMask, *(*crtPos));
-
-            crtPos++;
-
-            if (crtPos == varEventPool.end())
-            {
-                break;
-            }
-
-            interval = (*crtPos)->getTimeStamp() - (*i)->getTimeStamp();
-        }
-
-        if (validateCheckMask(coincMask, checkMask))
-        {
-            eventPos.push_back(make_pair(i, crtPos));
-        }
-    }
-
-    if (eventPos.size())
-    {
-        for (size_t i = 0; i < eventPos.size() - 1; i++)
-        {
-            int cnt = 1;
-
-            auto d1 = distance(eventPos[i].first, eventPos[i].second);
-            auto d2 = distance(eventPos[i].first, eventPos[i + cnt].first);
-
-            vector<pair<deque<event *>::iterator, deque<event *>::iterator>> overlapEvents;
-            overlapEvents.push_back(eventPos[i]);
-
-            while (d2 < d1)
-            {
-                overlapEvents.push_back(eventPos[i + cnt]);
-
-                cnt++;
-
-                if (i + cnt >= eventPos.size())
-                {
-                    break;
-                }
-                d2 = distance(eventPos[i].first, eventPos[i + cnt].first);
-            }
-
-            i += overlapEvents.size() - 1;
-
-            auto evt = selectOverlapEvent(overlapEvents);
-
-            postProcessEvent(config, evt);
-        }
-    }
-
-    for (auto &i : varEventPool)
-    {
-        delete i;
+        writer->addConvertEvent(evt);
     }
 
     writer->closeFile();

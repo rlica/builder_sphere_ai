@@ -12,6 +12,8 @@
 #include "TTree.h"
 #include "TH1I.h"
 #include <fcntl.h>
+#include "TParameter.h"
+#include <limits>
 
 #include "eventProto.capnp.h"
 #include <capnp/message.h>
@@ -35,20 +37,20 @@ using namespace capnp;
 class dataWriter
 {
 public:
-    dataWriter() {};
+    dataWriter(json &config);
 
-    dataWriter(string file, int numb);
     ~dataWriter() {};
 
     virtual void initializeOutputFile() {};
     virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time) {};
+    virtual void addConvertEvent(event *event) {};
 
     virtual void writeData() {};
     virtual void closeFile() {};
 
     virtual void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist) {};
 
-    virtual void setConfig(json config);
+    virtual void setConfig(json &config) {};
 
     string getFileName() { return varFileName; }
     int getRunNumber() { return varRunNumb; }
@@ -59,24 +61,39 @@ protected:
 
     json varConfig;
 
-    string varFileName;
-    int varRunNumb;
+    string varFileName = "";
+    int varRunNumb = -1;
+
+    uint64_t startTime = std::numeric_limits<uint64_t>::max();
+    uint64_t stopTime = std::numeric_limits<uint64_t>::min();
 };
 
 class rootDataWriter : public dataWriter
 {
 
 public:
-    rootDataWriter() {};
+    rootDataWriter(json &config);
 
-    rootDataWriter(string file, int numb);
-    void initializeOutputFile();
+    void initializeBuildOutputFile();
+    void initializeConvertOutputFile();
+    void addConvertEvent(event *event);
+
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
 
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
 
     void closeFile();
 
+    void setConfig(json &config);
+
+private:
+    void initializeBuildTree();
+    void initializeConvertTree();
+
+    unique_ptr<TFile> varOutFile;
+    TTree *varEventTree;
+
+    // build data types
     vector<uint16_t> varDetectorLUT;
     vector<uint16_t> varDetectorType;
 
@@ -92,19 +109,26 @@ public:
     vector<uint16_t> varVetoRelativeNsTime;
     vector<uint16_t> varVetoRelativePsTime;
 
-private:
-    void initializeTree();
+    // convert data types
+    uint8_t varConvBoard;
+    uint8_t varConvChannel;
 
-    unique_ptr<TFile> varOutFile;
-    TTree *varEventTree;
+    uint16_t varConvEnergy;
+    uint64_t varConvTimestamp;
+
+    map<pair<int, int>, shared_ptr<TH1D>> varEnergyHist;
+
+    // flags
+    bool varAddHistogram;
+    bool varAddList;
+    bool varAddRunTime;
 };
 
 class gaspDataWriter : public dataWriter
 {
 
 public:
-    gaspDataWriter() {};
-    gaspDataWriter(string file, int numb);
+    gaspDataWriter(json &config);
 
     void initializeOutputFile();
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
@@ -114,7 +138,7 @@ public:
 
     void closeFile();
 
-    void setConfig(json config);
+    void setConfig(json &config);
 
 private:
     void initializeRecordHeader();
@@ -152,9 +176,8 @@ class capDataWriter : public dataWriter
 {
 
 public:
-    capDataWriter() {};
+    capDataWriter(json &config);
 
-    capDataWriter(string file, int numb);
     void initializeOutputFile();
 
     void setFileDescriptor(int fd) { fileDescriptor = fd; }

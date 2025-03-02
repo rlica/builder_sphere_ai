@@ -166,10 +166,14 @@ public:
     timepixLoader(json cfg) : dataLoader(cfg) {}
     deque<event *> readEvents();
     vector<delayEvent> readDelayEvents();
+    event *parseStringEvent(string &line);
 
     bool checkTimepixFile();
 
 private:
+    deque<event *> readTimepixEvents();
+    vector<delayEvent> readTimepixDelayEvents();
+
     map<int, string> dataTypeMap = {{0, "FULL_DATA"},
                                     {1, "PLAIN_DATA"},
                                     {2, "PSD_DATA"},
