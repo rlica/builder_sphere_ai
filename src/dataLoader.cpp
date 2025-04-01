@@ -2044,6 +2044,11 @@ vector<delayEvent> timepixLoader::readDelayEvents()
                                 timeStamp += offset;
                             }
 
+                            // if (dType == 0 && dLut == 4)
+                            // {
+                            //     cout << timeStamp << end
+                            // }
+
                             events.push_back(make_tuple(dType, dLut, timeStamp));
 
                             if (events.size() == eventNumb)
@@ -2105,28 +2110,45 @@ vector<delayEvent> timepixLoader::readTimepixDelayEvents()
         {
             capnp::PackedMessageReader message(bufferedStream, {1000000000, 64});
 
-            auto data = message.getRoot<TimepixDataPacket>();
+            auto data = message.getRoot<DataPacket>();
 
-            auto proEvent = data.getKatherineEvents();
+            auto proEvent = data.getPlainEvents();
 
             for (uint i = 0; i < proEvent.size(); i++)
             {
 
                 if (proEvent[i].getEnergy() > tresh)
                 {
-                    auto ch = proEvent[i].getChannel();
-                    uint64_t timeStamp = proEvent[i].getTimestamp();
 
-                    uint16_t lut = uint8_t(ch);
+                    uint8_t ch;
+                    uint8_t brd;
+                    uint8_t lut;
+                    uint8_t type;
+
+                    if (proEvent[i].getBoard() == 11)
+                    {
+                        lut = uint8_t(proEvent[i].getChannel());
+                        lut = 0; // single graph for all
+                        type = 5;
+                    }
+                    else if (proEvent[i].getBoard() == 10)
+                    {
+                        lut = 0;
+                        type = 6;
+                    }
+
+                    uint64_t timeStamp = proEvent[i].getTimestamp();
 
                     if (dType == refType && lut == refLUT)
                     {
                         timeStamp += offset;
                     }
 
+                    // cout << timeStamp << endl;
+
                     // if (lut < 100)
                     {
-                        events.push_back(make_tuple(dType, 0, timeStamp));
+                        events.push_back(make_tuple(type, 0, timeStamp));
                     }
 
                     if (events.size() == eventNumb)
