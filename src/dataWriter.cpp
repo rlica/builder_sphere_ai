@@ -703,3 +703,32 @@ void rootDataWriter::addConvertEvent(event *event)
         }
     }
 }
+
+void gaspDataWriter::writeAlignResults(vector<calibPoint> calibPoints)
+{
+
+    string fileName = varConfig["align"]["outFileName"];
+    string outPath = varConfig["output"]["path"];
+
+    for (auto &calib : calibPoints)
+    {
+        string outFile = outPath + "/" + fileName + "_" + to_string(calib.type) + ".cal";
+
+        int fd = open(outFile.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
+
+        std::stringstream buffer;
+
+        buffer << calib.runNumber << " " << static_cast<uint32_t>(calib.lut) << " " << calib.calibParam.size() << " ";
+
+        for (auto &val : calib.calibParam)
+        {
+            buffer << val << " ";
+        }
+        buffer << endl;
+
+        flock(fd, LOCK_EX);
+        write(fd, buffer.str().c_str(), buffer.str().size());
+        flock(fd, LOCK_UN); // Release lock
+        close(fd);
+    }
+}

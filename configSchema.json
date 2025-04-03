@@ -178,6 +178,37 @@
                 }
             },
             "additionalProperties": false
+        },
+        "align": {
+            "type": "object",
+            "properties": {
+                "root": {
+                    "type": "object",
+                    "properties": {
+                        "paramLimits": {"type": "array"},
+                        "histRange": {
+                            "type": "array",
+                            "items": {"type": "number"}
+                        },
+                        "histBins": {"type": "integer"},
+                        "population": {"type": "integer"},
+                        "steps": {"type": "integer"},
+                        "objectiveFunc": {
+                            "type": "string",
+                            "enum": ["pearson", "chi_squared", "kl_divergence"]
+                        },
+                        "refFile": {"type": "string"},
+                        "selection": {
+                            "type": "array",
+                            "items": {"type": "number"}
+                        },
+                        "eliteSigma": {"type": "number"},
+                        "eliteSteps": {"type": "integer"}
+                    },
+                    "required": ["reFile"],
+                    "additionalProperties": false
+                }
+            }
         }
     },
     "required": ["build", "delay", "detector", "gasp", "general"],

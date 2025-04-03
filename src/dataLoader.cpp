@@ -2190,3 +2190,81 @@ bool timepixLoader::checkTimepixFile()
 
     return true;
 }
+
+map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> testLoader::readAlignEvents()
+{
+
+    int16_t crtBrd = -1;
+    vector<uint64_t> times;
+
+    map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> events;
+
+    uint eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = numeric_limits<uint>::max();
+    }
+
+    string fileName = config["crtFile"];
+
+    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+
+    auto fd = open(fileName.c_str(), O_RDONLY);
+
+    kj::FdInputStream fdStream(fd);
+    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+    uint64_t crtEvents;
+
+    while (bufferedStream.tryGetReadBuffer() != nullptr)
+    {
+        capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
+
+        auto data = message.getRoot<DataPacket>();
+
+        switch (data.which())
+        {
+
+        case DataPacket::PLAIN_EVENTS:
+        {
+            auto proEvent = data.getPlainEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+
+                auto brd = proEvent[i].getBoard();
+                auto ch = proEvent[i].getChannel();
+
+                auto dType = mask[brd][ch];
+                auto dLut = lut[brd][ch];
+
+                auto evtId = make_pair(dType, dLut);
+
+                if (events.find(evtId) == events.end())
+                {
+                    events[evtId] = make_shared<vector<double>>();
+                }
+
+                events[evtId]->push_back(proEvent[i].getEnergy());
+
+                if (crtEvents == eventNumb)
+                {
+                    return events;
+                }
+            }
+            break;
+        }
+
+        default:
+        {
+            throw "Unsupported data type: " + dataTypeMap[data.which()] + " " + to_string(data.which());
+
+            break;
+        }
+        }
+    }
+
+    return events;
+}

@@ -18,6 +18,8 @@
 #include "eventProto.capnp.h"
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
+#include "utilities.h"
+#include <sys/file.h>
 
 #define MAX_BLOCK_SIZE pow(2, 13)
 #define EVENT_HEADER_SIZE pow(2, 4)
@@ -49,6 +51,7 @@ public:
     virtual void closeFile() {};
 
     virtual void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist) {};
+    virtual void writeAlignResults(vector<calibPoint> calibPoints) {};
 
     virtual void setConfig(json &config) {};
 
@@ -139,6 +142,7 @@ public:
     void closeFile();
 
     void setConfig(json &config);
+    void writeAlignResults(vector<calibPoint> calibPoints);
 
 private:
     void initializeRecordHeader();

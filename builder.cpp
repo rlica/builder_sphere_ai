@@ -21,6 +21,7 @@
 #include <execution>
 #include "TApplication.h"
 #include <optional>
+#include "geneticCalibrator.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -33,6 +34,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 void buildRun(json config);
 void delayRun(json config);
 void convertRun(json config);
+void alignRun(json config);
 
 bool validateEvent(vector<event *> *events);
 
@@ -83,6 +85,11 @@ int main(int argc, char **argv)
         else if (config["crtRun"] == "convert")
         {
             convertRun(config);
+        }
+        else if (config["crtRun"] == "align")
+        {
+
+            alignRun(config);
         }
         else
         {
@@ -680,4 +687,53 @@ void convertRun(json config)
     }
 
     writer->closeFile();
+}
+
+void alignRun(json config)
+{
+
+    auto inpData = loader->readAlignEvents();
+
+    auto runNumb = stoi(extractNumbers(config["crtFile"], config["input"]["fileFormat"]));
+
+    loader->setCrtFile(config["refFile"]);
+
+    auto refData = loader->readAlignEvents();
+
+    vector<shared_future<calibPoint>> futures;
+
+    for (auto &dp : refData)
+    {
+        auto id = dp.first;
+
+        auto rData = refData[id];
+        auto iData = inpData[id];
+
+        futures.push_back(async(std::launch::async, [config, rData, iData, id, runNumb]() -> calibPoint
+                                {
+            auto calibrator = geneticOptimizer(config["align"]);
+            calibrator.optimize(rData, iData);
+
+            calibPoint point;
+
+            point.runNumber = runNumb;
+            point.type = id.first;
+            point.lut = id.second;
+
+            point.calibParam = calibrator.getBestPos();
+
+            return point; })
+                              .share());
+    }
+
+    vector<calibPoint> calibPoints;
+
+    for (auto &f : futures)
+    {
+        auto calib = f.get();
+
+        calibPoints.push_back(calib);
+    }
+
+    writer->writeAlignResults(calibPoints);
 }

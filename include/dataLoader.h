@@ -27,6 +27,7 @@ namespace fs = std::filesystem;
 
 typedef variant<PlainData::Reader, WaveData::Reader, PsdData::Reader, RawTimeData::Reader> dataReader;
 typedef tuple<int, int, uint64_t> delayEvent;
+typedef tuple<int, int, uint16_t> alignEvent;
 
 class dataLoader
 {
@@ -35,6 +36,16 @@ public:
 
     virtual deque<event *> readEvents() = 0;
     virtual vector<delayEvent> readDelayEvents() = 0;
+    virtual map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> readAlignEvents()
+    {
+        cout << "align not implemented for: " << config["input"]["fileFormat"] << endl;
+        return {};
+    }
+
+    void setCrtFile(string fileName)
+    {
+        config["crtFile"] = fileName;
+    }
 
 protected:
     json config;
@@ -114,6 +125,7 @@ public:
     testLoader(json cfg) : dataLoader(cfg) {}
     deque<event *> readEvents();
     vector<delayEvent> readDelayEvents();
+    map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> readAlignEvents();
 
 private:
     map<int, string> dataTypeMap = {{0, "FULL_DATA"},
