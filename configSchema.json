@@ -86,18 +86,7 @@
             "properties": {
                 "typeOutputFormat": {
                     "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "noType"               ,
-                            "detector"             ,
-                            "detectorRaw"          ,
-                            "psdDetector"          ,
-                            "suppressedDetector"   ,
-                            "suppressedDetectorRaw",
-                            "suppressedPsdDetector"
-                        ]
-                    }
+                    "items": {"type": "string"}
                 }
             },
             "required": ["typeOutputFormat"]

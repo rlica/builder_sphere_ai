@@ -167,13 +167,16 @@ void buildRun(json &config)
 
 void printStatus(int finished, int total)
 {
-    string doneStr = "000000" + to_string(finished);
-    doneStr = doneStr.substr(doneStr.size() - 6);
 
-    string totalStr = "000000" + to_string(total);
-    totalStr = totalStr.substr(totalStr.size() - 6);
+    [[deprecated]] int a = 0;
 
-    cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
+    // string doneStr = "000000" + to_string(finished);
+    // doneStr = doneStr.substr(doneStr.size() - 6);
+
+    // string totalStr = "000000" + to_string(total);
+    // totalStr = totalStr.substr(totalStr.size() - 6);
+
+    // cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
 }
 
 vector<string> getPathFiles(string path, string identifier, string extension)

@@ -45,6 +45,7 @@ public:
 
     virtual void initializeOutputFile() {};
     virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time) {};
+    virtual void addBuiltEvent(vector<event *> *events) {};
     virtual void addConvertEvent(event *event) {};
 
     virtual void writeData() {};
@@ -135,6 +136,7 @@ public:
 
     void initializeOutputFile();
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+    void addBuiltEvent(vector<event *> *events);
 
     void writeData();
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
@@ -145,6 +147,24 @@ public:
     void writeAlignResults(vector<calibPoint> calibPoints);
 
 private:
+    void initializeValueGetters();
+    void dumpEventsToFile(map<pair<int, int>, vector<event *>> &events);
+
+    int maxType = 0;
+
+    map<int, vector<int>> detTypesVector;
+    map<int, vector<int>> detTypesUnique;
+    map<int, vector<int>> detDataTypeVector;
+
+    map<int, vector<pair<int, int>>> pairTypesLUTs;
+
+    vector<function<uint16_t(event *)>> eventValueGetters;
+    function<uint16_t(event *)> lutValueGetter;
+
+    map<int, int> detTypeWriteMapper;
+
+private:
+    void validateConfig();
     void initializeRecordHeader();
     void initializeFileHeader();
 
@@ -165,15 +185,15 @@ private:
     int64_t resetTime = std::numeric_limits<int64_t>::min();
     int64_t prevTime = std::numeric_limits<int64_t>::min();
 
-    map<int, int> detectorTypeSize = {{DETECTOR, 4},
-                                      {DETECTOR_RAW, 4},
-                                      {SUPPRESED_DETECTOR, 7},
-                                      {SUPPRESED_DETECTOR_RAW, 7},
-                                      {PSD_DETECTOR, 5},
-                                      {SUPPRESED_PSD_DETECTOR, 8},
-                                      {NO_TYPE, 0}};
+    [[deprecated]] map<int, int> detectorTypeSize = {{DETECTOR, 4},
+                                                     {DETECTOR_RAW, 4},
+                                                     {SUPPRESED_DETECTOR, 7},
+                                                     {SUPPRESED_DETECTOR_RAW, 7},
+                                                     {PSD_DETECTOR, 5},
+                                                     {SUPPRESED_PSD_DETECTOR, 8},
+                                                     {NO_TYPE, 0}};
 
-    map<int, int> varOutputTypes; // detector type - gasp output type
+    [[deprecated]] map<int, int> varOutputTypes; // detector type - gasp output type
 };
 
 class capDataWriter : public dataWriter

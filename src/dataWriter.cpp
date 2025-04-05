@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <regex>
 #include <iomanip>
+#include <set>
 
 dataWriter::dataWriter(json &config) : varConfig(config)
 {
@@ -19,223 +20,201 @@ gaspDataWriter::gaspDataWriter(json &config) : dataWriter(config)
 {
     setConfig(config);
 
+    validateConfig();
+
+    initializeValueGetters();
+
     initializeOutputFile();
     initializeRecordHeader();
 }
 
-void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
+void gaspDataWriter::initializeValueGetters()
 {
-    vector<int> eventMask = vector<int>(varOutputTypes.size(), 0);
 
-    for (auto &sig : *events)
+    map<string, function<uint16_t(event *)>> valueGetters;
+
+    valueGetters["energy"] = [](event *ev)
     {
-        auto it = varOutputTypes.find(sig[0]->getDetectorType());
+        cout << " energy ";
+        return ev->getEnergy();
+    };
 
-        auto dist = distance(varOutputTypes.begin(), it);
+    valueGetters["time/1000"] = [](event *ev)
+    {
+        cout << " time/1000 ";
+        return ev->getRelativeTime() / 1000;
+    };
 
-        eventMask[dist] += 1;
+    valueGetters["time%1000"] = [](event *ev)
+    {
+        cout << " time%1000 ";
+        return ev->getRelativeTime() % 1000;
+    };
+
+    valueGetters["psd"] = [](event *ev)
+    {
+        cout << " psd ";
+        return ev->getPSD();
+    };
+
+    // lut getter
+    lutValueGetter = [](event *ev)
+    {
+        return ev->getDetectorLut();
+    };
+
+    eventValueGetters = vector<function<uint16_t(event *)>>(valueGetters.size());
+
+    // set the getter function
+    for (auto &getter : valueGetters)
+    {
+        auto dist = std::distance(valueGetters.begin(), valueGetters.find(getter.first));
+        eventValueGetters[dist] = getter.second;
     }
 
-    vector<short> eventBuffer;
-    eventBuffer.reserve(2 + eventMask.size());
+    auto cfg = varConfig["gasp"];
 
-    eventBuffer.push_back(0);
+    auto outputFormat = cfg["typeOutputFormat"].get<vector<string>>();
 
-    int size = 0;
-
-    // size of header and detector mask
-    size += varEventHeaderSize + varOutputTypes.size();
-
-    // this should be from config
-    if (time > (prevTime + resetGap))
+    for (size_t i = 0; i < outputFormat.size(); i++)
     {
-        resetTime = time;
-    }
+        auto detType = outputFormat[i];
 
-    prevTime = time;
-
-    short scaledTime = (time - resetTime) * timeScale;
-
-    // fill header parameters
-    eventBuffer.push_back(scaledTime);
-
-    // fill detector mask
-    for (uint i = 0; i < eventMask.size(); i++)
-    {
-        auto it = std::next(varOutputTypes.begin(), i);
-
-        size += eventMask[i] * detectorTypeSize[(*it).second];
-        eventBuffer.push_back(eventMask[i]);
-    }
-
-    // fill the proper event start value
-    eventBuffer[0] = 0xF000 + size;
-
-    eventBuffer.reserve(size + 1);
-
-    for (auto &sig : *events)
-    {
-
-        switch (varOutputTypes[sig[0]->getDetectorType()])
+        detDataTypeVector[i] = vector<int>(0);
+        for (auto &dataType : cfg["detectors"][detType]["dataType"])
         {
-        case DETECTOR:
-        {
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            break;
+            auto dist = std::distance(valueGetters.begin(), valueGetters.find(dataType));
+            detDataTypeVector[i].push_back(dist);
         }
-        case DETECTOR_RAW:
+    }
+}
+
+[[deprecated("not finished")]] void gaspDataWriter::validateConfig()
+{
+    // check detector values
+
+    map<int, set<int>> detTypesSet;
+
+    auto cfg = varConfig["gasp"];
+
+    auto outputFormat = cfg["typeOutputFormat"].get<vector<string>>();
+
+    int cnt = 0;
+
+    for (auto &detType : outputFormat)
+    {
+
+        cout << "detType: " << detType << endl;
+
+        if (detType == "noType")
         {
+            cnt++;
 
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            int32_t time = sig[0]->getRelativeTime();
-
-            uint16_t sTime = time & 0x3FF;
-            uint16_t fTime = (time >> 10) & 0xFFFF;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            break;
+            continue;
         }
-        case SUPPRESED_DETECTOR:
+
+        assert(cfg["detectors"].find(detType) != cfg["detectors"].end() && "gasp: detector type not defined");
+
+        auto det = cfg["detectors"][detType];
+
+        auto dataTypes = det["dataType"].get<vector<string>>();
+        auto types = det["type"].get<vector<int>>();
+
+        assert(dataTypes.size() == types.size() && "gasp: dataType and type vectors must be the same size");
+
+        set<int> tSet;
+        for (auto &tp : types)
         {
+            tSet.insert(tp);
+        }
 
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
+        cout << "cnt:  " << cnt << " type: " << detType << endl;
 
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+        assert(tSet.find(cnt) != tSet.end() && "gasp: type not found in the defined config");
 
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
+        detTypesSet[cnt] = tSet;
+        detTypesVector[cnt] = types;
 
-            if (sig.size() != 2)
+        cnt++;
+    }
+
+    // check pairs
+    auto pairs = varConfig["detector"]["coincPairs"].get<vector<vector<int>>>();
+    auto types = varConfig["detector"]["type"].get<vector<vector<int>>>();
+    auto luts = varConfig["detector"]["lut"].get<vector<vector<int>>>();
+
+    map<int, vector<int>> pairTypes;
+    map<int, set<int>> pairSets;
+
+    set<int> allTypes;
+
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            allTypes.insert(types[i][o]);
+
+            pairTypesLUTs[pairs[i][o]].push_back(make_pair(types[i][o], luts[i][o]));
+
+            if (pairs[i][o] == 0)
             {
-                throw "error: Suppressed detector event must have two signals";
+                continue;
             }
 
-            eventBuffer.push_back(sig[1]->getEnergy());
-
-            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
-            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fVetoTime);
-            eventBuffer.push_back(sVetoTime);
-            break;
-        }
-        case SUPPRESED_DETECTOR_RAW:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            int32_t time = sig[0]->getRelativeTime();
-
-            uint16_t sTime = time & 0x3FF;
-            uint16_t fTime = (time >> 10) & 0xFFFF;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            if (sig.size() != 2)
+            if (types[i][o] == -1)
             {
-                throw "error: Suppressed detector raw event must have two signals";
+                continue;
             }
 
-            eventBuffer.push_back(sig[1]->getEnergy());
-
-            time = sig[1]->getRelativeTime();
-
-            sTime = time & 0x3FF;
-            fTime = (time >> 10) & 0xFFFF;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            break;
-        }
-        case PSD_DETECTOR:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            eventBuffer.push_back(sig[0]->getPSD());
-
-            break;
-        }
-        case SUPPRESED_PSD_DETECTOR:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            eventBuffer.push_back(sig[0]->getPSD());
-
-            if (sig.size() != 2)
-            {
-                throw "error: Suppressed detector event must have two signals";
-            }
-
-            eventBuffer.push_back(sig[1]->getEnergy());
-
-            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
-            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fVetoTime);
-            eventBuffer.push_back(sVetoTime);
-            break;
-        }
-        case NO_TYPE:
-        {
-            break;
-        }
-        default:
-        {
-            throw "default value, is not implemented: " + to_string(sig[0]->getDetectorType());
-            break;
-        }
+            pairTypes[pairs[i][o]].push_back(types[i][o]);
+            pairSets[pairs[i][o]].insert(types[i][o]);
         }
     }
 
-    if (varBlockBuffer.size() + eventBuffer.size() < MAX_BLOCK_SIZE)
+    for (auto &pType : pairTypes)
     {
-        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+        bool found = false;
+
+        for (auto &dType : detTypesSet)
+        {
+            if (pType.second.size() == dType.second.size())
+            {
+                if (pairSets[pType.first] == dType.second)
+                {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        assert(found && "gasp: invalid pair configuration");
     }
-    else
+
+    maxType = *allTypes.rbegin() + 1;
+
+    for (auto &dType : detTypesSet)
     {
-        // fill the end of buffer with zeros
-        varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
+        for (auto &type : dType.second)
+        {
+            detTypesUnique[dType.first].push_back(type);
+        }
+    }
 
-        // write the buffer to disk
-        writeData();
+    // create detector type map
 
-        // clear the buffer
-        initializeRecordHeader();
+    int typeCnt = 0;
+    for (int i = 0; i < outputFormat.size(); i++)
+    {
+        auto detType = outputFormat[i];
 
-        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+        if (detType == "noType")
+        {
+            continue;
+        }
+
+        detTypeWriteMapper[i] = typeCnt;
+
+        typeCnt++;
     }
 }
 
@@ -293,72 +272,72 @@ void gaspDataWriter::initializeOutputFile()
     initializeFileHeader();
 }
 
-void gaspDataWriter::setConfig(json &config)
+[[deprecated]] void gaspDataWriter::setConfig(json &config)
 {
     varConfig = config;
 
-    resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
-    timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
+    // resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
+    // timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
 
-    auto dTypes = config["detector"]["type"].get<vector<vector<int>>>();
+    // auto dTypes = config["detector"]["type"].get<vector<vector<int>>>();
 
-    map<int, int> typeCount;
+    // map<int, int> typeCount;
 
-    for (auto brd : dTypes)
-    {
-        for (auto ch : brd)
-        {
-            typeCount[ch]++;
-        }
-    }
-    typeCount.erase(-1);
+    // for (auto brd : dTypes)
+    // {
+    //     for (auto ch : brd)
+    //     {
+    //         typeCount[ch]++;
+    //     }
+    // }
+    // typeCount.erase(-1);
 
-    auto outTypes = varConfig["gasp"]["typeOutputFormat"].get<vector<string>>();
+    // auto outTypes = varConfig["gasp"]["typeOutputFormat"].get<vector<string>>();
 
-    if (outTypes.size() < typeCount.size())
-    {
-        throw "gasp typeOutputFormat are not set for all detector types";
-    }
+    // if (outTypes.size() < typeCount.size())
+    // {
+    //     throw "gasp typeOutputFormat are not set for all detector types";
+    // }
 
-    for (auto [type, count] : typeCount)
-    {
+    // for (auto [type, count] : typeCount)
+    // {
 
-        if (outTypes[type] == "detector")
-        {
-            varOutputTypes[type] = DETECTOR;
-        }
-        else if (outTypes[type] == "detectorRaw")
-        {
-            varOutputTypes[type] = DETECTOR_RAW;
-        }
-        else if (outTypes[type] == "suppressedDetector")
-        {
-            varOutputTypes[type] = SUPPRESED_DETECTOR;
-        }
-        else if (outTypes[type] == "suppressedDetectorRaw")
-        {
-            varOutputTypes[type] = SUPPRESED_DETECTOR_RAW;
-        }
-        else if (outTypes[type] == "psdDetector")
-        {
-            varOutputTypes[type] = PSD_DETECTOR;
-        }
-        else if (outTypes[type] == "suppresedPsdDetector")
-        {
-            varOutputTypes[type] = SUPPRESED_PSD_DETECTOR;
-        }
-        else
-        {
-            varOutputTypes[type] = NO_TYPE;
-        }
-    }
+    //     if (outTypes[type] == "detector")
+    //     {
+    //         varOutputTypes[type] = DETECTOR;
+    //     }
+    //     else if (outTypes[type] == "detectorRaw")
+    //     {
+    //         varOutputTypes[type] = DETECTOR_RAW;
+    //     }
+    //     else if (outTypes[type] == "suppressedDetector")
+    //     {
+    //         varOutputTypes[type] = SUPPRESED_DETECTOR;
+    //     }
+    //     else if (outTypes[type] == "suppressedDetectorRaw")
+    //     {
+    //         varOutputTypes[type] = SUPPRESED_DETECTOR_RAW;
+    //     }
+    //     else if (outTypes[type] == "psdDetector")
+    //     {
+    //         varOutputTypes[type] = PSD_DETECTOR;
+    //     }
+    //     else if (outTypes[type] == "suppresedPsdDetector")
+    //     {
+    //         varOutputTypes[type] = SUPPRESED_PSD_DETECTOR;
+    //     }
+    //     else
+    //     {
+    //         varOutputTypes[type] = NO_TYPE;
+    //     }
+    // }
 
-    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
+    // vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
 
-    for (auto m : antiCoincFlags)
-    {
-        varOutputTypes.erase(m);
-    }
+    // for (auto m : antiCoincFlags)
+    // {
+    //     varOutputTypes.erase(m);
+    // }
 }
 
 void rootDataWriter::setConfig(json &config)
@@ -732,3 +711,435 @@ void gaspDataWriter::writeAlignResults(vector<calibPoint> calibPoints)
         close(fd);
     }
 }
+
+void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
+{
+    vector<int> eventMask = vector<int>(varOutputTypes.size(), 0);
+
+    for (auto &sig : *events)
+    {
+        auto it = varOutputTypes.find(sig[0]->getDetectorType());
+
+        auto dist = distance(varOutputTypes.begin(), it);
+
+        eventMask[dist] += 1;
+    }
+
+    vector<short> eventBuffer;
+    eventBuffer.reserve(2 + eventMask.size());
+
+    eventBuffer.push_back(0);
+
+    int size = 0;
+
+    // size of header and detector mask
+    size += varEventHeaderSize + varOutputTypes.size();
+
+    // this should be from config
+    if (time > (prevTime + resetGap))
+    {
+        resetTime = time;
+    }
+
+    prevTime = time;
+
+    short scaledTime = (time - resetTime) * timeScale;
+
+    // fill header parameters
+    eventBuffer.push_back(scaledTime);
+
+    // fill detector mask
+    for (uint i = 0; i < eventMask.size(); i++)
+    {
+        auto it = std::next(varOutputTypes.begin(), i);
+
+        size += eventMask[i] * detectorTypeSize[(*it).second];
+        eventBuffer.push_back(eventMask[i]);
+    }
+
+    // fill the proper event start value
+    eventBuffer[0] = 0xF000 + size;
+
+    eventBuffer.reserve(size + 1);
+
+    for (auto &sig : *events)
+    {
+
+        switch (varOutputTypes[sig[0]->getDetectorType()])
+        {
+        case DETECTOR:
+        {
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
+        case DETECTOR_RAW:
+        {
+
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            int32_t time = sig[0]->getRelativeTime();
+
+            uint16_t sTime = time & 0x3FF;
+            uint16_t fTime = (time >> 10) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
+        case SUPPRESED_DETECTOR:
+        {
+
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            if (sig.size() != 2)
+            {
+                throw "error: Suppressed detector event must have two signals";
+            }
+
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fVetoTime);
+            eventBuffer.push_back(sVetoTime);
+            break;
+        }
+        case SUPPRESED_DETECTOR_RAW:
+        {
+
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            int32_t time = sig[0]->getRelativeTime();
+
+            uint16_t sTime = time & 0x3FF;
+            uint16_t fTime = (time >> 10) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            if (sig.size() != 2)
+            {
+                throw "error: Suppressed detector raw event must have two signals";
+            }
+
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            time = sig[1]->getRelativeTime();
+
+            sTime = time & 0x3FF;
+            fTime = (time >> 10) & 0xFFFF;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            break;
+        }
+        case PSD_DETECTOR:
+        {
+
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            eventBuffer.push_back(sig[0]->getPSD());
+
+            break;
+        }
+        case SUPPRESED_PSD_DETECTOR:
+        {
+
+            eventBuffer.push_back(sig[0]->getDetectorLut());
+            eventBuffer.push_back(sig[0]->getEnergy());
+
+            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
+            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fTime);
+            eventBuffer.push_back(sTime);
+
+            eventBuffer.push_back(sig[0]->getPSD());
+
+            if (sig.size() != 2)
+            {
+                throw "error: Suppressed detector event must have two signals";
+            }
+
+            eventBuffer.push_back(sig[1]->getEnergy());
+
+            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
+            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
+
+            eventBuffer.push_back(fVetoTime);
+            eventBuffer.push_back(sVetoTime);
+            break;
+        }
+        case NO_TYPE:
+        {
+            break;
+        }
+        default:
+        {
+            throw "default value, is not implemented: " + to_string(sig[0]->getDetectorType());
+            break;
+        }
+        }
+    }
+
+    if (varBlockBuffer.size() + eventBuffer.size() < MAX_BLOCK_SIZE)
+    {
+        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+    }
+    else
+    {
+        // fill the end of buffer with zeros
+        varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
+
+        // write the buffer to disk
+        writeData();
+
+        // clear the buffer
+        initializeRecordHeader();
+
+        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+    }
+}
+
+void gaspDataWriter::addBuiltEvent(vector<event *> *events)
+{
+
+    [[deprecated("force the type to be in the pair, at check time")]] int a;
+    [[deprecated("check if the pair has the same type, at check time")]] int c;
+
+    // map with id and type - the type is required to generate the missing events
+    map<pair<int, int>, vector<event *>> eventMap;
+
+    vector<int> eventMask = vector<int>(detTypeWriteMapper.size(), 0);
+
+    if (events->size() == 1)
+    {
+        return;
+    }
+    cout << "new event" << endl;
+    for (size_t i = 0; i < events->size(); i++)
+    {
+
+        auto evtType = events->at(i)->getDetectorType();
+        auto evtPair = events->at(i)->getCoincPair();
+
+        auto dTypes = detTypesUnique[evtType];
+
+        if (!dTypes.size())
+        {
+            continue;
+        }
+
+        auto maskId = detTypeWriteMapper[evtType];
+
+        cout << "mask id: " << maskId << endl;
+
+        [[deprecated("is i required?")]] pair<int, int> evtId = {i, evtType};
+
+        // initialize the full event list
+        eventMap[evtId] = vector<event *>(maxType, nullptr);
+
+        // set the signal as starting point for the event
+        eventMap[evtId][evtType] = events->at(i);
+
+        // dont search for pairs if the event is not in a pair
+        if (evtPair == 0)
+        {
+            continue;
+        }
+
+        // search for the pairs
+        for (size_t o = 0; o < events->size(); o++)
+        {
+
+            // skip self signals
+            if (i == o)
+            {
+                continue;
+            }
+
+            // skip signals that are not in the pair
+            if (events->at(o)->getCoincPair() != evtPair)
+            {
+                continue;
+            }
+
+            // skip signals that are not in output
+            if (find(dTypes.begin(), dTypes.end(), events->at(o)->getDetectorType()) == dTypes.end())
+            {
+                continue;
+            }
+
+            eventMap[evtId][events->at(o)->getDetectorType()] = events->at(o);
+        }
+    }
+
+    // generate the missing events
+    for (auto &evt : eventMap)
+    {
+        auto evtType = evt.first.second;
+        auto dTypes = detTypesUnique[evtType];
+
+        for (int i = 0; i < dTypes.size(); i++)
+        {
+            // skip the signals that are already in the event
+            if (evt.second[dTypes[i]] != nullptr)
+            {
+                continue;
+            }
+
+            // find the lut of the event
+            auto pairNumb = events->at(evt.first.first)->getCoincPair();
+
+            auto pairType = pairTypesLUTs[pairNumb];
+
+            uint16_t lut = 0;
+
+            for (auto &pair : pairType)
+            {
+                if (pair.first == dTypes[i])
+                {
+                    lut = pair.second;
+                    break;
+                }
+            }
+
+            // create the missing event
+            evt.second[dTypes[i]] = new event();
+            evt.second[dTypes[i]]->setDetectorType(dTypes[i]);
+            evt.second[dTypes[i]]->setDetectorLut(lut);
+
+            evt.second[dTypes[i]]->setEnergy(0);
+            evt.second[dTypes[i]]->setRelativeTime(0);
+            evt.second[dTypes[i]]->setPSD(0);
+        }
+    }
+
+    dumpEventsToFile(eventMap);
+
+    // call the getter
+    // dump the event to file
+}
+
+void gaspDataWriter::dumpEventsToFile(map<pair<int, int>, vector<event *>> &eventMap)
+{
+    for (auto &evt : eventMap)
+    {
+        auto detTypes = detTypesVector[evt.first.second];
+        auto dataTypes = detDataTypeVector[evt.first.second];
+
+        auto getter = eventValueGetters[evt.first.second];
+
+        for (size_t i = 0; i < detTypes.size(); i++)
+        {
+            auto dt = detTypes[i];
+            auto data = dataTypes[i];
+            cout << dt << " " << data << " ";
+
+            auto value = eventValueGetters[data](evt.second[dt]);
+
+            cout << " value: " << value << endl;
+        }
+    }
+}
+
+// { // build events with anticoincidence
+//     map<uint8_t, deque<event *>> coincMap;
+
+//     for (uint i = 0; i < tempList.size(); i++)
+//     {
+//         coincMap[tempList[i]->getCoincPair()].push_back(tempList[i]);
+//     }
+
+//     for (auto &val : coincMap)
+//     {
+
+//         // the zero mappings do not have pairs
+//         if (val.first != 0)
+//         {
+//             // one of the signals is missing
+//             if (val.second.size() == 1)
+//             {
+//                 auto evt = new event();
+
+//                 auto [type, lut] = val.second[0]->getCoincPairType();
+
+//                 evt->setDetectorType(type);
+//                 evt->setDetectorLut(lut);
+
+//                 evt->setEnergy(0);
+//                 evt->setRelativeTime(0);
+//                 evt->setPSD(0);
+
+//                 if (val.second[0]->getAntiCoincFlag()) // first signal is the anti-coinc flag -> push front
+//                 {
+//                     val.second.push_front(evt);
+//                 }
+//                 else // second signal is the anti-coinc flag -> push back
+//                 {
+//                     val.second.push_back(evt);
+//                 }
+//             }
+//             else if (val.second.size() == 2) // both signals are here but the order might be wrong
+//             {
+//                 if (val.second[0]->getAntiCoincFlag()) // first signal is the anticoinc flag -> reverse
+//                 {
+//                     std::reverse(val.second.begin(), val.second.end());
+//                 }
+//             }
+//             else
+//             {
+//                 throw "more then two coincident signals found!";
+//             }
+//         }
+//     }
+
+//     vector<vector<event *>> eventList;
+
+//     for (auto &val : coincMap)
+//     {
+//         if (val.first == 0)
+//         {
+//             for (auto &evt : val.second)
+//             {
+//                 eventList.push_back(vector<event *>(1, evt));
+//             }
+//         }
+//         else
+//         {
+//             eventList.push_back(vector<event *>(val.second.begin(), val.second.end()));
+//         }
+//     }
+//     // build events with anticoincidence
+
+//     // sort by type
+//     std::sort(eventList.begin(), eventList.end(), [](auto &i, auto &j)
+//               { return (i[0]->getDetectorType() < j[0]->getDetectorType()); });
+// }

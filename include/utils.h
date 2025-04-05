@@ -56,7 +56,7 @@ public:
     uint8_t getCoincPair() { return varCoincPair; }
     void setCoincPair(uint8_t pair) { varCoincPair = pair; }
 
-    pair<uint8_t, uint8_t> getCoincPairType() { return varCoincPairType; }
+    [[deprecated]] pair<uint8_t, uint8_t> getCoincPairType() { return varCoincPairType; }
     void setCoincPairType(pair<uint8_t, uint8_t> pair) { varCoincPairType = pair; }
 
     bool getAntiCoincFlag() { return varAntiCoincFlag; }

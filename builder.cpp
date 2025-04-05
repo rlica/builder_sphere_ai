@@ -468,86 +468,13 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
         tempList[i]->setRelativeTime(relativeTime);
     }
 
-    // build events with anticoincidence
-    map<uint8_t, deque<event *>> coincMap;
+    writer->addBuiltEvent(&tempList);
 
-    for (uint i = 0; i < tempList.size(); i++)
+    // writer->addBuiltEvent(&eventList, absTime);
+
+    for (int i = 0; i < tempList.size(); i++)
     {
-        coincMap[tempList[i]->getCoincPair()].push_back(tempList[i]);
-    }
-
-    for (auto &val : coincMap)
-    {
-
-        // the zero mappings do not have pairs
-        if (val.first != 0)
-        {
-            // one of the signals is missing
-            if (val.second.size() == 1)
-            {
-                auto evt = new event();
-
-                auto [type, lut] = val.second[0]->getCoincPairType();
-
-                evt->setDetectorType(type);
-                evt->setDetectorLut(lut);
-
-                evt->setEnergy(0);
-                evt->setRelativeTime(0);
-                evt->setPSD(0);
-
-                if (val.second[0]->getAntiCoincFlag()) // first signal is the anti-coinc flag -> push front
-                {
-                    val.second.push_front(evt);
-                }
-                else // second signal is the anti-coinc flag -> push back
-                {
-                    val.second.push_back(evt);
-                }
-            }
-            else if (val.second.size() == 2) // both signals are here but the order might be wrong
-            {
-                if (val.second[0]->getAntiCoincFlag()) // first signal is the anticoinc flag -> reverse
-                {
-                    std::reverse(val.second.begin(), val.second.end());
-                }
-            }
-            else
-            {
-                throw "more then two coincident signals found!";
-            }
-        }
-    }
-
-    vector<vector<event *>> eventList;
-
-    for (auto &val : coincMap)
-    {
-        if (val.first == 0)
-        {
-            for (auto &evt : val.second)
-            {
-                eventList.push_back(vector<event *>(1, evt));
-            }
-        }
-        else
-        {
-            eventList.push_back(vector<event *>(val.second.begin(), val.second.end()));
-        }
-    }
-
-    // build events with anticoincidence
-    std::sort(eventList.begin(), eventList.end(), [](auto &i, auto &j)
-              { return (i[0]->getDetectorType() < j[0]->getDetectorType()); });
-
-    writer->addBuiltEvent(&eventList, absTime);
-
-    for (int i = 0; i < eventList.size(); i++)
-    {
-        for (int j = 0; j < eventList[i].size(); j++)
-        {
-            delete eventList[i][j];
-        }
+        delete tempList[i];
     }
 }
 

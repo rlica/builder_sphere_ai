@@ -18,18 +18,18 @@
   },
   "detector": {
     "coincPairs": [
-      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ],
     "delay": [
-      [-2015, -2015, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      [    0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      [    0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      [    0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      [    0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ],
     "lut": [
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -39,8 +39,8 @@
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ],
     "type": [
-      [ 0,  1, -1, -1,  2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-      [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+      [ 0,  1,  2,  1,  0,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+      [ 1,  1,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
       [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
       [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
       [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
@@ -60,35 +60,29 @@
     "outFileName": "align"
   },
   "gasp": {
-    "description": {
-      "detector": ["energy", "time/1000", "time%1000"],
-      "detectorRaw": ["energy", "time[23-8]", "time[7-0]"],
-      "noType": [
-        "no types, defined for BGO mostly, which is not written in gasp"
-      ],
-      "psdDetector": ["energy", "time/1000", "time%1000", "psd"],
-      "suppressedDetector": [
-        "energy"       , "time/1000"    , "time%1000"    , "vetoEnergy"   ,
-        "vetoTime/1000", "vetoTime%1000"
-      ],
-      "suppressedDetectorRaw": [
-        "energy"        , "time[23-8]"    , "time[7-0]"     , "vetoEnergy"    ,
-        "vetoTime[23-8]", "vetoTime[7-0]"
-      ],
-      "suppressedPsdDetector": [
-        "energy"       , "time/1000"    , "time%1000"    , "psd"          ,
-        "vetoEnergy"   , "vetoTime/1000", "vetoTime%1000"
-      ]
+    "detectors": {
+      "hgpe": {
+        "dataType": [
+          "energy"   , "time/1000", "time/1000", "time%1000", "energy"   ,
+          "time/1000"
+        ],
+        "type": [0, 0, 1, 1, 2, 2]
+      },
+      "labr": {
+        "dataType": ["energy", "time/1000", "time%1000"],
+        "type"    : [2       , 2          , 2          ]
+      },
+      "noType": {"dataType": [], "type": []}
     },
-    "typeOutputFormat": ["detector", "detector", "detector"]
+    "typeOutputFormat": ["hgpe", "labr", "noType"]
   },
-  "general": {"maxCores": 10, "run": "align", "timeUnitMultiplier": 1000},
+  "general": {"maxCores": 10, "run": "build", "timeUnitMultiplier": 1000},
   "input": {
     "eventCount": 0,
     "fileFormat": "test",
     "fileIdentifier": "238U_TAC_0703_",
-    "keepIndex": [0, 10000],
-    "liveBuild": true,
+    "keepIndex": [3, 3],
+    "liveBuild": false,
     "path": "/home/gabriel/Programare/sphereBuilder/builder_sphere/input"
   },
   "output": {
