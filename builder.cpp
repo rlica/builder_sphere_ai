@@ -468,7 +468,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
         tempList[i]->setRelativeTime(relativeTime);
     }
 
-    writer->addBuiltEvent(&tempList);
+    writer->addBuiltEvent(tempList);
 
     // writer->addBuiltEvent(&eventList, absTime);
 

@@ -45,7 +45,7 @@ public:
 
     virtual void initializeOutputFile() {};
     virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time) {};
-    virtual void addBuiltEvent(vector<event *> *events) {};
+    virtual void addBuiltEvent(vector<event *> &events) {};
     virtual void addConvertEvent(event *event) {};
 
     virtual void writeData() {};
@@ -136,7 +136,7 @@ public:
 
     void initializeOutputFile();
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
-    void addBuiltEvent(vector<event *> *events);
+    void addBuiltEvent(vector<event *> &events);
 
     void writeData();
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
@@ -147,21 +147,27 @@ public:
     void writeAlignResults(vector<calibPoint> calibPoints);
 
 private:
+    void initializeWriterStructures();
     void initializeValueGetters();
-    void dumpEventsToFile(map<pair<int, int>, vector<event *>> &events);
 
-    int maxType = 0;
+    void sortByTypeAndLut(vector<event *> &events);
+    vector<int> getValueGetterIdx(string format);
 
-    map<int, vector<int>> detTypesVector;
-    map<int, vector<int>> detTypesUnique;
-    map<int, vector<int>> detDataTypeVector;
+    event *findEvent(int crtIdx, vector<event *> events, int reqType);
 
-    map<int, vector<pair<int, int>>> pairTypesLUTs;
+    map<int, int> outputTypeMapper;
 
-    vector<function<uint16_t(event *)>> eventValueGetters;
+    map<int, vector<int>> outputTypes;
+    map<int, vector<int>> valueGetterIdx;
+
+    map<pair<int, int>, int> typePairToLut;
+
+    vector<int> sortTypePriority;
+
+    vector<function<uint16_t(event *)>> eventValueGetters; // faster retrieval
+    map<string, function<uint16_t(event *)>> valueGetters; // string - function
+
     function<uint16_t(event *)> lutValueGetter;
-
-    map<int, int> detTypeWriteMapper;
 
 private:
     void validateConfig();
