@@ -860,6 +860,16 @@ void gaspDataWriter::initializeWriterStructures()
             typePairToLut[{type, pair}] = luts[i][o];
         }
     }
+
+    eventMaskSize = outputTypeMapper.size();
+
+    auto findIt = find_if(outputTypeMapper.begin(), outputTypeMapper.end(), [](pair<int, int> pair)
+                          { return pair.second == -1; });
+
+    if (findIt != outputTypeMapper.end())
+    {
+        eventMaskSize--;
+    }
 }
 
 event *gaspDataWriter::findEvent(int crtIdx, vector<event *> events, int reqType)
@@ -897,13 +907,6 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events)
     // sort by type a
     sortByTypeAndLut(events);
 
-    [[deprecated("not a great solution")]] int eventMaskSize = outputTypeMapper.size();
-
-    if (outputTypeMapper.find(-1) != outputTypeMapper.end())
-    {
-        eventMaskSize--;
-    }
-
     vector<int> eventMask = vector<int>(eventMaskSize, 0);
 
     [[deprecated("prealocate memory")]] vector<short> eventBuffer;
@@ -932,6 +935,8 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events)
 
         if (outType == -1)
         {
+            cout << "here" << endl;
+
             continue;
         }
 

@@ -168,6 +168,7 @@ private:
     map<string, function<uint16_t(event *)>> valueGetters; // string - function
 
     function<uint16_t(event *)> lutValueGetter;
+    int eventMaskSize = 0;
 
 private:
     void validateConfig();
