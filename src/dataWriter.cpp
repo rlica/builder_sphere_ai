@@ -30,6 +30,8 @@ gaspDataWriter::gaspDataWriter(json &config) : dataWriter(config)
 
 [[deprecated("not finished")]] void gaspDataWriter::validateConfig()
 {
+    cout << "force first data type to be the main type" << endl;
+    cout << "force all the other aditional parameters to be no type" << endl;
 }
 
 void gaspDataWriter::writeData()
@@ -870,12 +872,106 @@ void gaspDataWriter::initializeWriterStructures()
     {
         eventMaskSize--;
     }
+
+    // generate main types
+
+    map<int, vector<pair<int, int>>> allPairs;
+
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto pair = pairs[i][o];
+            auto type = types[i][o];
+            auto lut = luts[i][o];
+
+            allPairs[pair].push_back({type, lut});
+        }
+    }
+
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+
+            auto pair = pairs[i][o];
+            auto type = types[i][o];
+            auto lut = luts[i][o];
+
+            mainEventType[{type, pair}] = {type, lut};
+
+            // unused type
+            if (type == -1)
+            {
+                continue;
+            }
+
+            auto typeName = outputFormat[type];
+
+            auto dataTypes = cfg["detectors"][typeName]["type"];
+
+            // main type
+            if (dataTypes.size() != 0)
+            {
+                continue;
+            }
+
+            auto pairTypes = allPairs[pair];
+
+            for (auto &[pType, pLut] : pairTypes)
+            {
+                auto pTypeName = outputFormat[pType];
+
+                auto dataTypes = cfg["detectors"][pTypeName]["type"];
+
+                if (dataTypes.size() == 0)
+                {
+                    continue;
+                }
+                mainEventType[{type, pair}] = {pType, pLut};
+            }
+        }
+    }
 }
 
-event *gaspDataWriter::findEvent(int crtIdx, vector<event *> events, int reqType)
+optional<event *> gaspDataWriter::generateMainEvent(event *crtEvent, vector<event *> events)
+{
+    pair<int, int> mainTypeId = {crtEvent->getDetectorType(), crtEvent->getCoincPair()};
+
+    auto [mainType, mainLut] = mainEventType[mainTypeId];
+
+    bool found = false;
+
+    for (size_t i = 0; i < events.size(); i++)
+    {
+        if (events[i]->getDetectorType() == mainType && events[i]->getCoincPair() == crtEvent->getCoincPair())
+        {
+            found = true;
+            break;
+        }
+    }
+
+    if (found)
+    {
+        return {};
+    }
+
+    auto evt = new event();
+
+    evt->setDetectorType(mainType);
+    evt->setDetectorLut(mainLut);
+
+    evt->setEnergy(0);
+    evt->setRelativeTime(0);
+    evt->setPSD(0);
+
+    return evt;
+}
+
+event *gaspDataWriter::findEvent(event *crtEvent, vector<event *> events, int reqType)
 {
 
-    auto evtPair = events.at(crtIdx)->getCoincPair();
+    auto evtPair = crtEvent->getCoincPair();
 
     for (size_t i = 0; i < events.size(); i++)
     {
@@ -909,6 +1005,8 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events)
 
     vector<int> eventMask = vector<int>(eventMaskSize, 0);
 
+    map<pair<int, int>, int> addedMainEvents;
+
     [[deprecated("prealocate memory")]] vector<short> eventBuffer;
     [[deprecated("add it to the buffer class")]] int size = 0;
 
@@ -935,10 +1033,27 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events)
 
         if (outType == -1)
         {
-            cout << "here" << endl;
+            auto tempEvent = generateMainEvent(crtEvent, events);
 
+            if (tempEvent.has_value())
+            {
+                crtEvent = tempEvent.value();
+
+                evtType = crtEvent->getDetectorType();
+                outType = outputTypeMapper[evtType];
+            }
+            else
+            {
+                continue;
+            }
+        }
+
+        if (addedMainEvents[{crtEvent->getCoincPair(), outType}] == 1)
+        {
             continue;
         }
+
+        addedMainEvents[{crtEvent->getCoincPair(), outType}] = 1;
 
         auto lutValue = lutValueGetter(crtEvent);
 
@@ -946,12 +1061,17 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events)
 
         size += 1;
 
+        event *writeEvent = crtEvent;
+
         for (int o = 0; o < outputTypes[outType].size(); o++)
         {
             auto dtype = outputTypes[outType][o];
             auto getIdx = valueGetterIdx[evtType][o];
 
-            [[ddeprecated("delete the generated one, but not the other")]] auto writeEvent = findEvent(i, events, dtype);
+            if (crtEvent->getDetectorType() != dtype)
+            {
+                writeEvent = findEvent(crtEvent, events, dtype);
+            }
 
             auto value = eventValueGetters[getIdx](writeEvent);
 

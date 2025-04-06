@@ -94,7 +94,7 @@
   },
   "general": {"maxCores": 1, "run": "build", "timeUnitMultiplier": 1000},
   "input": {
-    "eventCount": 1000000,
+    "eventCount": 0,
     "fileFormat": "test",
     "fileIdentifier": "Run_11um_",
     "keepIndex": [59, 59],

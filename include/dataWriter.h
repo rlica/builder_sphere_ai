@@ -153,7 +153,8 @@ private:
     void sortByTypeAndLut(vector<event *> &events);
     vector<int> getValueGetterIdx(string format);
 
-    event *findEvent(int crtIdx, vector<event *> events, int reqType);
+    event *findEvent(event *crtEvent, vector<event *> events, int reqType);
+    optional<event *> generateMainEvent(event *crtEvent, vector<event *> events);
 
     map<int, int> outputTypeMapper;
 
@@ -161,6 +162,7 @@ private:
     map<int, vector<int>> valueGetterIdx;
 
     map<pair<int, int>, int> typePairToLut;
+    map<pair<int, int>, pair<int, int>> mainEventType; // key: type and pair - to main type, lut
 
     vector<int> sortTypePriority;
 
