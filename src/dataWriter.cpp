@@ -30,8 +30,6 @@ gaspDataWriter::gaspDataWriter(json &config) : dataWriter(config)
 
 [[deprecated("not finished")]] void gaspDataWriter::validateConfig()
 {
-    cout << "force first data type to be the main type" << endl;
-    cout << "force all the other aditional parameters to be no type" << endl;
 }
 
 void gaspDataWriter::writeData()
@@ -744,19 +742,134 @@ void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
     }
 }
 
-void gaspDataWriter::sortByTypeAndLut(vector<event *> &events)
+int gaspDataWriter::findLut(int iType, int iPair)
 {
-    // sort by (type and timestamp)
-    auto start = events.begin();
-    for (auto &val : sortTypePriority)
+    auto pairs = varConfig["detector"]["coincPairs"].get<vector<vector<int>>>();
+    auto types = varConfig["detector"]["type"].get<vector<vector<int>>>();
+    auto luts = varConfig["detector"]["lut"].get<vector<vector<int>>>();
+
+    for (size_t i = 0; i < pairs.size(); i++)
     {
-        auto it = std::partition(start, events.end(), [val](event *ev)
-                                 { return ev->getDetectorType() == val; });
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto dType = types[i][o];
+            auto dLut = luts[i][o];
+            auto dPair = pairs[i][o];
 
-        sort(start, it, [](event *i, event *m)
-             { return i->getDetectorLut() < m->getDetectorLut(); });
+            if (dType == iType && dPair == iPair)
+            {
+                return dLut;
+            }
+        }
+    }
 
-        start = it;
+    assert(false && "requested LUT not found in pair");
+
+    return {};
+}
+
+void gaspDataWriter::initializeWriterStructures()
+{
+
+    initializeValueGetters();
+
+    auto pairs = varConfig["detector"]["coincPairs"].get<vector<vector<int>>>();
+    auto types = varConfig["detector"]["type"].get<vector<vector<int>>>();
+    auto luts = varConfig["detector"]["lut"].get<vector<vector<int>>>();
+
+    auto cfg = varConfig["gasp"];
+
+    auto outputFormat = cfg["typeOutputFormat"].get<vector<string>>();
+
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto dType = types[i][o];
+            auto dLut = luts[i][o];
+            auto dPair = pairs[i][o];
+
+            // skip the disabled channels
+            if (dType == -1)
+            {
+                continue;
+            }
+
+            auto format = outputFormat[dType];
+
+            auto dList = cfg["detectors"][format]["type"].get<vector<int>>();
+
+            for (int t = 0; t < dList.size(); t++)
+            {
+                int kLut = dLut;
+                int kType = dList[t];
+
+                if (dPair != 0)
+                {
+                    kLut = findLut(dList[t], dPair);
+                }
+
+                typeGroups[{kType, kLut}].push_back({dType, dLut, int(dList.size()), t});
+            }
+        }
+    }
+
+    for (auto &wKey : typeGroups)
+    {
+        for (auto &wVal : wKey.second)
+        {
+            if (!groupTypeLuts[{wVal[0], wVal[1]}].size())
+            {
+                groupTypeLuts[{wVal[0], wVal[1]}] = vector<pair<int, int>>(wVal[2]);
+            }
+
+            groupTypeLuts[{wVal[0], wVal[1]}][wVal[3]] = {wKey.first.first, wKey.first.second};
+            groupGetters[{wVal[0], wVal[3]}] = typeGetters[wVal[0]][wVal[3]];
+        }
+    }
+
+    // generate default events with zero values
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto dType = types[i][o];
+            auto dLut = luts[i][o];
+
+            if (dType == -1)
+            {
+                continue;
+            }
+
+            auto evt = new event();
+
+            evt->setDetectorType(dType);
+            evt->setDetectorLut(dLut);
+
+            evt->setEnergy(0);
+            evt->setRelativeTime(0);
+            evt->setPSD(0);
+
+            defaultEvents[{dType, dLut}] = evt;
+        }
+    }
+
+    //
+    eventMaskSize = 0;
+    for (int i = 0; i < outputFormat.size(); i++)
+    {
+        auto format = outputFormat[i];
+
+        auto dList = cfg["detectors"][format]["type"].get<vector<int>>();
+
+        if (dList.size() == 0)
+        {
+            continue;
+        }
+
+        outputTypeMapper[i] = eventMaskSize;
+
+        eventMaskSize++;
     }
 }
 
@@ -783,236 +896,172 @@ void gaspDataWriter::initializeValueGetters()
         return ev->getPSD();
     };
 
-    // lut getter
-    lutValueGetter = [](event *ev)
-    {
-        return ev->getDetectorLut();
-    };
-
-    eventValueGetters = vector<function<uint16_t(event *)>>(valueGetters.size());
-
-    // set the getter function
-    for (auto &getter : valueGetters)
-    {
-        auto dist = std::distance(valueGetters.begin(), valueGetters.find(getter.first));
-        eventValueGetters[dist] = getter.second;
-    }
-}
-
-vector<int> gaspDataWriter::getValueGetterIdx(string format)
-{
-    auto dataTypes = varConfig["gasp"]["detectors"][format]["dataType"].get<vector<string>>();
-
-    vector<int> dataTypeIdx = vector<int>(dataTypes.size());
-
-    for (int i = 0; i < dataTypes.size(); i++)
-    {
-        auto dType = dataTypes[i];
-
-        auto dist = std::distance(valueGetters.begin(), valueGetters.find(dType));
-        dataTypeIdx[i] = dist;
-    }
-
-    return dataTypeIdx;
-}
-
-void gaspDataWriter::initializeWriterStructures()
-{
-
-    initializeValueGetters();
-
     auto cfg = varConfig["gasp"];
 
     auto outputFormat = cfg["typeOutputFormat"].get<vector<string>>();
 
-    int cnt = 0;
-    for (int i = 0; i < outputFormat.size(); i++)
+    for (size_t i = 0; i < outputFormat.size(); i++)
     {
-        auto dList = cfg["detectors"][outputFormat[i]]["type"].get<vector<int>>();
+        auto format = outputFormat[i];
 
-        valueGetterIdx[i] = getValueGetterIdx(outputFormat[i]);
+        auto dataTypeList = cfg["detectors"][format]["dataType"].get<vector<string>>();
+        auto typeList = cfg["detectors"][format]["type"].get<vector<int>>();
 
-        if (dList.size() == 0)
+        if (!dataTypeList.size())
         {
-            outputTypeMapper[i] = -1;
             continue;
         }
 
-        outputTypeMapper[i] = cnt;
+        typeGetters[i] = vector<function<uint16_t(event *)>>(dataTypeList.size());
 
-        outputTypes[cnt] = dList;
-
-        cnt++;
-    }
-
-    sortTypePriority = vector<int>(outputTypeMapper.size());
-    std::iota(sortTypePriority.begin(), sortTypePriority.end(), 0);
-
-    auto pairs = varConfig["detector"]["coincPairs"].get<vector<vector<int>>>();
-    auto types = varConfig["detector"]["type"].get<vector<vector<int>>>();
-    auto luts = varConfig["detector"]["lut"].get<vector<vector<int>>>();
-
-    for (size_t i = 0; i < pairs.size(); i++)
-    {
-        for (size_t o = 0; o < pairs[i].size(); o++)
+        for (size_t o = 0; o < dataTypeList.size(); o++)
         {
-            auto pair = pairs[i][o];
-            auto type = types[i][o];
+            typeGetters[i][o] = valueGetters[dataTypeList[o]];
+        }
+    }
+}
 
-            typePairToLut[{type, pair}] = luts[i][o];
+void gaspDataWriter::addBuiltEvent(vector<event *> &events, int64_t time)
+{
+
+    map<pair<int, int>, vector<event *>> outputEvents;
+
+    // cout << " -------------------- new event ---------------------" << endl;
+    // cout << "input: " << endl;
+    for (size_t i = 0; i < events.size(); i++)
+    {
+        auto evt = events[i];
+
+        // cout << "type: " << evt->getDetectorType() << " lut: " << evt->getDetectorLut() << endl;
+        auto mapping = typeGroups[{evt->getDetectorType(), evt->getDetectorLut()}];
+
+        for (auto iMap : mapping)
+        {
+            auto outId = make_pair(iMap[0], iMap[1]);
+
+            if (outputEvents.find(outId) == outputEvents.end())
+            {
+                outputEvents[outId] = vector<event *>(iMap[2], nullptr);
+            }
+
+            outputEvents[outId][iMap[3]] = events[i];
         }
     }
 
-    eventMaskSize = outputTypeMapper.size();
+    // delete
+    // cout << "before gen: " << endl;
+    // for (auto &oEvt : outputEvents)
+    // {
 
-    auto findIt = find_if(outputTypeMapper.begin(), outputTypeMapper.end(), [](pair<int, int> pair)
-                          { return pair.second == -1; });
+    //     set<pair<int, int>> missingEvents;
 
-    if (findIt != outputTypeMapper.end())
+    //     cout << oEvt.first.first << " " << oEvt.first.second << " value: ";
+
+    //     for (size_t i = 0; i < oEvt.second.size(); i++)
+    //     {
+    //         auto pEvt = oEvt.second[i];
+
+    //         cout << (pEvt == nullptr) << " ";
+
+    //         if (pEvt == nullptr)
+    //         {
+    //             missingEvents.insert(groupTypeLuts[oEvt.first][i]);
+    //         }
+    //     }
+
+    //     cout << " missing: ";
+    //     for (auto &mEvt : missingEvents)
+    //     {
+    //         cout << "(" << mEvt.first << "," << mEvt.second << ") ";
+    //     }
+    //     cout << endl;
+    // }
+
+    // retrieve missing events
+    for (auto &outEvt : outputEvents)
     {
-        eventMaskSize--;
-    }
-
-    // generate main types
-
-    map<int, vector<pair<int, int>>> allPairs;
-
-    for (size_t i = 0; i < pairs.size(); i++)
-    {
-        for (size_t o = 0; o < pairs[i].size(); o++)
+        for (size_t i = 0; i < outEvt.second.size(); i++)
         {
-            auto pair = pairs[i][o];
-            auto type = types[i][o];
-            auto lut = luts[i][o];
+            auto pEvt = outEvt.second[i];
 
-            allPairs[pair].push_back({type, lut});
-        }
-    }
-
-    for (size_t i = 0; i < pairs.size(); i++)
-    {
-        for (size_t o = 0; o < pairs[i].size(); o++)
-        {
-
-            auto pair = pairs[i][o];
-            auto type = types[i][o];
-            auto lut = luts[i][o];
-
-            mainEventType[{type, pair}] = {type, lut};
-
-            // unused type
-            if (type == -1)
+            if (pEvt != nullptr)
             {
                 continue;
             }
 
-            auto typeName = outputFormat[type];
+            auto gEvt = defaultEvents[outEvt.first];
 
-            auto dataTypes = cfg["detectors"][typeName]["type"];
-
-            // main type
-            if (dataTypes.size() != 0)
-            {
-                continue;
-            }
-
-            auto pairTypes = allPairs[pair];
-
-            for (auto &[pType, pLut] : pairTypes)
-            {
-                auto pTypeName = outputFormat[pType];
-
-                auto dataTypes = cfg["detectors"][pTypeName]["type"];
-
-                if (dataTypes.size() == 0)
-                {
-                    continue;
-                }
-                mainEventType[{type, pair}] = {pType, pLut};
-            }
-        }
-    }
-}
-
-optional<event *> gaspDataWriter::generateMainEvent(event *crtEvent, vector<event *> events)
-{
-    pair<int, int> mainTypeId = {crtEvent->getDetectorType(), crtEvent->getCoincPair()};
-
-    auto [mainType, mainLut] = mainEventType[mainTypeId];
-
-    bool found = false;
-
-    for (size_t i = 0; i < events.size(); i++)
-    {
-        if (events[i]->getDetectorType() == mainType && events[i]->getCoincPair() == crtEvent->getCoincPair())
-        {
-            found = true;
-            break;
+            outEvt.second[i] = gEvt;
         }
     }
 
-    if (found)
-    {
-        return {};
-    }
+    // delete
+    // cout << "output: " << endl;
+    // for (auto &oEvt : outputEvents)
+    // {
 
-    auto evt = new event();
+    //     set<pair<int, int>> missingEvents;
 
-    evt->setDetectorType(mainType);
-    evt->setDetectorLut(mainLut);
+    //     cout << oEvt.first.first << " " << oEvt.first.second << " value: ";
 
-    evt->setEnergy(0);
-    evt->setRelativeTime(0);
-    evt->setPSD(0);
+    //     for (size_t i = 0; i < oEvt.second.size(); i++)
+    //     {
+    //         auto pEvt = oEvt.second[i];
 
-    return evt;
+    //         cout << (pEvt == nullptr) << " ";
+
+    //         if (pEvt == nullptr)
+    //         {
+    //             missingEvents.insert(groupTypeLuts[oEvt.first][i]);
+    //         }
+    //     }
+
+    //     if (missingEvents.size())
+    //     {
+    //         cout << " missing: ";
+    //         for (auto &mEvt : missingEvents)
+    //         {
+    //             cout << "(" << mEvt.first << "," << mEvt.second << ") ";
+    //         }
+    //     }
+    //     cout << endl;
+    // }
+
+    // dump to file
+    dumpToFile(outputEvents, time);
 }
 
-event *gaspDataWriter::findEvent(event *crtEvent, vector<event *> events, int reqType)
+void gaspDataWriter::dumpToFile(map<pair<int, int>, vector<event *>> events, int64_t time)
 {
-
-    auto evtPair = crtEvent->getCoincPair();
-
-    for (size_t i = 0; i < events.size(); i++)
-    {
-        auto evt = events.at(i);
-
-        if (evt->getDetectorType() == reqType && evt->getCoincPair() == evtPair)
-        {
-            return evt;
-        }
-    }
-
-    auto evt = new event();
-
-    auto lut = typePairToLut[{reqType, evtPair}];
-
-    evt->setDetectorType(reqType);
-    evt->setDetectorLut(lut);
-
-    evt->setEnergy(0);
-    evt->setRelativeTime(0);
-    evt->setPSD(0);
-
-    return evt;
-}
-
-void gaspDataWriter::addBuiltEvent(vector<event *> &events)
-{
-
-    // sort by type a
-    sortByTypeAndLut(events);
 
     vector<int> eventMask = vector<int>(eventMaskSize, 0);
-
-    map<pair<int, int>, int> addedMainEvents;
 
     [[deprecated("prealocate memory")]] vector<short> eventBuffer;
     [[deprecated("add it to the buffer class")]] int size = 0;
 
     // add header
     eventBuffer.push_back(0); // size word
-    eventBuffer.push_back(0); // time word
+
+    for (int i = 0; i < headerSize; i++)
+    {
+
+        short value = 0;
+
+        if (i == 0)
+        {
+            // this should be from config
+            if (time > (prevTime + resetGap))
+            {
+                resetTime = time;
+            }
+
+            prevTime = time;
+
+            value = (time - resetTime) * timeScale;
+        }
+
+        eventBuffer.push_back(value);
+    }
 
     size += 1; // the size word is not counted
 
@@ -1022,76 +1071,55 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events)
         eventBuffer.push_back(0);
     }
 
+    // all positions for the event mask
     size += eventMask.size();
 
-    for (int i = 0; i < events.size(); i++)
+    for (auto &gEvt : events)
     {
-        auto crtEvent = events.at(i);
+        auto iType = gEvt.first.first;
+        auto iLut = gEvt.first.second;
+        auto oType = outputTypeMapper[iType];
 
-        auto evtType = events.at(i)->getDetectorType();
-        auto outType = outputTypeMapper[evtType];
-
-        if (outType == -1)
-        {
-            auto tempEvent = generateMainEvent(crtEvent, events);
-
-            if (tempEvent.has_value())
-            {
-                crtEvent = tempEvent.value();
-
-                evtType = crtEvent->getDetectorType();
-                outType = outputTypeMapper[evtType];
-            }
-            else
-            {
-                continue;
-            }
-        }
-
-        if (addedMainEvents[{crtEvent->getCoincPair(), outType}] == 1)
-        {
-            continue;
-        }
-
-        addedMainEvents[{crtEvent->getCoincPair(), outType}] = 1;
-
-        auto lutValue = lutValueGetter(crtEvent);
-
-        eventBuffer.push_back(lutValue);
-
+        // set lut
+        eventBuffer.push_back(iLut);
         size += 1;
 
-        event *writeEvent = crtEvent;
-
-        for (int o = 0; o < outputTypes[outType].size(); o++)
+        for (size_t i = 0; i < gEvt.second.size(); i++)
         {
-            auto dtype = outputTypes[outType][o];
-            auto getIdx = valueGetterIdx[evtType][o];
+            auto evt = gEvt.second[i];
+            auto getter = groupGetters[{iType, i}];
 
-            if (crtEvent->getDetectorType() != dtype)
-            {
-                writeEvent = findEvent(crtEvent, events, dtype);
-            }
-
-            auto value = eventValueGetters[getIdx](writeEvent);
+            auto value = getter(evt);
 
             eventBuffer.push_back(value);
+            size += 1;
         }
 
-        size += outputTypes[outType].size();
-
-        eventMask[outType] += 1;
+        eventMask[oType] += 1;
     }
 
+    // cout << "event mask: ";
+    // for (auto &em : eventMask)
+    // {
+    //     cout << em << " ";
+    // }
+    // cout << endl;
+
+    // cout << "size: " << size << endl;
+
+    // cout << "dump to file" << endl;
+
+    // set final size
     eventBuffer[0] = 0xF000 + size;
 
-    [[deprecated]] int offset = 2; // this assumes header of 1, must be changed at some point
-
+    // set event mask
+    int offset = 1 + headerSize;
     for (size_t i = 0; i < eventMask.size(); i++)
     {
         eventBuffer[i + offset] = eventMask[i];
     }
 
+    // dump to file
     if (varBlockBuffer.size() + eventBuffer.size() < MAX_BLOCK_SIZE)
     {
         varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());

@@ -45,7 +45,7 @@ public:
 
     virtual void initializeOutputFile() {};
     virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time) {};
-    virtual void addBuiltEvent(vector<event *> &events) {};
+    virtual void addBuiltEvent(vector<event *> &events, int64_t time) {};
     virtual void addConvertEvent(event *event) {};
 
     virtual void writeData() {};
@@ -136,7 +136,7 @@ public:
 
     void initializeOutputFile();
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
-    void addBuiltEvent(vector<event *> &events);
+    void addBuiltEvent(vector<event *> &events, int64_t time);
 
     void writeData();
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
@@ -150,27 +150,21 @@ private:
     void initializeWriterStructures();
     void initializeValueGetters();
 
-    void sortByTypeAndLut(vector<event *> &events);
-    vector<int> getValueGetterIdx(string format);
+    // new
+    int findLut(int iType, int iPair);
+    map<string, function<uint16_t(event *)>> valueGetters;         // string - function
+    map<pair<int, int>, vector<vector<int>>> typeGroups;           // lut, type -> output type, lut, size, pos
+    map<pair<int, int>, vector<pair<int, int>>> groupTypeLuts;     // output lut, type ->  vector< type, lut> to know the missing luts / types
+    map<pair<int, int>, function<uint16_t(event *)>> groupGetters; // output lut, type ->  vector< type, lut> to know the missing luts / types
+    map<pair<int, int>, event *> defaultEvents;                    // stores default events for each type and lut
+    map<int, int> outputTypeMapper;                                // maps the config type to the gasp type
 
-    event *findEvent(event *crtEvent, vector<event *> events, int reqType);
-    optional<event *> generateMainEvent(event *crtEvent, vector<event *> events);
+    map<int, vector<function<uint16_t(event *)>>> typeGetters; // type -> vector getters based on position in vector
 
-    map<int, int> outputTypeMapper;
-
-    map<int, vector<int>> outputTypes;
-    map<int, vector<int>> valueGetterIdx;
-
-    map<pair<int, int>, int> typePairToLut;
-    map<pair<int, int>, pair<int, int>> mainEventType; // key: type and pair - to main type, lut
-
-    vector<int> sortTypePriority;
-
-    vector<function<uint16_t(event *)>> eventValueGetters; // faster retrieval
-    map<string, function<uint16_t(event *)>> valueGetters; // string - function
-
-    function<uint16_t(event *)> lutValueGetter;
     int eventMaskSize = 0;
+    int headerSize = 1;
+
+    void dumpToFile(map<pair<int, int>, vector<event *>> event, int64_t time);
 
 private:
     void validateConfig();

@@ -5,7 +5,7 @@
     "coincMask": [ [1, 0, 0, 0, 0] ],
     "coincWindow": 1000,
     "sortBeforeBuild": true,
-    "typePriority": [1, 0, 2, 3]
+    "typePriority": [0, 1, 2, 3]
   },
   "delay": {
     "energyThreshold": 50,
