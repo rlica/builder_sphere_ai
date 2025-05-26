@@ -22,10 +22,15 @@ gaspDataWriter::gaspDataWriter(json &config) : dataWriter(config)
 
     validateConfig();
 
-    initializeWriterStructures();
+    auto runType = config["general"]["run"].get<string>();
 
-    initializeOutputFile();
-    initializeRecordHeader();
+    if (runType == "build")
+    {
+        initializeWriterStructures();
+
+        initializeOutputFile();
+        initializeRecordHeader();
+    }
 }
 
 [[deprecated("not finished")]] void gaspDataWriter::validateConfig()
@@ -163,8 +168,6 @@ void rootDataWriter::setConfig(json &config)
 
 rootDataWriter::rootDataWriter(json &config) : dataWriter(config)
 {
-    setConfig(config);
-
     auto runType = config["general"]["run"].get<string>();
 
     if (runType == "build")
@@ -173,6 +176,8 @@ rootDataWriter::rootDataWriter(json &config) : dataWriter(config)
     }
     else if (runType == "convert")
     {
+        setConfig(config);
+
         initializeConvertOutputFile();
     }
 }
@@ -199,9 +204,8 @@ void rootDataWriter::initializeConvertOutputFile()
     }
 }
 
-void rootDataWriter::initializeBuildTree()
+[[deprecated]] void rootDataWriter::initializeBuildTree()
 {
-
     varEventTree = new TTree("events", "events tree");
 
     varEventTree->Branch("detectorLUT", &varDetectorLUT);
@@ -210,13 +214,8 @@ void rootDataWriter::initializeBuildTree()
     varEventTree->Branch("energy", &varEnergy);
     varEventTree->Branch("psd", &varPsd);
 
-    varEventTree->Branch("vetoEnergy", &varVetoEnergy);
-
     varEventTree->Branch("relativeNsTime", &varRelativeNsTime);
     varEventTree->Branch("relativePsTime", &varRelativePsTime);
-
-    varEventTree->Branch("vetoRelativeNsTime", &varVetoRelativeNsTime);
-    varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
 }
 
 void rootDataWriter::initializeConvertTree()
@@ -228,6 +227,38 @@ void rootDataWriter::initializeConvertTree()
 
     varEventTree->Branch("energy", &varConvEnergy);
     varEventTree->Branch("timestamp", &varConvTimestamp);
+}
+
+void rootDataWriter::addBuiltEvent(vector<event *> &events, int64_t time)
+{
+
+    varDetectorLUT.clear();
+    varDetectorType.clear();
+
+    varEnergy.clear();
+
+    varPsd.clear();
+
+    varRelativeNsTime.clear();
+    varRelativePsTime.clear();
+
+    for (auto sig : events)
+    {
+
+        varDetectorLUT.push_back(sig->getDetectorLut());
+        varDetectorType.push_back(sig->getDetectorType());
+
+        varEnergy.push_back(sig->getEnergy());
+        varPsd.push_back(sig->getPSD());
+
+        uint16_t fTime = sig->getRelativeTime() / 1000;
+        uint16_t sTime = sig->getRelativeTime() % 1000;
+
+        varRelativeNsTime.push_back(fTime);
+        varRelativePsTime.push_back(sTime);
+    }
+
+    varEventTree->Fill();
 }
 
 void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
@@ -287,25 +318,36 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 void rootDataWriter::closeFile()
 {
 
-    if (varAddList)
-    {
-        varEventTree->Write();
-    }
+    auto runType = varConfig["general"]["run"].get<string>();
 
-    if (varAddHistogram)
+    if (runType == "convert")
     {
-        for (auto &hist : varEnergyHist)
+        if (varAddList)
         {
-            hist.second->Write();
+            varEventTree->Write();
+        }
+
+        if (varAddHistogram)
+        {
+            for (auto &hist : varEnergyHist)
+            {
+                hist.second->Write();
+            }
+        }
+
+        if (varAddRunTime)
+        {
+            double time = double(stopTime - startTime) * pow(10, -12);
+            TParameter<double> varRunTime("runTime", time);
+
+            varRunTime.Write();
         }
     }
-
-    if (varAddRunTime)
+    else if (runType == "build")
     {
-        double time = double(stopTime - startTime) * pow(10, -12);
-        TParameter<double> varRunTime("runTime", time);
+        varOutFile->cd();
 
-        varRunTime.Write();
+        varEventTree->Write();
     }
 
     varOutFile->Close();
@@ -313,7 +355,6 @@ void rootDataWriter::closeFile()
 
 void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
 {
-
     string outFileName = string(varConfig["output"]["path"]) + "/";
     outFileName += string(varConfig["delay"]["outFileName"]) + ".root";
 
@@ -1044,21 +1085,7 @@ void gaspDataWriter::dumpToFile(map<pair<int, int>, vector<event *>> events, int
 
     for (int i = 0; i < headerSize; i++)
     {
-
         short value = 0;
-
-        if (i == 0)
-        {
-            // this should be from config
-            if (time > (prevTime + resetGap))
-            {
-                resetTime = time;
-            }
-
-            prevTime = time;
-
-            value = (time - resetTime) * timeScale;
-        }
 
         eventBuffer.push_back(value);
     }

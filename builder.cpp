@@ -66,35 +66,43 @@ int main(int argc, char **argv)
 
     TApplication theApp("App", &argc, argv);
 
-    if (argc > 1)
+    try
     {
-        json config = json::parse(argv[1]);
 
-        initializeDataLoader(config);
-        initializeDataWriter(config);
-        initializeGlobals(config);
+        if (argc > 1)
+        {
+            json config = json::parse(argv[1]);
 
-        if (config["crtRun"] == "build")
-        {
-            buildRun(config);
-        }
-        else if (config["crtRun"] == "delay")
-        {
-            delayRun(config);
-        }
-        else if (config["crtRun"] == "convert")
-        {
-            convertRun(config);
-        }
-        else if (config["crtRun"] == "align")
-        {
+            initializeDataLoader(config);
+            initializeDataWriter(config);
+            initializeGlobals(config);
 
-            alignRun(config);
+            if (config["crtRun"] == "build")
+            {
+                buildRun(config);
+            }
+            else if (config["crtRun"] == "delay")
+            {
+                delayRun(config);
+            }
+            else if (config["crtRun"] == "convert")
+            {
+                convertRun(config);
+            }
+            else if (config["crtRun"] == "align")
+            {
+
+                alignRun(config);
+            }
+            else
+            {
+                throw "unknown run option, available options: build, delay";
+            }
         }
-        else
-        {
-            throw "unknown run option, available options: build, delay";
-        }
+    }
+    catch (string &str)
+    {
+        cout << str << endl;
     }
 }
 
@@ -245,6 +253,7 @@ void buildRun(json config)
 
         while (interval < coincWindow)
         {
+
             addToCheckMask(checkMask, *(*crtPos));
 
             crtPos++;
@@ -402,7 +411,7 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "compassWave", "test", "timepix", "delila"};
+    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "compassWave", "test", "timepix"};
 
     if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
@@ -411,13 +420,13 @@ string extractNumbers(const string &a, string format)
 
         numberString = a.substr(pos - nSize, nSize);
     }
-    // else if (format == "delila")
-    // {
-    //     auto fPos = a.find_first_of("_") + 1;
-    //     auto lPos = a.find_last_of("_");
+    else if (format == "delila")
+    {
+        auto fPos = a.find_first_of("_") + 1;
+        auto lPos = a.find_last_of("_");
 
-    //     numberString = a.substr(fPos, lPos - fPos);
-    // }
+        numberString = a.substr(fPos, lPos - fPos);
+    }
     else if (format == "3MV")
     {
         auto fPos = a.find_last_of("_") + 1;

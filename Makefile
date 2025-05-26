@@ -6,7 +6,7 @@ INCLUDE += -Iinclude
 LIBS = -L$(ROOT_BASE)/lib
 
 
-LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -ltbb -lcapnp-rpc -lcapnp -lkj-async -lkj
+LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -ltbb -lcapnp-rpc -lcapnp -lkj-async -lkj 
 #LDLIBS = `root-config --cflags --glibs` -fopenmp -lcapnp -lkj
 
 SOURCE_DIR := src
@@ -25,7 +25,7 @@ FLAGS = -std=c++17
 
 all: $(OBJECTS)
 	$(CPP)  dispacher.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o build
-	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o builder
+	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o builder 
 
 $(SOURCE_DIR)/%.o: $(SOURCE_DIR)/%.cpp 
 	$(CPP) $(INCLUDE) -c $< -o $@ $(FLAGS)

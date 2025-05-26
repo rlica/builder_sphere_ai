@@ -228,7 +228,7 @@ deque<event *> delilaLoader::readEvents()
         int board = Mod;
         int ch = Ch;
 
-        uint64_t delayedTime = timeStamp - delay[board][ch];
+        uint64_t delayedTime = fineTs - delay[board][ch];
 
         events.push_back(new event());
 
@@ -2253,6 +2253,126 @@ map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> testLoader::readAlignEve
                 {
                     return events;
                 }
+            }
+            break;
+        }
+
+        default:
+        {
+            throw "Unsupported data type: " + dataTypeMap[data.which()] + " " + to_string(data.which());
+
+            break;
+        }
+        }
+    }
+
+    return events;
+}
+
+map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> capLoader::readAlignEvents()
+{
+
+    int16_t crtBrd = -1;
+    vector<uint64_t> times;
+
+    map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> events;
+
+    uint eventNumb = config["input"]["eventCount"];
+
+    if (eventNumb == 0)
+    {
+        eventNumb = numeric_limits<uint>::max();
+    }
+
+    string fileName = config["crtFile"];
+
+    vector<vector<int>> lut = config["detector"]["lut"].get<vector<vector<int>>>();
+    vector<vector<int>> mask = config["detector"]["type"].get<vector<vector<int>>>();
+
+    auto fd = open(fileName.c_str(), O_RDONLY);
+
+    kj::FdInputStream fdStream(fd);
+    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+
+    uint64_t crtEvents = 0;
+
+    while (bufferedStream.tryGetReadBuffer() != nullptr)
+    {
+        capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
+
+        auto data = message.getRoot<DataPacket>();
+
+        switch (data.which())
+        {
+
+        case DataPacket::PLAIN_EVENTS:
+        {
+            auto proEvent = data.getPlainEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+
+                auto brd = proEvent[i].getBoard();
+                auto ch = proEvent[i].getChannel();
+
+                auto dType = mask[brd][ch];
+                auto dLut = lut[brd][ch];
+
+                if (dType == -1)
+                {
+                    continue;
+                }
+
+                auto evtId = make_pair(dType, dLut);
+
+                if (events.find(evtId) == events.end())
+                {
+                    events[evtId] = make_shared<vector<double>>();
+                }
+
+                events[evtId]->push_back(proEvent[i].getEnergy());
+
+                if (crtEvents == eventNumb)
+                {
+                    return events;
+                }
+            }
+            break;
+        }
+
+        case DataPacket::RAW_TIME_EVENTS:
+        {
+            auto proEvent = data.getRawTimeEvents();
+
+            for (uint i = 0; i < proEvent.size(); i++)
+            {
+
+                auto brd = proEvent[i].getBoard();
+                auto ch = proEvent[i].getChannel();
+
+                auto dType = mask[brd][ch];
+                auto dLut = lut[brd][ch];
+
+                if (dType == -1)
+                {
+                    continue;
+                }
+
+                auto evtId = make_pair(dType, dLut);
+
+                if (events.find(evtId) == events.end())
+                {
+                    events[evtId] = make_shared<vector<double>>();
+                }
+
+                events[evtId]->push_back(proEvent[i].getEnergy());
+
+                if (crtEvents == eventNumb)
+                {
+                    return events;
+                }
+
+                crtEvents++;
             }
             break;
         }

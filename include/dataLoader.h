@@ -108,6 +108,7 @@ public:
     capLoader(json cfg) : dataLoader(cfg) {}
     deque<event *> readEvents();
     vector<delayEvent> readDelayEvents();
+    map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> readAlignEvents();
 
 private:
     map<int, string> dataTypeMap = {{0, "PLAIN_DATA"},

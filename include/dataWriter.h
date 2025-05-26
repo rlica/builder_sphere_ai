@@ -83,6 +83,7 @@ public:
     void addConvertEvent(event *event);
 
     void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+    void addBuiltEvent(vector<event *> &events, int64_t time);
 
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
 

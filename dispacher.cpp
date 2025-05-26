@@ -267,7 +267,7 @@ void dispatchThread(json config)
 
     dump = std::regex_replace(dump, std::regex("\""), "\\\"");
 
-    string cmd = "./builder \"" + dump + "\"";
+    string cmd = "builder \"" + dump + "\"";
 
     system(cmd.c_str());
 }
@@ -439,14 +439,14 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 
         int index = 0;
 
-        // if (config["input"]["fileFormat"] == "delila")
-        // {
-        //     auto fPos = stem.find_first_of("_") + 1;
-        //     auto lPos = stem.find_last_of("_");
+        if (config["input"]["fileFormat"] == "delila")
+        {
+            auto fPos = stem.find_first_of("_") + 1;
+            auto lPos = stem.find_last_of("_");
 
-        //     index = stoi(stem.substr(fPos, lPos - fPos));
-        // }
-        // else
+            index = stoi(stem.substr(fPos, lPos - fPos));
+        }
+        else
         {
             index = stoi(stem.substr(stem.length() - 6));
         }
@@ -526,6 +526,8 @@ void alignRun(json &config)
     }
 
     refFile = fs::path(config["input"]["path"]).string() + "/" + refFile;
+
+    inpFiles = removeKeepFiles(inpFiles, config);
 
     vector<shared_future<void>> futures;
 
