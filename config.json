@@ -29,6 +29,9 @@
     "refTimeOffset": -10000,
     "refType": 2
   },
+  "convert": {
+    "root": {"addHistogram": true, "addList": true, "addRunTime": true}
+  },
   "detector": {
     "coincPairs": [
       [ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10,  0,  0,  0,  0,  0, 0],
@@ -73,25 +76,25 @@
       "BGO": {"dataType": [], "type": []},
       "hpgeBGO": {
         "dataType": [
-          "energy"   , "time/1000", "time%1000", "energy"   , "time/1000",
+          "energy",    "time/1000", "time%1000", "energy",    "time/1000",
           "time%1000"
         ],
         "type": [0, 0, 0, 2, 2, 2]
       },
       "labrRaw": {
         "dataType": ["energy", "time/1000", "time%1000"],
-        "type"    : [1       , 1          , 1          ]
+        "type"    : [1,        1,           1          ]
       },
       "siCells": {
         "dataType": ["energy", "time/1000", "time%1000"],
-        "type"    : [3       , 3          , 3          ]
+        "type"    : [3,        3,           3          ]
       }
     },
     "typeOutputFormat": ["hpgeBGO", "labrRaw", "BGO", "siCells"]
   },
   "general": {"maxCores": 10, "run": "align", "timeUnitMultiplier": 1000},
   "input": {
-    "eventCount": 0,
+    "eventCount": 10000,
     "fileFormat": "cap",
     "fileIdentifier": "Run_60um",
     "keepIndex": [0, 1000000],

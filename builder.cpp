@@ -443,7 +443,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     vector<event *> tempList;
 
-    int64_t absTime = (*evt.first)->getTimeStamp();
+    uint64_t absTime = (*evt.first)->getTimeStamp();
 
     // capture the list
     for (auto i = evt.first; i < evt.second; i++)
@@ -478,8 +478,6 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
     }
 
     writer->addBuiltEvent(tempList, absTime);
-
-    // writer->addBuiltEvent(&eventList, absTime);
 
     for (int i = 0; i < tempList.size(); i++)
     {
@@ -571,6 +569,14 @@ void delayRun(json config)
     }
 
     vector<vector<int>> delay = config["detector"]["delay"];
+
+    for (auto &board : delay)
+    {
+        for (auto &ch : board)
+        {
+            ch = 0;
+        }
+    }
 
     for (auto hist : hists)
     {

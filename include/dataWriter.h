@@ -44,8 +44,7 @@ public:
     ~dataWriter() {};
 
     virtual void initializeOutputFile() {};
-    virtual void addBuiltEvent(vector<vector<event *>> *events, int64_t time) {};
-    virtual void addBuiltEvent(vector<event *> &events, int64_t time) {};
+    virtual void addBuiltEvent(vector<event *> &events, uint64_t time) {};
     virtual void addConvertEvent(event *event) {};
 
     virtual void writeData() {};
@@ -62,6 +61,9 @@ public:
 protected:
     int64_t resetGap = -1;
     double timeScale = 1;
+
+    uint64_t resetTime = std::numeric_limits<uint64_t>::min();
+    uint64_t prevTime = std::numeric_limits<uint64_t>::min();
 
     json varConfig;
 
@@ -82,8 +84,7 @@ public:
     void initializeConvertOutputFile();
     void addConvertEvent(event *event);
 
-    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
-    void addBuiltEvent(vector<event *> &events, int64_t time);
+    void addBuiltEvent(vector<event *> &events, uint64_t time);
 
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
 
@@ -114,6 +115,8 @@ private:
     vector<uint16_t> varVetoRelativeNsTime;
     vector<uint16_t> varVetoRelativePsTime;
 
+    uint64_t varAbsoluteTime;
+
     // convert data types
     uint8_t varConvBoard;
     uint8_t varConvChannel;
@@ -136,8 +139,7 @@ public:
     gaspDataWriter(json &config);
 
     void initializeOutputFile();
-    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
-    void addBuiltEvent(vector<event *> &events, int64_t time);
+    void addBuiltEvent(vector<event *> &events, uint64_t time);
 
     void writeData();
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
@@ -165,7 +167,7 @@ private:
     int eventMaskSize = 0;
     int headerSize = 1;
 
-    void dumpToFile(map<pair<int, int>, vector<event *>> event, int64_t time);
+    void dumpToFile(map<pair<int, int>, vector<event *>> event, uint64_t time);
 
 private:
     void validateConfig();
@@ -185,9 +187,6 @@ private:
     int varBlockNumber = 0;
 
     ofstream varOutFile;
-
-    int64_t resetTime = std::numeric_limits<int64_t>::min();
-    int64_t prevTime = std::numeric_limits<int64_t>::min();
 
     [[deprecated]] map<int, int> detectorTypeSize = {{DETECTOR, 4},
                                                      {DETECTOR_RAW, 4},
@@ -211,7 +210,7 @@ public:
     void setFileDescriptor(int fd) { fileDescriptor = fd; }
     int getFileDescriptor() { return fileDescriptor; }
 
-    void addBuiltEvent(vector<vector<event *>> *events, int64_t time);
+    void addBuiltEvent(vector<vector<event *>> *events, uint64_t time);
 
     void writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist);
 
