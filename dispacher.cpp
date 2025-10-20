@@ -24,6 +24,8 @@ namespace fs = std::filesystem;
 json readConfigFile(string fileName);
 void buildRun(json &config);
 void delayRun(json &config);
+void convertRun(json &config);
+void alignRun(json &config);
 
 vector<string> removeKeepFiles(vector<string> input, json config);
 vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
@@ -38,29 +40,46 @@ int main(int argc, char **argv)
 
     try
     {
-        auto schemaPath = getEnvironment("BUILDER_BASE") + "/configSchema.json";
 
-        json schema = readConfigFile(schemaPath);
+        try
+        {
+            auto schemaPath = getEnvironment("BUILDER_BASE") + "/configSchema.json";
 
-        validateJsonSchema(config, schema);
-    }
-    catch (string test)
-    {
-        cout << test << endl;
-        exit(1);
+            json schema = readConfigFile(schemaPath);
+
+            validateJsonSchema(config, schema);
+        }
+        catch (string test)
+        {
+            cout << test << endl;
+            exit(1);
+        }
+
+        if (config["general"]["run"] == "build")
+        {
+            buildRun(config);
+        }
+        else if (config["general"]["run"] == "delay")
+        {
+            delayRun(config);
+        }
+        else if (config["general"]["run"] == "convert")
+        {
+            convertRun(config);
+        }
+        else if (config["general"]["run"] == "align")
+        {
+            alignRun(config);
+        }
+        else
+        {
+            throw std::runtime_error("unknown run option, available options: build, delay, and convert");
+        }
     }
 
-    if (config["general"]["run"] == "build")
+    catch (const std::exception &e)
     {
-        buildRun(config);
-    }
-    else if (config["general"]["run"] == "delay")
-    {
-        delayRun(config);
-    }
-    else
-    {
-        cout << "unknown run option, available options: build, delay" << endl;
+        cout << "error: " << e.what() << endl;
     }
 }
 
@@ -75,13 +94,13 @@ json readConfigFile(string fileName)
 
 void buildRun(json &config)
 {
-
     auto inpFiles = generateInputFiles(config);
 
     vector<shared_future<void>> futures;
 
     int maxCores = config["general"]["maxCores"];
 
+    cout << "build run:" << endl;
     cout << "requested: " << inpFiles.size() << " file/s" << endl;
     cout << "building on: " << maxCores << " core/s" << endl;
 
@@ -148,13 +167,16 @@ void buildRun(json &config)
 
 void printStatus(int finished, int total)
 {
-    string doneStr = "000000" + to_string(finished);
-    doneStr = doneStr.substr(doneStr.size() - 6);
 
-    string totalStr = "000000" + to_string(total);
-    totalStr = totalStr.substr(totalStr.size() - 6);
+    [[deprecated]] int a = 0;
 
-    cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
+    // string doneStr = "000000" + to_string(finished);
+    // doneStr = doneStr.substr(doneStr.size() - 6);
+
+    // string totalStr = "000000" + to_string(total);
+    // totalStr = totalStr.substr(totalStr.size() - 6);
+
+    // cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
 }
 
 vector<string> getPathFiles(string path, string identifier, string extension)
@@ -214,6 +236,7 @@ vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output)
 
     for (auto out : output)
     {
+
         auto pos = out.find_last_of("/") + 1;
         auto tempOut = out.substr(pos);
 
@@ -316,6 +339,80 @@ void delayRun(json &config)
     }
 }
 
+void convertRun(json &config)
+{
+
+    auto inpFiles = generateInputFiles(config);
+
+    vector<shared_future<void>> futures;
+
+    int maxCores = config["general"]["maxCores"];
+
+    cout << "convert run:" << endl;
+    cout << "requested: " << inpFiles.size() << " file/s" << endl;
+    cout << "building on: " << maxCores << " core/s" << endl;
+
+    int finished = 0;
+
+    config["crtRun"] = "convert";
+
+    for (int i = 0; i < inpFiles.size(); i++)
+    {
+        config["crtFile"] = inpFiles[i];
+
+        futures.push_back(async(std::launch::async, [config]()
+                                { dispatchThread(config); })
+                              .share());
+
+        while (futures.size() == maxCores)
+        {
+            int pos = -1;
+
+            for (int o = 0; o < futures.size(); o++)
+            {
+                if (futures[o].wait_for(10ms) == std::future_status::ready)
+                {
+                    pos = o;
+                }
+            }
+
+            if (pos != -1)
+            {
+                futures.erase(futures.begin() + pos);
+                finished++;
+            }
+        }
+        printStatus(finished, inpFiles.size());
+    }
+
+    while (futures.size())
+    {
+
+        int pos = -1;
+
+        for (int o = 0; o < futures.size(); o++)
+        {
+            if (futures[o].wait_for(10ms) == std::future_status::ready)
+            {
+                pos = o;
+            }
+        }
+
+        if (pos != -1)
+        {
+            futures.erase(futures.begin() + pos);
+            finished++;
+        }
+
+        printStatus(finished, inpFiles.size());
+    }
+
+    if (finished)
+    {
+        cout << endl;
+    }
+}
+
 vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 {
 
@@ -340,7 +437,19 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
 
         string stem = fs::path(str).stem().string();
 
-        auto index = stoi(stem.substr(stem.length() - 6));
+        int index = 0;
+
+        if (config["input"]["fileFormat"] == "delila")
+        {
+            auto fPos = stem.find_first_of("_") + 1;
+            auto lPos = stem.find_last_of("_");
+
+            index = stoi(stem.substr(fPos, lPos - fPos));
+        }
+        else
+        {
+            index = stoi(stem.substr(stem.length() - 6));
+        }
 
         if (index >= start && index <= stop)
         {
@@ -349,4 +458,143 @@ vector<string> removeKeepFiles(vector<string> inpFiles, json config)
     }
 
     return output;
+}
+
+void checkAlignConfig(json &config)
+{
+
+    if (config.find("eliteSigma") == config.end())
+    {
+        config["eliteSigma"] = 0.1;
+    }
+
+    if (config.find("eliteSteps") == config.end())
+    {
+        config["eliteSteps"] = 2;
+    }
+
+    if (config.find("histBins") == config.end())
+    {
+        config["histBins"] = pow(2, 14);
+    }
+
+    if (config.find("histRange") == config.end())
+    {
+        config["histRange"] = {0, pow(2, 14)};
+    }
+
+    if (config.find("objectiveFunc") == config.end())
+    {
+        config["objectiveFunc"] = "pearson";
+    }
+
+    if (config.find("paraLimits") == config.end())
+    {
+        config["paraLimits"] = {{-20, 20}, {0.8, 1.2}};
+    }
+
+    if (config.find("population") == config.end())
+    {
+        config["objectiveFunc"] = 20;
+    }
+
+    if (config.find("selection") == config.end())
+    {
+        config["selection"] = {1, 1, 0.1};
+    }
+
+    if (config.find("steps") == config.end())
+    {
+        config["steps"] = 20;
+    }
+}
+
+void alignRun(json &config)
+{
+
+    checkAlignConfig(config);
+
+    string extension = fileExtensions[string(config["input"]["fileFormat"])];
+
+    auto inpFiles = getPathFiles(config["input"]["path"], config["input"]["fileIdentifier"], extension);
+    string refFile = config["align"]["refFile"];
+
+    if (std::find_if(inpFiles.begin(), inpFiles.end(), [refFile](string file)
+                     { return fs::path{file}.filename() == refFile; }) == inpFiles.end())
+    {
+        throw std::runtime_error("align: reference file not found in input files");
+    }
+
+    refFile = fs::path(config["input"]["path"]).string() + "/" + refFile;
+
+    inpFiles = removeKeepFiles(inpFiles, config);
+
+    vector<shared_future<void>> futures;
+
+    int maxCores = config["general"]["maxCores"];
+
+    cout << "align run:" << endl;
+    cout << "requested: " << inpFiles.size() << " file/s" << endl;
+    cout << "building on: " << maxCores << " core/s" << endl;
+
+    int finished = 0;
+
+    config["crtRun"] = "align";
+    config["refFile"] = refFile;
+
+    for (int i = 0; i < inpFiles.size(); i++)
+    {
+        config["crtFile"] = inpFiles[i];
+
+        futures.push_back(async(std::launch::async, [config]()
+                                { dispatchThread(config); })
+                              .share());
+
+        while (futures.size() == maxCores)
+        {
+            int pos = -1;
+
+            for (int o = 0; o < futures.size(); o++)
+            {
+                if (futures[o].wait_for(10ms) == std::future_status::ready)
+                {
+                    pos = o;
+                }
+            }
+
+            if (pos != -1)
+            {
+                futures.erase(futures.begin() + pos);
+                finished++;
+            }
+        }
+        printStatus(finished, inpFiles.size());
+    }
+
+    while (futures.size())
+    {
+
+        int pos = -1;
+
+        for (int o = 0; o < futures.size(); o++)
+        {
+            if (futures[o].wait_for(10ms) == std::future_status::ready)
+            {
+                pos = o;
+            }
+        }
+
+        if (pos != -1)
+        {
+            futures.erase(futures.begin() + pos);
+            finished++;
+        }
+
+        printStatus(finished, inpFiles.size());
+    }
+
+    if (finished)
+    {
+        cout << endl;
+    }
 }

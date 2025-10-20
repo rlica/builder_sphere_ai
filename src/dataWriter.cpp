@@ -4,236 +4,38 @@
 #include <dirent.h>
 #include <regex>
 #include <iomanip>
+#include <set>
 
-dataWriter::dataWriter(string file, int numb) : varFileName(file), varRunNumb(numb)
+dataWriter::dataWriter(json &config) : varConfig(config)
 {
+    auto runType = config["general"]["run"].get<string>();
+
+    if (runType == "build" || runType == "convert")
+    {
+        varFileName = config["run"]["fileName"].get<string>();
+        varRunNumb = config["run"]["runNumber"].get<int>();
+    }
 }
 
-gaspDataWriter::gaspDataWriter(string file, int numb) : dataWriter(file, numb)
+gaspDataWriter::gaspDataWriter(json &config) : dataWriter(config)
 {
+    setConfig(config);
 
-    initializeOutputFile();
-    initializeRecordHeader();
-}
+    validateConfig();
 
-void gaspDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
-{
-    vector<int> eventMask = vector<int>(varOutputTypes.size(), 0);
+    auto runType = config["general"]["run"].get<string>();
 
-    for (auto &sig : *events)
+    if (runType == "build")
     {
-        auto it = varOutputTypes.find(sig[0]->getDetectorType());
+        initializeWriterStructures();
 
-        auto dist = distance(varOutputTypes.begin(), it);
-
-        eventMask[dist] += 1;
-    }
-
-    vector<short> eventBuffer;
-    eventBuffer.reserve(2 + eventMask.size());
-
-    eventBuffer.push_back(0);
-
-    int size = 0;
-
-    // size of header and detector mask
-    size += varEventHeaderSize + varOutputTypes.size();
-
-    // this should be from config
-    if (time > (prevTime + resetGap))
-    {
-        resetTime = time;
-    }
-
-    prevTime = time;
-
-    short scaledTime = (time - resetTime) * timeScale;
-
-    // fill header parameters
-    eventBuffer.push_back(scaledTime);
-
-    // fill detector mask
-    for (uint i = 0; i < eventMask.size(); i++)
-    {
-        auto it = std::next(varOutputTypes.begin(), i);
-
-        size += eventMask[i] * detectorTypeSize[(*it).second];
-        eventBuffer.push_back(eventMask[i]);
-    }
-
-    // fill the proper event start value
-    eventBuffer[0] = 0xF000 + size;
-
-    eventBuffer.reserve(size + 1);
-
-    for (auto &sig : *events)
-    {
-
-        switch (varOutputTypes[sig[0]->getDetectorType()])
-        {
-        case DETECTOR:
-        {
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            break;
-        }
-        case DETECTOR_RAW:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            int32_t time = sig[0]->getRelativeTime();
-
-            uint16_t sTime = time & 0x3FF;
-            uint16_t fTime = (time >> 10) & 0xFFFF;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            break;
-        }
-        case SUPPRESED_DETECTOR:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            if (sig.size() != 2)
-            {
-                cout << "error: Suppressed detector event must have two signals" << endl;
-                exit(1);
-            }
-
-            eventBuffer.push_back(sig[1]->getEnergy());
-
-            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
-            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fVetoTime);
-            eventBuffer.push_back(sVetoTime);
-            break;
-        }
-        case SUPPRESED_DETECTOR_RAW:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            int32_t time = sig[0]->getRelativeTime();
-
-            uint16_t sTime = time & 0x3FF;
-            uint16_t fTime = (time >> 10) & 0xFFFF;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            if (sig.size() != 2)
-            {
-                cout << "error: Suppressed detector raw event must have two signals" << endl;
-                exit(1);
-            }
-
-            eventBuffer.push_back(sig[1]->getEnergy());
-
-            time = sig[1]->getRelativeTime();
-
-            sTime = time & 0x3FF;
-            fTime = (time >> 10) & 0xFFFF;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            break;
-        }
-        case PSD_DETECTOR:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            eventBuffer.push_back(sig[0]->getPSD());
-        }
-        case SUPPRESED_PSD_DETECTOR:
-        {
-
-            eventBuffer.push_back(sig[0]->getDetectorLut());
-            eventBuffer.push_back(sig[0]->getEnergy());
-
-            uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[0]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fTime);
-            eventBuffer.push_back(sTime);
-
-            eventBuffer.push_back(sig[0]->getPSD());
-
-            if (sig.size() != 2)
-            {
-                cout << "error: Suppressed detector event must have two signals" << endl;
-                exit(1);
-            }
-
-            eventBuffer.push_back(sig[1]->getEnergy());
-
-            uint16_t fVetoTime = sig[1]->getRelativeTime() / 1000;
-            uint16_t sVetoTime = sig[1]->getRelativeTime() % 1000;
-
-            eventBuffer.push_back(fVetoTime);
-            eventBuffer.push_back(sVetoTime);
-            break;
-        }
-        case NO_TYPE:
-        {
-        }
-        default:
-        {
-
-            cout << "default value, is not implemented: " << sig[0]->getDetectorType() << endl;
-
-            abort();
-
-            break;
-        }
-        }
-    }
-
-    if (varBlockBuffer.size() + eventBuffer.size() < MAX_BLOCK_SIZE)
-    {
-        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
-    }
-    else
-    {
-        // fill the end of buffer with zeros
-        varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
-
-        // write the buffer to disk
-        writeData();
-
-        // clear the buffer
+        initializeOutputFile();
         initializeRecordHeader();
-
-        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
     }
+}
+
+[[deprecated("not finished")]] void gaspDataWriter::validateConfig()
+{
 }
 
 void gaspDataWriter::writeData()
@@ -273,7 +75,6 @@ void gaspDataWriter::initializeRecordHeader()
 
 void gaspDataWriter::closeFile()
 {
-
     varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
     writeData();
 
@@ -291,7 +92,7 @@ void gaspDataWriter::initializeOutputFile()
     initializeFileHeader();
 }
 
-void dataWriter::setConfig(json config)
+[[deprecated]] void gaspDataWriter::setConfig(json &config)
 {
     varConfig = config;
 
@@ -299,93 +100,56 @@ void dataWriter::setConfig(json config)
     timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
 }
 
-void gaspDataWriter::setConfig(json config)
+void rootDataWriter::setConfig(json &config)
 {
-    varConfig = config;
+    varAddHistogram = config["convert"]["root"]["addHistogram"].get<bool>();
+    varAddList = config["convert"]["root"]["addList"].get<bool>();
+    varAddRunTime = config["convert"]["root"]["addRunTime"].get<bool>();
 
     resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
     timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
-
-    auto dTypes = config["detector"]["type"].get<vector<vector<int>>>();
-
-    map<int, int> typeCount;
-
-    for (auto brd : dTypes)
-    {
-        for (auto ch : brd)
-        {
-            typeCount[ch]++;
-        }
-    }
-    typeCount.erase(-1);
-
-    auto outTypes = varConfig["gasp"]["typeOutputFormat"].get<vector<string>>();
-
-    if (outTypes.size() < typeCount.size())
-    {
-        cout << "gasp typeOutputFormat are not set for all detector types" << endl;
-        abort();
-    }
-
-    for (auto [type, count] : typeCount)
-    {
-
-        if (outTypes[type] == "detector")
-        {
-            varOutputTypes[type] = DETECTOR;
-        }
-        else if (outTypes[type] == "detectorRaw")
-        {
-            varOutputTypes[type] = DETECTOR_RAW;
-        }
-        else if (outTypes[type] == "suppressedDetector")
-        {
-            varOutputTypes[type] = SUPPRESED_DETECTOR;
-        }
-        else if (outTypes[type] == "suppressedDetectorRaw")
-        {
-            varOutputTypes[type] = SUPPRESED_DETECTOR_RAW;
-        }
-        else if (outTypes[type] == "psdDetector")
-        {
-            varOutputTypes[type] = PSD_DETECTOR;
-        }
-        else if (outTypes[type] == "suppresedPsdDetector")
-        {
-            varOutputTypes[type] = SUPPRESED_PSD_DETECTOR;
-        }
-        else
-        {
-            varOutputTypes[type] = NO_TYPE;
-        }
-    }
-
-    vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
-
-    for (auto m : antiCoincFlags)
-    {
-        varOutputTypes.erase(m);
-    }
 }
 
-rootDataWriter::rootDataWriter(string file, int numb) : dataWriter(file, numb)
+rootDataWriter::rootDataWriter(json &config) : dataWriter(config)
 {
-    initializeOutputFile();
+    auto runType = config["general"]["run"].get<string>();
+    setConfig(config);
+
+    if (runType == "build")
+    {
+        initializeBuildOutputFile();
+    }
+    else if (runType == "convert")
+    {
+
+        initializeConvertOutputFile();
+    }
 }
 
-void rootDataWriter::initializeOutputFile()
+void rootDataWriter::initializeBuildOutputFile()
 {
 
     string fName = getFileName() + ".root";
 
     varOutFile = make_unique<TFile>(fName.c_str(), "RECREATE");
 
-    initializeTree();
+    initializeBuildTree();
 }
 
-void rootDataWriter::initializeTree()
+void rootDataWriter::initializeConvertOutputFile()
 {
+    string fName = getFileName() + ".root";
 
+    varOutFile = make_unique<TFile>(fName.c_str(), "RECREATE");
+
+    if (varAddList)
+    {
+        initializeConvertTree();
+    }
+}
+
+[[deprecated]] void rootDataWriter::initializeBuildTree()
+{
     varEventTree = new TTree("events", "events tree");
 
     varEventTree->Branch("detectorLUT", &varDetectorLUT);
@@ -394,16 +158,24 @@ void rootDataWriter::initializeTree()
     varEventTree->Branch("energy", &varEnergy);
     varEventTree->Branch("psd", &varPsd);
 
-    varEventTree->Branch("vetoEnergy", &varVetoEnergy);
-
     varEventTree->Branch("relativeNsTime", &varRelativeNsTime);
     varEventTree->Branch("relativePsTime", &varRelativePsTime);
 
-    varEventTree->Branch("vetoRelativeNsTime", &varVetoRelativeNsTime);
-    varEventTree->Branch("vetoRelativePsTime", &varVetoRelativePsTime);
+    varEventTree->Branch("absoluteTime", &varAbsoluteTime);
 }
 
-void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time)
+void rootDataWriter::initializeConvertTree()
+{
+    varEventTree = new TTree("signals", "signals tree");
+
+    varEventTree->Branch("board", &varConvBoard);
+    varEventTree->Branch("channel", &varConvChannel);
+
+    varEventTree->Branch("energy", &varConvEnergy);
+    varEventTree->Branch("timestamp", &varConvTimestamp);
+}
+
+void rootDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
 {
 
     varDetectorLUT.clear();
@@ -413,45 +185,35 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
     varPsd.clear();
 
-    varVetoEnergy.clear();
-
     varRelativeNsTime.clear();
     varRelativePsTime.clear();
 
-    varVetoRelativeNsTime.clear();
-    varVetoRelativePsTime.clear();
+    // add header parameters
+    if (time > (prevTime + resetGap))
+    {
+        resetTime = time;
+    }
 
-    for (auto &sig : *events)
+    prevTime = time;
+
+    varAbsoluteTime = (time - resetTime) * timeScale;
+
+    cout << time << " " << varAbsoluteTime << endl;
+
+    for (auto sig : events)
     {
 
-        varDetectorLUT.push_back(sig[0]->getDetectorLut());
-        varDetectorType.push_back(sig[0]->getDetectorType());
+        varDetectorLUT.push_back(sig->getDetectorLut());
+        varDetectorType.push_back(sig->getDetectorType());
 
-        varEnergy.push_back(sig[0]->getEnergy());
-        varPsd.push_back(sig[0]->getPSD());
+        varEnergy.push_back(sig->getEnergy());
+        varPsd.push_back(sig->getPSD());
 
-        uint16_t fTime = sig[0]->getRelativeTime() / 1000;
-        uint16_t sTime = sig[0]->getRelativeTime() % 1000;
+        uint16_t fTime = sig->getRelativeTime() / 1000;
+        uint16_t sTime = sig->getRelativeTime() % 1000;
 
         varRelativeNsTime.push_back(fTime);
         varRelativePsTime.push_back(sTime);
-
-        if (sig.size() == 2)
-        {
-            varVetoEnergy.push_back(sig[1]->getEnergy());
-
-            uint16_t fTime = sig[1]->getRelativeTime() / 1000;
-            uint16_t sTime = sig[1]->getRelativeTime() % 1000;
-
-            varVetoRelativeNsTime.push_back(fTime);
-            varVetoRelativePsTime.push_back(sTime);
-        }
-        else
-        {
-            varVetoEnergy.push_back(0);
-            varVetoRelativeNsTime.push_back(0);
-            varVetoRelativePsTime.push_back(0);
-        }
     }
 
     varEventTree->Fill();
@@ -459,13 +221,44 @@ void rootDataWriter::addBuiltEvent(vector<vector<event *>> *events, int64_t time
 
 void rootDataWriter::closeFile()
 {
-    varEventTree->Write();
+
+    auto runType = varConfig["general"]["run"].get<string>();
+
+    if (runType == "convert")
+    {
+        if (varAddList)
+        {
+            varEventTree->Write();
+        }
+
+        if (varAddHistogram)
+        {
+            for (auto &hist : varEnergyHist)
+            {
+                hist.second->Write();
+            }
+        }
+
+        if (varAddRunTime)
+        {
+            double time = double(stopTime - startTime) * pow(10, -12);
+            TParameter<double> varRunTime("runTime", time);
+
+            varRunTime.Write();
+        }
+    }
+    else if (runType == "build")
+    {
+        varOutFile->cd();
+
+        varEventTree->Write();
+    }
+
     varOutFile->Close();
 }
 
 void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
 {
-
     string outFileName = string(varConfig["output"]["path"]) + "/";
     outFileName += string(varConfig["delay"]["outFileName"]) + ".root";
 
@@ -477,8 +270,6 @@ void rootDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
     }
 
     outFile.Close();
-
-    cout << "results output: " << outFileName << endl;
 }
 
 void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
@@ -528,6 +319,412 @@ void gaspDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &de
 
         outFile.close();
     }
+}
 
-    cout << "results output: " << outFileBase << "_#type" << endl;
+void capDataWriter::initializeOutputFile()
+{
+    string fName = getFileName() + ".cap";
+
+    setFileDescriptor(open(fName.c_str(), O_WRONLY | O_CREAT, 0644));
+}
+
+void capDataWriter::closeFile()
+{
+    close(getFileDescriptor());
+}
+
+void capDataWriter::writeDelayResults(map<pair<int, int>, shared_ptr<TH1I>> &delayHist)
+{
+    throw "write delay results is not currently implemented";
+}
+
+capDataWriter::capDataWriter(json &config) : dataWriter(config)
+{
+    initializeOutputFile();
+}
+
+void rootDataWriter::addConvertEvent(event *event)
+{
+    if (varAddList)
+    {
+        varConvBoard = event->getBoardNumb();
+        varConvChannel = event->getChannelNumb();
+
+        varConvEnergy = event->getEnergy();
+        varConvTimestamp = event->getTimeStamp();
+
+        varEventTree->Fill();
+    }
+
+    if (varAddHistogram)
+    {
+        auto target = make_pair(event->getBoardNumb(), event->getChannelNumb());
+
+        auto mapIt = varEnergyHist.find(target);
+
+        if (mapIt == varEnergyHist.end())
+        {
+            varEnergyHist[target] = make_shared<TH1D>(("brd_" + to_string(event->getBoardNumb()) + "_ch_" + to_string(event->getChannelNumb())).c_str(), "energy", pow(2, 14), 0, pow(2, 14));
+        }
+
+        varEnergyHist[target]->Fill(event->getEnergy());
+    }
+
+    if (varAddRunTime)
+    {
+        if (event->getTimeStamp() < startTime)
+        {
+            startTime = event->getTimeStamp();
+        }
+
+        if (event->getTimeStamp() > stopTime)
+        {
+            stopTime = event->getTimeStamp();
+        }
+    }
+}
+
+void gaspDataWriter::writeAlignResults(vector<calibPoint> calibPoints)
+{
+
+    string fileName = varConfig["align"]["outFileName"];
+    string outPath = varConfig["output"]["path"];
+
+    for (auto &calib : calibPoints)
+    {
+        string outFile = outPath + "/" + fileName + "_" + to_string(calib.type) + ".cal";
+
+        int fd = open(outFile.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
+
+        std::stringstream buffer;
+
+        buffer << calib.runNumber << " " << static_cast<uint32_t>(calib.lut) << " " << calib.calibParam.size() << " ";
+
+        for (auto &val : calib.calibParam)
+        {
+            buffer << val << " ";
+        }
+        buffer << endl;
+
+        flock(fd, LOCK_EX);
+        write(fd, buffer.str().c_str(), buffer.str().size());
+        flock(fd, LOCK_UN); // Release lock
+        close(fd);
+    }
+}
+
+int gaspDataWriter::findLut(int iType, int iPair)
+{
+    auto pairs = varConfig["detector"]["coincPairs"].get<vector<vector<int>>>();
+    auto types = varConfig["detector"]["type"].get<vector<vector<int>>>();
+    auto luts = varConfig["detector"]["lut"].get<vector<vector<int>>>();
+
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto dType = types[i][o];
+            auto dLut = luts[i][o];
+            auto dPair = pairs[i][o];
+
+            if (dType == iType && dPair == iPair)
+            {
+                return dLut;
+            }
+        }
+    }
+
+    assert(false && "requested LUT not found in pair");
+
+    return {};
+}
+
+void gaspDataWriter::initializeWriterStructures()
+{
+
+    initializeValueGetters();
+
+    auto pairs = varConfig["detector"]["coincPairs"].get<vector<vector<int>>>();
+    auto types = varConfig["detector"]["type"].get<vector<vector<int>>>();
+    auto luts = varConfig["detector"]["lut"].get<vector<vector<int>>>();
+
+    auto cfg = varConfig["gasp"];
+
+    auto outputFormat = cfg["typeOutputFormat"].get<vector<string>>();
+
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto dType = types[i][o];
+            auto dLut = luts[i][o];
+            auto dPair = pairs[i][o];
+
+            // skip the disabled channels
+            if (dType == -1)
+            {
+                continue;
+            }
+
+            auto format = outputFormat[dType];
+
+            auto dList = cfg["detectors"][format]["type"].get<vector<int>>();
+
+            for (int t = 0; t < dList.size(); t++)
+            {
+                int kLut = dLut;
+                int kType = dList[t];
+
+                if (dPair != 0)
+                {
+                    kLut = findLut(dList[t], dPair);
+                }
+
+                typeGroups[{kType, kLut}].push_back({dType, dLut, int(dList.size()), t});
+            }
+        }
+    }
+
+    for (auto &wKey : typeGroups)
+    {
+        for (auto &wVal : wKey.second)
+        {
+            if (!groupTypeLuts[{wVal[0], wVal[1]}].size())
+            {
+                groupTypeLuts[{wVal[0], wVal[1]}] = vector<pair<int, int>>(wVal[2]);
+            }
+
+            groupTypeLuts[{wVal[0], wVal[1]}][wVal[3]] = {wKey.first.first, wKey.first.second};
+            groupGetters[{wVal[0], wVal[3]}] = typeGetters[wVal[0]][wVal[3]];
+        }
+    }
+
+    // generate default events with zero values
+    for (size_t i = 0; i < pairs.size(); i++)
+    {
+        for (size_t o = 0; o < pairs[i].size(); o++)
+        {
+            auto dType = types[i][o];
+            auto dLut = luts[i][o];
+
+            if (dType == -1)
+            {
+                continue;
+            }
+
+            auto evt = new event();
+
+            evt->setDetectorType(dType);
+            evt->setDetectorLut(dLut);
+
+            evt->setEnergy(0);
+            evt->setRelativeTime(0);
+            evt->setPSD(0);
+
+            defaultEvents[{dType, dLut}] = evt;
+        }
+    }
+
+    //
+    eventMaskSize = 0;
+    for (int i = 0; i < outputFormat.size(); i++)
+    {
+        auto format = outputFormat[i];
+
+        auto dList = cfg["detectors"][format]["type"].get<vector<int>>();
+
+        if (dList.size() == 0)
+        {
+            continue;
+        }
+
+        outputTypeMapper[i] = eventMaskSize;
+
+        eventMaskSize++;
+    }
+}
+
+void gaspDataWriter::initializeValueGetters()
+{
+
+    valueGetters["energy"] = [](event *ev)
+    {
+        return ev->getEnergy();
+    };
+
+    valueGetters["time/1000"] = [](event *ev)
+    {
+        return ev->getRelativeTime() / 1000;
+    };
+
+    valueGetters["time%1000"] = [](event *ev)
+    {
+        return ev->getRelativeTime() % 1000;
+    };
+
+    valueGetters["psd"] = [](event *ev)
+    {
+        return ev->getPSD();
+    };
+
+    auto cfg = varConfig["gasp"];
+
+    auto outputFormat = cfg["typeOutputFormat"].get<vector<string>>();
+
+    for (size_t i = 0; i < outputFormat.size(); i++)
+    {
+        auto format = outputFormat[i];
+
+        auto dataTypeList = cfg["detectors"][format]["dataType"].get<vector<string>>();
+        auto typeList = cfg["detectors"][format]["type"].get<vector<int>>();
+
+        if (!dataTypeList.size())
+        {
+            continue;
+        }
+
+        typeGetters[i] = vector<function<uint16_t(event *)>>(dataTypeList.size());
+
+        for (size_t o = 0; o < dataTypeList.size(); o++)
+        {
+            typeGetters[i][o] = valueGetters[dataTypeList[o]];
+        }
+    }
+}
+
+void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
+{
+
+    map<pair<int, int>, vector<event *>> outputEvents;
+
+    for (size_t i = 0; i < events.size(); i++)
+    {
+        auto evt = events[i];
+
+        // cout << "type: " << evt->getDetectorType() << " lut: " << evt->getDetectorLut() << endl;
+        auto mapping = typeGroups[{evt->getDetectorType(), evt->getDetectorLut()}];
+
+        for (auto iMap : mapping)
+        {
+            auto outId = make_pair(iMap[0], iMap[1]);
+
+            if (outputEvents.find(outId) == outputEvents.end())
+            {
+                outputEvents[outId] = vector<event *>(iMap[2], nullptr);
+            }
+
+            outputEvents[outId][iMap[3]] = events[i];
+        }
+    }
+
+    // retrieve missing events
+    for (auto &outEvt : outputEvents)
+    {
+        for (size_t i = 0; i < outEvt.second.size(); i++)
+        {
+            auto pEvt = outEvt.second[i];
+
+            if (pEvt != nullptr)
+            {
+                continue;
+            }
+
+            auto gEvt = defaultEvents[outEvt.first];
+
+            outEvt.second[i] = gEvt;
+        }
+    }
+
+    // dump to file
+    dumpToFile(outputEvents, time);
+}
+
+void gaspDataWriter::dumpToFile(map<pair<int, int>, vector<event *>> events, uint64_t time)
+{
+
+    vector<int> eventMask = vector<int>(eventMaskSize, 0);
+
+    [[deprecated("prealocate memory")]] vector<short> eventBuffer;
+    [[deprecated("add it to the buffer class")]] int size = 0;
+
+    // add header
+    eventBuffer.push_back(0); // size word
+
+    // add header parameters
+    if (time > (prevTime + resetGap))
+    {
+        resetTime = time;
+    }
+
+    prevTime = time;
+
+    short scaledTime = (time - resetTime) * timeScale;
+
+    // fill header parameters
+    eventBuffer.push_back(scaledTime);
+
+    size += 1; // the size word is not counted
+    //
+
+    // add event mask locations
+    for (size_t i = 0; i < eventMask.size(); i++)
+    {
+        eventBuffer.push_back(0);
+    }
+
+    // all positions for the event mask
+    size += eventMask.size();
+
+    for (auto &gEvt : events)
+    {
+        auto iType = gEvt.first.first;
+        auto iLut = gEvt.first.second;
+        auto oType = outputTypeMapper[iType];
+
+        // set lut
+        eventBuffer.push_back(iLut);
+        size += 1;
+
+        for (size_t i = 0; i < gEvt.second.size(); i++)
+        {
+            auto evt = gEvt.second[i];
+            auto getter = groupGetters[{iType, i}];
+
+            auto value = getter(evt);
+
+            eventBuffer.push_back(value);
+            size += 1;
+        }
+
+        eventMask[oType] += 1;
+    }
+
+    // set final size
+    eventBuffer[0] = 0xF000 + size;
+
+    // set event mask
+    int offset = 1 + headerSize;
+    for (size_t i = 0; i < eventMask.size(); i++)
+    {
+        eventBuffer[i + offset] = eventMask[i];
+    }
+
+    // dump to file
+    if (varBlockBuffer.size() + eventBuffer.size() < MAX_BLOCK_SIZE)
+    {
+        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+    }
+    else
+    {
+        // fill the end of buffer with zeros
+        varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
+
+        // write the buffer to disk
+        writeData();
+
+        // clear the buffer
+        initializeRecordHeader();
+
+        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+    }
 }

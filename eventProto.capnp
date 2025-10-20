@@ -1,5 +1,18 @@
 @0x86067e6a0fae5e5e;
 
+struct DataPacket{
+    union {
+        fullEvents @0 : List(FullEvent);
+        plainEvents @1 : List(PlainEvent);   
+        psdEvents @2 : List(PsdEvent);
+        waveEvents @3 : List(WaveEvent);
+        dualWaveEvents @4 : List(DualWaveEvent);
+        rawTimeEvents @5 : List(RawTimeEvent);
+        crossEvents @6 : List(CrossEvent);
+        psdWaveEvents @7 : List(PsdWaveEvent);
+    }
+}
+
 struct FullData{
     type @0: UInt8;
     events @1: List(FullEvent);
@@ -28,6 +41,16 @@ struct DualWaveData{
 struct RawTimeData{
     type @0: UInt8;
     events @1: List(RawTimeEvent);
+}
+
+struct CrossData{
+    type @0: UInt8;
+    events @1: List(CrossEvent);
+}
+
+struct PsdWaveData{
+    type @0: UInt8;
+    events @1: List(PsdWaveEvent);
 }
 
 struct FullEvent {
@@ -80,6 +103,24 @@ struct RawTimeEvent {
     fineTimestamp @4: UInt16;
 }
 
+struct CrossEvent{
+    board @0 :UInt8;
+    channel @1 :UInt8;
+    energy @2: UInt16; 
+    timestamp @3: UInt64;
+    goodTrigger @4: Bool;
+    lostTrigger @5: Bool;
+}
+
+struct PsdWaveEvent {
+    board @0 :UInt8;
+    channel @1 :UInt8;
+    energy @2: UInt16;
+    timestamp @3: UInt64;
+    psd @4: Float32;
+    waveform1 @5: List(Int16);
+}
+
 struct Dataset {
     events @0: List(Event);
 
@@ -93,13 +134,28 @@ struct Dataset {
     }
 }
 
-struct DispatchState{
-    id @0: UInt16;
-    state @1: Text;
-    progress @2: Float32;
-    time @3: UInt32;    
+struct BuiltEvent{
+
+    signals @0: List(Signal);
+
+    struct Signal{
+        type @0 :UInt8;
+        lut @1 :UInt8;
+        energy @2: UInt16;
+        timestamp @3: UInt64;
+        waveform @4: List(Int16);
+        relativeNsTime @5: UInt16;
+        relativePsTime @6: UInt16;
+    }
 }
 
-interface BuilderState{
-    update @0 (state: DispatchState) -> ();
+struct TimepixDataPacket{
+    katherineEvents @0: List(KatherineEvent);
+}
+
+struct KatherineEvent {
+    board @0 :UInt8;
+    channel @1 :UInt16;
+    energy @2: UInt16;
+    timestamp @3: UInt64;
 }

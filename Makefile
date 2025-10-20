@@ -6,7 +6,7 @@ INCLUDE += -Iinclude
 LIBS = -L$(ROOT_BASE)/lib
 
 
-LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -ltbb -lcapnp-rpc -lcapnp -lkj-async -lkj
+LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -ltbb -lcapnp-rpc -lcapnp -lkj-async -lkj 
 #LDLIBS = `root-config --cflags --glibs` -fopenmp -lcapnp -lkj
 
 SOURCE_DIR := src
@@ -24,8 +24,8 @@ FLAGS = -std=c++17
 
 
 all: $(OBJECTS)
-	$(CPP)  dispacher.cpp $^ $(INCLUDE) $(LIBS) $(LDLIBS) $(FLAGS) $(LDLIBS) -o build
-	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(LDLIBS) $(FLAGS) $(LDLIBS) -o builder
+	$(CPP)  dispacher.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o build
+	$(CPP)  builder.cpp $^ $(INCLUDE) $(LIBS) $(FLAGS) $(LDLIBS) -o builder 
 
 $(SOURCE_DIR)/%.o: $(SOURCE_DIR)/%.cpp 
 	$(CPP) $(INCLUDE) -c $< -o $@ $(FLAGS)
@@ -39,7 +39,6 @@ proto:
 	capnp compile -oc++ eventProto.capnp		
 	mv eventProto.capnp.h include/eventProto.capnp.h
 	mv eventProto.capnp.c++ src/eventProto.capnp.c++
-
 
 clean:
 	@rm -rf $(SOURCE_DIR)/*.o builder build

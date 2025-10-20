@@ -1,95 +1,99 @@
 {
+  "align": {
+    "eliteSigma": 0.1,
+    "eliteSteps": 2,
+    "histBins": 3000,
+    "histRange": [70, 3700],
+    "objectiveFunc": "pearson",
+    "outFileName": "align",
+    "paraLimits": [ [-20, 20], [0.8, 1.2] ],
+    "population": 20,
+    "refFile": "238U_TAC_0703_000003.cap",
+    "selection": [1, 1, 0.1],
+    "steps": 20
+  },
   "build": {
     "absoluteTime": {"resetGap": 5, "scalePower": -12},
     "antiCoincFlag": [2],
-    "coincMask": [ [1, 0, 0, 1, 0] ],
+    "coincMask": [ [1, 0, 0, 0] ],
     "coincWindow": 1000,
     "sortBeforeBuild": true,
-    "typePriority": [0, 2, 3, 1, 4]
+    "typePriority": [0, 1, 2, 3]
+  },
+  "convert": {
+    "root": {"addHistogram": true, "addList": true, "addRunTime": true}
   },
   "delay": {
     "energyThreshold": 50,
     "histBins": 4000,
     "histRange": [0, 40000],
     "outFileName": "results",
-    "refLUT": 10,
-    "refTimeOffset": -10,
-    "refType": 1
+    "refLUT": 0,
+    "refTimeOffset": -20000,
+    "refType": 0
   },
   "detector": {
     "coincPairs": [
-      [1, 2, 3, 4,  5, 21, 22, 23, 24, 25,  0, 0, 0, 0, 0, 0],
-      [6, 7, 8, 9, 10, 16, 17, 18, 19, 20,  0, 0, 0, 0, 0, 0],
-      [1, 2, 3, 4,  5, 21, 22, 23, 24, 25, 12, 0, 0, 0, 0, 0],
-      [6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 12, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0]
+      [ 1,  2,  3,  4,  5,  0, 7, 0, 0, 16,  0,  0,  0,  0,  0, 0],
+      [11, 12, 13, 14, 15,  0, 0, 0, 0,  0, 21, 22, 23, 24, 25, 0],
+      [ 1,  2,  3,  4,  5,  0, 7, 0, 0,  9, 21, 22, 23, 24, 25, 0],
+      [11, 12, 13, 14, 15, 16, 0, 0, 0,  0,  0,  0,  0,  0,  0, 0]
     ],
     "delay": [
       [
-          565,  1095,  1665,  1595,  1585,   125,  1665,   465,  1335,  1665,
-          835,  4245,  2125, 11615,     5,   845
+         -1065, -15395, -14585, -14165, -18075, -17175,   6515,      0,      0,
+        -19995,      0,      0,      0,      0,      0,      0
       ],
       [
-          255,  1644,   245,   215,    75,    57,   255,   255,   245, 22015,
-            0,   425,   435,   415,   425,   445
+        -14315,  -3505, -14255,      0,   2615,      0,      0,      0,      0,
+             0,   2365, -10825, -15345, -14605, -19435,      0
       ],
       [
-        6595, 7475, 7245,  105,  535,  105, 4345, 7405, 4455,  485, 3795,    0,
-          91,   96,   87,    0
+             0,   8605,  -8685, -19995, -19995,      0, -19995,      0,      0,
+             0,   1615, -13405,  -9705, -19995,   8155,      0
       ],
-      [
-           -5,     0,  9875,   505,     0,    -2, 33025,   765,    -5,   855,
-        33275,     0,  1165,  1305,  1135,     0
-      ],
-      [283, 283, 281, 286, 283, 0, 278, 5, 15, 5, 0, 0, 0, 0, 0, 0]
+      [-19995, -19995, -19995, -19995, -10095, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ],
     "lut": [
-      [0, 1, 2, 3, 4, 20, 21, 22, 23, 24,  0,  1,  2,  3,  4,  5],
-      [5, 6, 7, 8, 9, 15, 16, 17, 18, 19, 15, 16, 17, 18, 19, 11],
-      [0, 1, 2, 3, 4, 20, 21, 22, 23, 24, 11, 20, 21, 22, 23, 24],
-      [5, 6, 7, 8, 9, 15, 16, 17, 18, 19, 11, -1, -1, -1, -1, -1],
-      [0, 1, 2, 3, 4, 10, -1, 12, 13, 14,  5,  6,  7,  8,  9, -1]
+      [ 0,  1,  2,  3,  4, -1,  6, -1, -1, 15, -1, -1, -1, -1, -1, -1],
+      [10, 11, 12, 13, 14, -1, -1, -1, -1, -1, 20, 21, 22, 23, 24, -1],
+      [ 0,  1,  2,  3,  4, -1,  6, -1, -1, -1, 20, 21, 22, 23, 24, -1],
+      [10, 11, 12, 13, 14, 15, -1, -1, -1, -1,  0,  1,  2,  3,  4,  5]
     ],
     "type": [
-      [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 3,  3,  3,  3,  3,  3],
-      [2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 4,  4,  4,  4,  4,  4],
-      [2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2,  4,  4,  4,  4,  4],
-      [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, -1, -1, -1, -1, -1],
-      [4, 4, 4, 4, 4, 1, -1, 1, 1, 1, 4,  4,  4,  4,  4, -1]
+      [2, 2, 2, 2, 2, -1,  2, -1, -1,  2, -1, -1, -1, -1, -1, -1],
+      [2, 2, 2, 2, 2, -1, -1, -1, -1, -1,  2,  2,  2,  2,  2, -1],
+      [0, 0, 0, 0, 0, -1,  0, -1, -1, -1,  0,  0,  0,  0,  0, -1],
+      [0, 0, 0, 0, 0,  0,  0, -1, -1, -1,  3,  3,  3,  3,  3,  3]
     ]
   },
   "gasp": {
-    "description": {
-      "detector": ["energy", "time/1000", "time%1000"],
-      "detectorRaw": ["energy", "time[23-8]", "time[7-0]"],
-      "noType": [
-        "no types, defined for BGO mostly, which is not written in gasp"
-      ],
-      "psdDetector": ["energy", "time/1000", "time%1000", "psd"],
-      "suppressedDetector": [
-        "energy"       , "time/1000"    , "time%1000"    , "vetoEnergy"   ,
-        "vetoTime/1000", "vetoTime%1000"
-      ],
-      "suppressedDetectorRaw": [
-        "energy"        , "time[23-8]"    , "time[7-0]"     , "vetoEnergy"    ,
-        "vetoTime[23-8]", "vetoTime[7-0]"
-      ],
-      "suppressedPsdDetector": [
-        "energy"       , "time/1000"    , "time%1000"    , "psd"          ,
-        "vetoEnergy"   , "vetoTime/1000", "vetoTime%1000"
-      ]
+    "detectors": {
+      "bgo": {"dataType": [], "type": []},
+      "cell": {
+        "dataType": ["energy", "time/1000", "time%1000"],
+        "type"    : [3,        3,           3          ]
+      },
+      "hpgeBGO": {
+        "dataType": [
+          "energy",    "time/1000", "time%1000", "energy",    "time/1000",
+          "time%1000"
+        ],
+        "type": [0, 0, 0, 2, 2, 2]
+      },
+      "labr": {
+        "dataType": ["energy", "time/1000", "time%1000"],
+        "type"    : [1,        1,           1          ]
+      }
     },
-    "typeOutputFormat": [
-      "suppressedDetector", "detector"          , "noType"            ,
-      "detector"          , "detector"
-    ]
+    "typeOutputFormat": ["hpgeBGO", "labr", "bgo", "cell"]
   },
-  "general": {"maxCores": 10, "run": "delay", "timeUnitMultiplier": 1000},
+  "general": {"maxCores": 20, "run": "delay", "timeUnitMultiplier": 1000},
   "input": {
     "eventCount": 10000,
     "fileFormat": "cap",
-    "fileIdentifier": "Run_",
-    "keepIndex": [1, 1000],
+    "fileIdentifier": "152Eu_",
+    "keepIndex": [1, 1],
     "liveBuild": false,
     "path": "input"
   },

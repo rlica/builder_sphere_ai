@@ -21,7 +21,10 @@ inline map<string, string> fileExtensions = {{"root", ".root"},
                                              {"delila", ".root"},
                                              {"gasp", ""},
                                              {"bell", ".root"},
-                                             {"compass", ".root"}};
+                                             {"compass", ".root"},
+                                             {"compassWave", ".root"},
+                                             {"timepix", ".cap"},
+                                             {"test", ".cap"}};
 
 class event
 {
@@ -38,14 +41,14 @@ public:
     uint8_t getBoardNumb() { return boardNumb; }
     void setBoardNumb(uint8_t brd) { boardNumb = brd; }
 
-    uint8_t getChannelNumb() { return chNumb; }
-    void setChannelNumb(uint8_t ch) { chNumb = ch; }
+    uint16_t getChannelNumb() { return chNumb; }
+    void setChannelNumb(uint16_t ch) { chNumb = ch; }
 
-    uint8_t getDetectorType() { return detectorType; }
-    void setDetectorType(uint8_t tp) { detectorType = tp; }
+    uint16_t getDetectorType() { return detectorType; }
+    void setDetectorType(uint16_t tp) { detectorType = tp; }
 
-    uint8_t getDetectorLut() { return detectorLut; }
-    void setDetectorLut(uint8_t lut) { detectorLut = lut; }
+    uint16_t getDetectorLut() { return detectorLut; }
+    void setDetectorLut(uint16_t lut) { detectorLut = lut; }
 
     int32_t getRelativeTime() { return relativeTime; }
     void setRelativeTime(int32_t val) { relativeTime = val; }
@@ -53,7 +56,7 @@ public:
     uint8_t getCoincPair() { return varCoincPair; }
     void setCoincPair(uint8_t pair) { varCoincPair = pair; }
 
-    pair<uint8_t, uint8_t> getCoincPairType() { return varCoincPairType; }
+    [[deprecated]] pair<uint8_t, uint8_t> getCoincPairType() { return varCoincPairType; }
     void setCoincPairType(pair<uint8_t, uint8_t> pair) { varCoincPairType = pair; }
 
     bool getAntiCoincFlag() { return varAntiCoincFlag; }
@@ -62,6 +65,19 @@ public:
     double getPSD() { return varPSD; }
     void setPSD(double psd) { varPSD = psd; }
 
+    void setWaveform(vector<int16_t> wave) { waveform = wave; }
+    vector<int16_t> getWaveform() { return waveform; }
+
+    void setWaveform(shared_ptr<vector<double>> wave)
+    {
+        waveform = vector<int16_t>(wave->size());
+
+        for (int i = 0; i < wave->size(); i++)
+        {
+            waveform[i] = wave->at(i);
+        }
+    }
+
 private:
     uint64_t timeStamp = 0;
 
@@ -69,10 +85,10 @@ private:
 
     int32_t relativeTime = 0;
 
-    uint8_t detectorType = 0;
-    uint8_t detectorLut = 0;
-    uint8_t boardNumb = 0;
-    uint8_t chNumb = 0;
+    uint16_t detectorType = 0;
+    uint16_t detectorLut = 0;
+    uint16_t boardNumb = 0;
+    uint16_t chNumb = 0;
     uint8_t varCoincPair;
 
     double varPSD;
@@ -80,6 +96,8 @@ private:
     pair<uint8_t, uint8_t> varCoincPairType;
 
     bool varAntiCoincFlag = false;
+
+    vector<int16_t> waveform;
 };
 
 inline void validateJsonSchema(json configFile, json schemaFile)

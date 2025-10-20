@@ -19,6 +19,9 @@
 #include <filesystem>
 #include <algorithm>
 #include <execution>
+#include "TApplication.h"
+#include <optional>
+#include "geneticCalibrator.h"
 
 using json = nlohmann::json;
 using namespace std;
@@ -30,12 +33,15 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
 void buildRun(json config);
 void delayRun(json config);
+void convertRun(json config);
+void alignRun(json config);
+
 bool validateEvent(vector<event *> *events);
 
 bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
 bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
 
-pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut);
+optional<pair<uint8_t, uint8_t>> findBoardChannel(json &config, uint8_t type, uint8_t lut);
 
 string extractNumbers(const string &a, string format = "proto");
 
@@ -44,6 +50,7 @@ pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vect
 double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
 
 void initializeDataLoader(json &config);
+void initializeDataWriter(json &config);
 void initializeGlobals(json &config);
 
 dataWriter *writer;
@@ -57,22 +64,45 @@ vector<vector<uint8_t>> bTypeVect;
 int main(int argc, char **argv)
 {
 
-    if (argc > 1)
+    TApplication theApp("App", &argc, argv);
+
+    try
     {
-        json config = json::parse(argv[1]);
 
-        initializeDataLoader(config);
-
-        initializeGlobals(config);
-
-        if (config["crtRun"] == "build")
+        if (argc > 1)
         {
-            buildRun(config);
+            json config = json::parse(argv[1]);
+
+            initializeDataLoader(config);
+            initializeDataWriter(config);
+            initializeGlobals(config);
+
+            if (config["crtRun"] == "build")
+            {
+                buildRun(config);
+            }
+            else if (config["crtRun"] == "delay")
+            {
+                delayRun(config);
+            }
+            else if (config["crtRun"] == "convert")
+            {
+                convertRun(config);
+            }
+            else if (config["crtRun"] == "align")
+            {
+
+                alignRun(config);
+            }
+            else
+            {
+                throw "unknown run option, available options: build, delay";
+            }
         }
-        else if (config["crtRun"] == "delay")
-        {
-            delayRun(config);
-        }
+    }
+    catch (string &str)
+    {
+        cout << str << endl;
     }
 }
 
@@ -118,13 +148,63 @@ void initializeDataLoader(json &config)
     {
         loader = make_shared<compassLoader>(config);
     }
+    else if (dataType == "compassWave")
+    {
+        loader = make_shared<compassWaveLoader>(config);
+    }
+    else if (dataType == "test")
+    {
+        loader = make_shared<testLoader>(config);
+    }
+    else if (dataType == "timepix")
+    {
+        loader = make_shared<timepixLoader>(config);
+    }
     else
     {
         throw invalid_argument("Invalid data type");
     }
 }
 
-pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut)
+void initializeDataWriter(json &config)
+{
+
+    auto runType = config["general"]["run"].get<string>();
+
+    if (runType == "build" || runType == "convert")
+    {
+        string fileName = config["crtFile"];
+
+        auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
+
+        fileName = fs::path(fileName).stem().string();
+
+        fileName = string(config["output"]["path"]) + "/" + fileName;
+
+        config["run"] = {};
+        config["run"]["fileName"] = fileName;
+        config["run"]["runNumber"] = runNumber;
+    }
+
+    if (config["output"]["fileFormat"] == "gasp")
+    {
+        writer = new gaspDataWriter(config);
+    }
+    else if (config["output"]["fileFormat"] == "root")
+    {
+        writer = new rootDataWriter(config);
+    }
+    else if (config["output"]["fileFormat"] == "cap")
+    {
+        writer = new capDataWriter(config);
+    }
+    else
+    {
+        throw "Invalid output file format: " + config["output"]["fileFormat"].get<string>();
+    }
+}
+
+optional<pair<uint8_t, uint8_t>> findBoardChannel(json &config, uint8_t type, uint8_t lut)
 {
 
     for (int i = 0; i < lutVect.size(); i++)
@@ -137,10 +217,6 @@ pair<uint8_t, uint8_t> findBoardChannel(json &config, uint8_t type, uint8_t lut)
             }
         }
     }
-
-    cout << "Board and channel not found for detType: " << type << " and lut: " << lut << endl;
-
-    abort();
 
     return {};
 }
@@ -158,29 +234,9 @@ void preProcessEvent(json &config, deque<event *> &events)
 
 void buildRun(json config)
 {
-
     deque<event *> varEventPool = loader->readEvents();
 
     preProcessEvent(config, varEventPool);
-
-    string fileName = config["crtFile"];
-
-    auto runNumber = stoi(extractNumbers(fileName, config["input"]["fileFormat"]));
-
-    fileName = fs::path(fileName).stem().string();
-
-    fileName = string(config["output"]["path"]) + "/" + fileName;
-
-    if (config["output"]["fileFormat"] == "gasp")
-    {
-        writer = new gaspDataWriter(fileName, runNumber);
-    }
-    else if (config["output"]["fileFormat"] == "root")
-    {
-        writer = new rootDataWriter(fileName, runNumber);
-    }
-
-    writer->setConfig(config);
 
     uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
 
@@ -197,6 +253,7 @@ void buildRun(json config)
 
         while (interval < coincWindow)
         {
+
             addToCheckMask(checkMask, *(*crtPos));
 
             crtPos++;
@@ -354,7 +411,7 @@ string extractNumbers(const string &a, string format)
 
     string numberString;
 
-    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass"};
+    vector<string> sFormat = {"proto", "root", "cap", "bell", "compass", "compassWave", "test", "timepix"};
 
     if (find(sFormat.begin(), sFormat.end(), format) != sFormat.end())
     {
@@ -386,7 +443,7 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
 
     vector<event *> tempList;
 
-    int64_t absTime = (*evt.first)->getTimeStamp();
+    uint64_t absTime = (*evt.first)->getTimeStamp();
 
     // capture the list
     for (auto i = evt.first; i < evt.second; i++)
@@ -420,87 +477,11 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
         tempList[i]->setRelativeTime(relativeTime);
     }
 
-    // build events with anticoincidence
-    map<uint8_t, deque<event *>> coincMap;
+    writer->addBuiltEvent(tempList, absTime);
 
-    for (uint i = 0; i < tempList.size(); i++)
+    for (int i = 0; i < tempList.size(); i++)
     {
-        coincMap[tempList[i]->getCoincPair()].push_back(tempList[i]);
-    }
-
-    for (auto &val : coincMap)
-    {
-
-        // the zero mappings do not have pairs
-        if (val.first != 0)
-        {
-            // one of the signals is missing
-            if (val.second.size() == 1)
-            {
-                auto evt = new event();
-
-                auto [type, lut] = val.second[0]->getCoincPairType();
-
-                evt->setDetectorType(type);
-                evt->setDetectorLut(lut);
-
-                evt->setEnergy(0);
-                evt->setRelativeTime(0);
-                evt->setPSD(0);
-
-                if (val.second[0]->getAntiCoincFlag()) // first signal is the anti-coinc flag -> push front
-                {
-                    val.second.push_front(evt);
-                }
-                else // second signal is the anti-coinc flag -> push back
-                {
-                    val.second.push_back(evt);
-                }
-            }
-            else if (val.second.size() == 2) // both signals are here but the order might be wrong
-            {
-                if (val.second[0]->getAntiCoincFlag()) // first signal is the anticoinc flag -> reverse
-                {
-                    std::reverse(val.second.begin(), val.second.end());
-                }
-            }
-            else
-            {
-                cout << "more then two coincident signals found!" << endl;
-                abort();
-            }
-        }
-    }
-
-    vector<vector<event *>> eventList;
-
-    for (auto &val : coincMap)
-    {
-        if (val.first == 0)
-        {
-            for (auto &evt : val.second)
-            {
-                eventList.push_back(vector<event *>(1, evt));
-            }
-        }
-        else
-        {
-            eventList.push_back(vector<event *>(val.second.begin(), val.second.end()));
-        }
-    }
-    // build events with anticoincidence
-
-    std::sort(eventList.begin(), eventList.end(), [](auto &i, auto &j)
-              { return (i[0]->getDetectorType() < j[0]->getDetectorType()); });
-
-    writer->addBuiltEvent(&eventList, absTime);
-
-    for (int i = 0; i < eventList.size(); i++)
-    {
-        for (int j = 0; j < eventList[i].size(); j++)
-        {
-            delete eventList[i][j];
-        }
+        delete tempList[i];
     }
 }
 
@@ -533,6 +514,7 @@ overload(Ts...) -> overload<Ts...>;
 
 void delayRun(json config)
 {
+
     string dataType = config["input"]["fileFormat"];
 
     vector<tuple<int, int, uint64_t>> events = loader->readDelayEvents();
@@ -583,10 +565,18 @@ void delayRun(json config)
     if (refTimeFound == false)
     {
         cout << "delay run failed: reference time not found" << endl;
-        exit(0);
+        exit(1);
     }
 
     vector<vector<int>> delay = config["detector"]["delay"];
+
+    for (auto &board : delay)
+    {
+        for (auto &ch : board)
+        {
+            ch = 0;
+        }
+    }
 
     for (auto hist : hists)
     {
@@ -597,18 +587,22 @@ void delayRun(json config)
 
             auto brdCh = findBoardChannel(config, hist.first.first, hist.first.second);
 
-            auto time = x;
-
-            if (hist.first.first == refType && hist.first.second == refLUT)
+            if (brdCh.has_value())
             {
-                time = 0;
-            }
-            else
-            {
-                time += int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
-            }
 
-            delay[brdCh.first][brdCh.second] = time / int(config["general"]["timeUnitMultiplier"]);
+                auto time = x;
+
+                if (hist.first.first == refType && hist.first.second == refLUT)
+                {
+                    time = 0;
+                }
+                else
+                {
+                    time += int(config["delay"]["refTimeOffset"]) * int(config["general"]["timeUnitMultiplier"]);
+                }
+
+                delay[brdCh.value().first][brdCh.value().second] = time / int(config["general"]["timeUnitMultiplier"]);
+            }
         }
     }
 
@@ -622,16 +616,66 @@ void delayRun(json config)
 
     json::sax_parse(config.dump(), &pretty);
 
-    if (config["output"]["fileFormat"] == "gasp")
-    {
-        writer = new gaspDataWriter();
-    }
-    else if (config["output"]["fileFormat"] == "root")
-    {
-        writer = new rootDataWriter();
-    }
-
-    writer->setConfig(config);
-
     writer->writeDelayResults(hists);
+}
+
+void convertRun(json config)
+{
+    deque<event *> varEventPool = loader->readEvents();
+
+    for (auto &evt : varEventPool)
+    {
+        writer->addConvertEvent(evt);
+    }
+
+    writer->closeFile();
+}
+
+void alignRun(json config)
+{
+
+    auto inpData = loader->readAlignEvents();
+
+    auto runNumb = stoi(extractNumbers(config["crtFile"], config["input"]["fileFormat"]));
+
+    loader->setCrtFile(config["refFile"]);
+
+    auto refData = loader->readAlignEvents();
+
+    vector<shared_future<calibPoint>> futures;
+
+    for (auto &dp : refData)
+    {
+        auto id = dp.first;
+
+        auto rData = refData[id];
+        auto iData = inpData[id];
+
+        futures.push_back(async(std::launch::async, [config, rData, iData, id, runNumb]() -> calibPoint
+                                {
+            auto calibrator = geneticOptimizer(config["align"]);
+            calibrator.optimize(rData, iData);
+
+            calibPoint point;
+
+            point.runNumber = runNumb;
+            point.type = id.first;
+            point.lut = id.second;
+
+            point.calibParam = calibrator.getBestPos();
+
+            return point; })
+                              .share());
+    }
+
+    vector<calibPoint> calibPoints;
+
+    for (auto &f : futures)
+    {
+        auto calib = f.get();
+
+        calibPoints.push_back(calib);
+    }
+
+    writer->writeAlignResults(calibPoints);
 }
