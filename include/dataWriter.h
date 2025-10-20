@@ -115,7 +115,7 @@ private:
     vector<uint16_t> varVetoRelativeNsTime;
     vector<uint16_t> varVetoRelativePsTime;
 
-    uint64_t varAbsoluteTime;
+    uint64_t varAbsoluteTime = 0;
 
     // convert data types
     uint8_t varConvBoard;

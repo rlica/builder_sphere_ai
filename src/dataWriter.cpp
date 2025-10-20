@@ -663,8 +663,6 @@ void gaspDataWriter::dumpToFile(map<pair<int, int>, vector<event *>> events, uin
     // fill header parameters
     eventBuffer.push_back(scaledTime);
 
-    cout << time << " " << scaledTime << endl;
-
     size += 1; // the size word is not counted
     //
 
