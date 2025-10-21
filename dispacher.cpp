@@ -21,6 +21,7 @@ using namespace std;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+json openConfigFile(int argc, char **argv);
 json readConfigFile(string fileName);
 void buildRun(json &config);
 void delayRun(json &config);
@@ -36,7 +37,7 @@ void printStatus(int finished, int total);
 
 int main(int argc, char **argv)
 {
-    json config = readConfigFile("config.json");
+    json config = openConfigFile(argc, argv);
 
     try
     {
@@ -597,4 +598,35 @@ void alignRun(json &config)
     {
         cout << endl;
     }
+}
+
+json openConfigFile(int argc, char **argv)
+{
+
+    json config;
+
+    if (argc == 1)
+    {
+        config = readConfigFile("config.json");
+    }
+    else
+    {
+        auto path = fs::path(argv[1]);
+
+        if (!fs::exists(path))
+        {
+            cout << "requested config file: " << path << " does not exist." << endl;
+            exit(0);
+        }
+
+        if (path.extension() != ".json")
+        {
+            cout << "requested config file: " << path << " is not a \".json\" file" << endl;
+            exit(0);
+        }
+
+        config = readConfigFile(path.string());
+    }
+
+    return config;
 }
