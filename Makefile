@@ -6,7 +6,7 @@ INCLUDE += -Iinclude
 LIBS = -L$(ROOT_BASE)/lib
 
 
-LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -ltbb -lcapnp-rpc -lcapnp -lkj-async -lkj 
+LDLIBS = -lTree -lRIO -lCore -lHist -pthread -fopenmp -ltbb -lcapnp-rpc -lcapnp -lkj-async -lkj -g
 #LDLIBS = `root-config --cflags --glibs` -fopenmp -lcapnp -lkj
 
 SOURCE_DIR := src
@@ -35,7 +35,7 @@ $(SOURCE_DIR)/%.o: $(SOURCE_DIR)/%.c++
 
 
 
-proto: 
+cap: 
 	capnp compile -oc++ eventProto.capnp		
 	mv eventProto.capnp.h include/eventProto.capnp.h
 	mv eventProto.capnp.c++ src/eventProto.capnp.c++

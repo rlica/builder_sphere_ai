@@ -35,6 +35,18 @@ public:
     dataLoader(json cfg) : config(cfg) {};
 
     virtual deque<event *> readEvents() = 0;
+    virtual vector<event> readEventsFlat()
+    {
+        deque<event *> dq = readEvents();
+        vector<event> vec;
+        vec.reserve(dq.size());
+        for (auto *ev : dq)
+        {
+            vec.push_back(*ev);
+            delete ev;
+        }
+        return vec;
+    }
     virtual vector<delayEvent> readDelayEvents() = 0;
     virtual map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> readAlignEvents()
     {
@@ -50,6 +62,9 @@ public:
 protected:
     json config;
     vector<vector<int>> getDelayVector(json &config);
+
+    uint64_t getFileSizeFromFd(int fd);
+    uint64_t getCrtPosFromFd(int fd);
 
     pair<uint8_t, uint8_t> findBoardChannel(uint8_t type, uint8_t lut);
     pair<uint8_t, uint8_t> findCoincPairType(uint8_t brd, uint8_t ch);
@@ -107,6 +122,7 @@ class capLoader : public dataLoader
 public:
     capLoader(json cfg) : dataLoader(cfg) {}
     deque<event *> readEvents();
+    vector<event> readEventsFlat();
     vector<delayEvent> readDelayEvents();
     map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> readAlignEvents();
 

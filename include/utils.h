@@ -30,74 +30,189 @@ class event
 {
 
 public:
-    event() {}
+    event() = default;
 
-    uint64_t getTimeStamp() { return timeStamp; }
+    ~event()
+    {
+        if (waveform)
+        {
+            delete waveform;
+        }
+    }
+
+    event(const event &o)
+        : timeStamp(o.timeStamp),
+          relativeTime(o.relativeTime),
+          varPSD(o.varPSD),
+          energy(o.energy),
+          detectorType(o.detectorType),
+          detectorLut(o.detectorLut),
+          boardNumb(o.boardNumb),
+          chNumb(o.chNumb),
+          varCoincPair(o.varCoincPair),
+          varAntiCoincFlag(o.varAntiCoincFlag),
+          varCoincPairType(o.varCoincPairType)
+    {
+        if (o.waveform)
+        {
+            waveform = new vector<int16_t>(*o.waveform);
+        }
+    }
+
+    event(event &&o) noexcept
+        : timeStamp(o.timeStamp),
+          relativeTime(o.relativeTime),
+          varPSD(o.varPSD),
+          waveform(o.waveform),
+          energy(o.energy),
+          detectorType(o.detectorType),
+          detectorLut(o.detectorLut),
+          boardNumb(o.boardNumb),
+          chNumb(o.chNumb),
+          varCoincPair(o.varCoincPair),
+          varAntiCoincFlag(o.varAntiCoincFlag),
+          varCoincPairType(o.varCoincPairType)
+    {
+        o.waveform = nullptr;
+    }
+
+    event &operator=(const event &o)
+    {
+        if (this != &o)
+        {
+            timeStamp = o.timeStamp;
+            relativeTime = o.relativeTime;
+            varPSD = o.varPSD;
+            energy = o.energy;
+            detectorType = o.detectorType;
+            detectorLut = o.detectorLut;
+            boardNumb = o.boardNumb;
+            chNumb = o.chNumb;
+            varCoincPair = o.varCoincPair;
+            varAntiCoincFlag = o.varAntiCoincFlag;
+            varCoincPairType = o.varCoincPairType;
+            if (waveform)
+            {
+                delete waveform;
+                waveform = nullptr;
+            }
+            if (o.waveform)
+            {
+                waveform = new vector<int16_t>(*o.waveform);
+            }
+        }
+        return *this;
+    }
+
+    event &operator=(event &&o) noexcept
+    {
+        if (this != &o)
+        {
+            timeStamp = o.timeStamp;
+            relativeTime = o.relativeTime;
+            varPSD = o.varPSD;
+            energy = o.energy;
+            detectorType = o.detectorType;
+            detectorLut = o.detectorLut;
+            boardNumb = o.boardNumb;
+            chNumb = o.chNumb;
+            varCoincPair = o.varCoincPair;
+            varAntiCoincFlag = o.varAntiCoincFlag;
+            varCoincPairType = o.varCoincPairType;
+            if (waveform)
+            {
+                delete waveform;
+            }
+            waveform = o.waveform;
+            o.waveform = nullptr;
+        }
+        return *this;
+    }
+
+    uint64_t getTimeStamp() const { return timeStamp; }
     void setTimeStamp(uint64_t val) { timeStamp = val; }
 
-    uint16_t getEnergy() { return energy; }
+    uint16_t getEnergy() const { return energy; }
     void setEnergy(uint16_t nrg) { energy = nrg; }
 
-    uint8_t getBoardNumb() { return boardNumb; }
+    uint8_t getBoardNumb() const { return boardNumb; }
     void setBoardNumb(uint8_t brd) { boardNumb = brd; }
 
-    uint16_t getChannelNumb() { return chNumb; }
+    uint16_t getChannelNumb() const { return chNumb; }
     void setChannelNumb(uint16_t ch) { chNumb = ch; }
 
-    uint16_t getDetectorType() { return detectorType; }
+    uint16_t getDetectorType() const { return detectorType; }
     void setDetectorType(uint16_t tp) { detectorType = tp; }
 
-    uint16_t getDetectorLut() { return detectorLut; }
+    uint16_t getDetectorLut() const { return detectorLut; }
     void setDetectorLut(uint16_t lut) { detectorLut = lut; }
 
-    int32_t getRelativeTime() { return relativeTime; }
+    int32_t getRelativeTime() const { return relativeTime; }
     void setRelativeTime(int32_t val) { relativeTime = val; }
 
-    uint8_t getCoincPair() { return varCoincPair; }
+    uint8_t getCoincPair() const { return varCoincPair; }
     void setCoincPair(uint8_t pair) { varCoincPair = pair; }
 
-    [[deprecated]] pair<uint8_t, uint8_t> getCoincPairType() { return varCoincPairType; }
+    [[deprecated]] pair<uint8_t, uint8_t> getCoincPairType() const { return varCoincPairType; }
     void setCoincPairType(pair<uint8_t, uint8_t> pair) { varCoincPairType = pair; }
 
-    bool getAntiCoincFlag() { return varAntiCoincFlag; }
+    bool getAntiCoincFlag() const { return varAntiCoincFlag; }
     void setAntiCoincFlag(bool flag) { varAntiCoincFlag = flag; }
 
-    double getPSD() { return varPSD; }
-    void setPSD(double psd) { varPSD = psd; }
+    double getPSD() const { return varPSD; }
+    void setPSD(double psd) { varPSD = static_cast<float>(psd); }
 
-    void setWaveform(vector<int16_t> wave) { waveform = wave; }
-    vector<int16_t> getWaveform() { return waveform; }
+    void setWaveform(const vector<int16_t> &wave)
+    {
+        if (waveform)
+        {
+            delete waveform;
+            waveform = nullptr;
+        }
+        if (!wave.empty())
+        {
+            waveform = new vector<int16_t>(wave);
+        }
+    }
+    vector<int16_t> getWaveform() const
+    {
+        if (waveform)
+        {
+            return *waveform;
+        }
+        return {};
+    }
 
     void setWaveform(shared_ptr<vector<double>> wave)
     {
-        waveform = vector<int16_t>(wave->size());
-
-        for (int i = 0; i < wave->size(); i++)
+        if (waveform)
         {
-            waveform[i] = wave->at(i);
+            delete waveform;
+            waveform = nullptr;
+        }
+        if (wave && !wave->empty())
+        {
+            waveform = new vector<int16_t>(wave->size());
+            for (size_t i = 0; i < wave->size(); i++)
+            {
+                (*waveform)[i] = (*wave)[i];
+            }
         }
     }
 
 private:
     uint64_t timeStamp = 0;
-
-    uint16_t energy = 0;
-
     int32_t relativeTime = 0;
-
-    uint16_t detectorType = 0;
-    uint16_t detectorLut = 0;
-    uint16_t boardNumb = 0;
-    uint16_t chNumb = 0;
-    uint8_t varCoincPair;
-
-    double varPSD;
-
-    pair<uint8_t, uint8_t> varCoincPairType;
-
+    float varPSD = 0.0f;
+    vector<int16_t> *waveform = nullptr;
+    uint16_t energy = 0;
+    uint8_t detectorType = 0;
+    uint8_t detectorLut = 0;
+    uint8_t boardNumb = 0;
+    uint8_t chNumb = 0;
+    uint8_t varCoincPair = 0;
     bool varAntiCoincFlag = false;
-
-    vector<int16_t> waveform;
+    pair<uint8_t, uint8_t> varCoincPairType = {0, 0};
 };
 
 inline void validateJsonSchema(json configFile, json schemaFile)

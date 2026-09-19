@@ -22,32 +22,44 @@
 #include "TApplication.h"
 #include <optional>
 #include "geneticCalibrator.h"
+#include "dataConfig.h"
+#include <capnp/ez-rpc.h>
+#include <kj/async-io.h>
+#include "dataSyncClient.h"
+#include <tbb/global_control.h>
+#include <tbb/parallel_sort.h>
 
 using json = nlohmann::json;
 using namespace std;
 namespace fs = std::filesystem;
 
-void addToCheckMask(vector<int> &checkMask, event &evt);
-void preProcessEvent(json &config, deque<event *> &events);
-void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt);
+struct CoincRange
+{
+    uint32_t start;
+    uint32_t end;
+};
+
+void addToCheckMask(vector<int> &checkMask, const event &evt);
+void preProcessEvent(json &config, vector<event> &events);
+void postProcessEvent(json &config, const CoincRange &evt, const vector<event> &eventPool);
 
 void buildRun(json config);
 void delayRun(json config);
 void convertRun(json config);
 void alignRun(json config);
 
-bool validateEvent(vector<event *> *events);
+bool validateEvent(const vector<event *> *events);
 
-bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask);
-bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask);
+bool validateCheckMask(const vector<vector<int>> &coincMask, const vector<int> &checkMask);
+bool validateSingleMask(const vector<int> &coincMask, const vector<int> &checkMask);
 
 optional<pair<uint8_t, uint8_t>> findBoardChannel(json &config, uint8_t type, uint8_t lut);
 
 string extractNumbers(const string &a, string format = "proto");
 
-pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events);
+CoincRange selectOverlapEvent(const vector<CoincRange> &events, const vector<event> &eventPool);
 
-double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt);
+double getTimeStd(const CoincRange &evt, const vector<event> &eventPool);
 
 void initializeDataLoader(json &config);
 void initializeDataWriter(json &config);
@@ -68,14 +80,16 @@ int main(int argc, char **argv)
 
     try
     {
-
         if (argc > 1)
         {
             json config = json::parse(argv[1]);
+            auto cfg = dataConfig::getInstance();
 
+            cfg->setConfig(config);
             initializeDataLoader(config);
             initializeDataWriter(config);
             initializeGlobals(config);
+
 
             if (config["crtRun"] == "build")
             {
@@ -104,6 +118,14 @@ int main(int argc, char **argv)
     {
         cout << str << endl;
     }
+
+    auto cfg = dataConfig::getInstance();
+    if(cfg->config["crtRun"] == "build"){
+        auto rpcClient = dataSyncClient::getInstance();
+        rpcClient->updateState({cfg->config["crtId"], "done", 0}, true);
+        this_thread::sleep_for(1s);
+    }
+   
 }
 
 void initializeGlobals(json &config)
@@ -221,20 +243,39 @@ optional<pair<uint8_t, uint8_t>> findBoardChannel(json &config, uint8_t type, ui
     return {};
 }
 
-void preProcessEvent(json &config, deque<event *> &events)
+void preProcessEvent(json &config, vector<event> &events)
 {
-
     if (bool(config["build"]["sortBeforeBuild"]))
     {
-        std::sort(std::execution::par, events.begin(), events.end(),
-                  [](event *i, event *j)
-                  { return (i->getTimeStamp() < j->getTimeStamp()); });
+
+        auto rpcClient = dataSyncClient::getInstance();
+        auto cfg = dataConfig::getInstance();
+
+        double tMax = events.size() * log2(events.size());
+
+        tbb::enumerable_thread_specific<atomic<uint64_t>> counts;
+
+        rpcClient->startTracking(counts, tMax);
+
+        tbb::parallel_sort(events.begin(), events.end(),
+                           [&counts](const event &i, const event &j)
+                           {
+                               counts.local()++;
+                               return (i.getTimeStamp() < j.getTimeStamp());
+                           });
+
+        rpcClient->stopTracking();
     }
 }
 
 void buildRun(json config)
 {
-    deque<event *> varEventPool = loader->readEvents();
+    auto rpcClient = dataSyncClient::getInstance();
+
+    vector<event> varEventPool = loader->readEventsFlat();
+    varEventPool.shrink_to_fit();
+
+    cout << "Events loaded: " << varEventPool.size() << " (" << (varEventPool.size() * sizeof(event)) / (1024 * 1024) << " MB)" << endl;
 
     preProcessEvent(config, varEventPool);
 
@@ -242,46 +283,68 @@ void buildRun(json config)
 
     vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
-    vector<pair<deque<event *>::iterator, deque<event *>::iterator>> eventPos;
+    vector<CoincRange> eventPos;
 
-    for (auto i = varEventPool.begin(); i != varEventPool.end(); i++)
+    uint64_t crtStep = 0;
+    double maxSteps = varEventPool.size();
+
+    rpcClient->updateState({config["crtId"], "building events (3/4)", 0}, true);
+
+    vector<int> checkMask(coincMask[0].size(), 0);
+
+    for (size_t i = 0; i < varEventPool.size(); i++)
     {
-        auto crtPos = i;
+        if ((i & 0x1FFFF) == 0)
+        {
+            double proc = (i * 100.0) / maxSteps;
+            rpcClient->updateState({config["crtId"], "building events (3/4)", proc});
+        }
 
-        auto interval = (*crtPos)->getTimeStamp() - (*i)->getTimeStamp();
-        vector<int> checkMask(coincMask[0].size(), 0);
+        size_t crtPos = i;
+        uint64_t startTime = varEventPool[i].getTimeStamp();
+        uint64_t interval = varEventPool[crtPos].getTimeStamp() - startTime;
+
+        std::fill(checkMask.begin(), checkMask.end(), 0);
 
         while (interval < coincWindow)
         {
-
-            addToCheckMask(checkMask, *(*crtPos));
+            addToCheckMask(checkMask, varEventPool[crtPos]);
 
             crtPos++;
 
-            if (crtPos == varEventPool.end())
+            if (crtPos == varEventPool.size())
             {
                 break;
             }
 
-            interval = (*crtPos)->getTimeStamp() - (*i)->getTimeStamp();
+            interval = varEventPool[crtPos].getTimeStamp() - startTime;
         }
 
         if (validateCheckMask(coincMask, checkMask))
         {
-            eventPos.push_back(make_pair(i, crtPos));
+            eventPos.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
         }
     }
+    rpcClient->updateState({config["crtId"], "building events (3/4)", 100}, true);
+
+    rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 0}, true);
 
     if (eventPos.size())
     {
         for (size_t i = 0; i < eventPos.size() - 1; i++)
         {
+            if ((i & 0x3FFF) == 0)
+            {
+                double proc = (i * 100.0) / double(eventPos.size());
+                rpcClient->updateState({config["crtId"], "filter/write events (4/4)", proc});
+            }
+
             int cnt = 1;
 
-            auto d1 = distance(eventPos[i].first, eventPos[i].second);
-            auto d2 = distance(eventPos[i].first, eventPos[i + cnt].first);
+            auto d1 = eventPos[i].end - eventPos[i].start;
+            auto d2 = eventPos[i + cnt].start - eventPos[i].start;
 
-            vector<pair<deque<event *>::iterator, deque<event *>::iterator>> overlapEvents;
+            vector<CoincRange> overlapEvents;
             overlapEvents.push_back(eventPos[i]);
 
             while (d2 < d1)
@@ -294,26 +357,22 @@ void buildRun(json config)
                 {
                     break;
                 }
-                d2 = distance(eventPos[i].first, eventPos[i + cnt].first);
+                d2 = eventPos[i + cnt].start - eventPos[i].start;
             }
 
             i += overlapEvents.size() - 1;
 
-            auto evt = selectOverlapEvent(overlapEvents);
+            auto evt = selectOverlapEvent(overlapEvents, varEventPool);
 
-            postProcessEvent(config, evt);
+            postProcessEvent(config, evt, varEventPool);
         }
     }
-
-    for (auto &i : varEventPool)
-    {
-        delete i;
-    }
+    rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 100}, true);
 
     writer->closeFile();
 }
 
-pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vector<pair<deque<event *>::iterator, deque<event *>::iterator>> events)
+CoincRange selectOverlapEvent(const vector<CoincRange> &events, const vector<event> &eventPool)
 {
 
     if (events.size() == 1)
@@ -321,57 +380,64 @@ pair<deque<event *>::iterator, deque<event *>::iterator> selectOverlapEvent(vect
         return events[0];
     }
 
-    vector<int> evtSize;
     int maxValue = 0;
 
     for (auto &evt : events)
     {
-        evtSize.push_back(distance(evt.first, evt.second));
-
-        if (evtSize.back() > maxValue)
+        int sz = evt.end - evt.start;
+        if (sz > maxValue)
         {
-            maxValue = evtSize.back();
+            maxValue = sz;
         }
     }
 
-    map<int, double> stdValues;
+    int bestIdx = -1;
+    double minStd = std::numeric_limits<double>::max();
 
-    for (int i = 0; i < evtSize.size(); i++)
+    for (size_t i = 0; i < events.size(); i++)
     {
-        if (evtSize[i] == maxValue)
+        if ((int)(events[i].end - events[i].start) == maxValue)
         {
-            stdValues[i] = getTimeStd(events[i]);
+            double stdev = getTimeStd(events[i], eventPool);
+            if (stdev < minStd)
+            {
+                minStd = stdev;
+                bestIdx = i;
+            }
         }
     }
 
-    auto minVal = *min_element(stdValues.begin(), stdValues.end(), [](auto i, auto j)
-                               { return i.second < j.second; });
-
-    return events[minVal.first];
+    return events[bestIdx];
 }
 
-double getTimeStd(pair<deque<event *>::iterator, deque<event *>::iterator> evt)
+double getTimeStd(const CoincRange &evt, const vector<event> &eventPool)
 {
+    uint32_t size = evt.end - evt.start;
+    if (size <= 1)
+    {
+        return 0.0;
+    }
 
-    auto size = distance(evt.first, evt.second);
+    uint64_t t0 = eventPool[evt.start].getTimeStamp();
+    double sum = 0.0;
+    for (uint32_t i = evt.start; i < evt.end; i++)
+    {
+        sum += (double)(eventPool[i].getTimeStamp() - t0);
+    }
 
-    uint128_t sum = accumulate(evt.first, evt.second, uint128_t(0), [](auto sum, auto val)
-                               { return sum + val->getTimeStamp(); });
+    double mean = sum / size;
 
-    float128_t mean = sum / size;
+    double sq_sum = 0.0;
+    for (uint32_t i = evt.start; i < evt.end; i++)
+    {
+        double diff = (double)(eventPool[i].getTimeStamp() - t0) - mean;
+        sq_sum += diff * diff;
+    }
 
-    vector<double> diff(size);
-
-    transform(evt.first, evt.second, diff.begin(), [mean](auto x)
-              { return float128_t(x->getTimeStamp()) - mean; });
-
-    double sq_sum = inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-    double stdev = sqrt(sq_sum / size);
-
-    return stdev;
+    return sqrt(sq_sum / size);
 }
 
-void addToCheckMask(vector<int> &checkMask, event &evt)
+void addToCheckMask(vector<int> &checkMask, const event &evt)
 {
     if (evt.getDetectorType() < checkMask.size())
     {
@@ -379,7 +445,7 @@ void addToCheckMask(vector<int> &checkMask, event &evt)
     }
 }
 
-bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask)
+bool validateSingleMask(const vector<int> &coincMask, const vector<int> &checkMask)
 {
 
     for (size_t i = 0; i < coincMask.size(); i++)
@@ -392,7 +458,7 @@ bool validateSingleMask(vector<int> &coincMask, vector<int> &checkMask)
     return true;
 }
 
-bool validateCheckMask(vector<vector<int>> &coincMask, vector<int> &checkMask)
+bool validateCheckMask(const vector<vector<int>> &coincMask, const vector<int> &checkMask)
 {
 
     for (size_t i = 0; i < coincMask.size(); i++)
@@ -438,29 +504,36 @@ string extractNumbers(const string &a, string format)
     return numberString;
 }
 
-void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *>::iterator> evt)
+void postProcessEvent(json &config, const CoincRange &evt, const vector<event> &eventPool)
 {
 
-    vector<event *> tempList;
+    vector<event> tempList;
+    tempList.reserve(evt.end - evt.start);
 
-    uint64_t absTime = (*evt.first)->getTimeStamp();
+    uint64_t absTime = eventPool[evt.start].getTimeStamp();
 
     // capture the list
-    for (auto i = evt.first; i < evt.second; i++)
+    for (uint32_t i = evt.start; i < evt.end; i++)
     {
-        tempList.push_back(new event(*(*i)));
+        tempList.push_back(eventPool[i]);
     }
 
-    if (!validateEvent(&tempList))
+    vector<event *> ptrList(tempList.size());
+    for (size_t i = 0; i < tempList.size(); i++)
+    {
+        ptrList[i] = &tempList[i];
+    }
+
+    if (!validateEvent(&ptrList))
     {
         return;
     }
 
     // sort by (type and timestamp)
-    auto start = tempList.begin();
+    auto start = ptrList.begin();
     for (auto &val : typePriority)
     {
-        auto it = std::partition(start, tempList.end(), [val](event *ev)
+        auto it = std::partition(start, ptrList.end(), [val](event *ev)
                                  { return ev->getDetectorType() == val; });
 
         sort(start, it, [](event *i, event *m)
@@ -470,35 +543,38 @@ void postProcessEvent(json &config, pair<deque<event *>::iterator, deque<event *
     }
 
     // set relative times
-    for (int i = 0; i < tempList.size(); i++)
+    for (size_t i = 0; i < ptrList.size(); i++)
     {
-        int32_t relativeTime = int64_t(tempList[i]->getTimeStamp()) - int64_t(tempList.front()->getTimeStamp()) + coincWindow;
+        int32_t relativeTime = int64_t(ptrList[i]->getTimeStamp()) - int64_t(ptrList.front()->getTimeStamp()) + coincWindow;
 
-        tempList[i]->setRelativeTime(relativeTime);
+        ptrList[i]->setRelativeTime(relativeTime);
     }
 
-    writer->addBuiltEvent(tempList, absTime);
-
-    for (int i = 0; i < tempList.size(); i++)
-    {
-        delete tempList[i];
-    }
+    writer->addBuiltEvent(ptrList, absTime);
 }
 
-bool validateEvent(vector<event *> *events)
+bool validateEvent(const vector<event *> *events)
 {
-
-    // remove events with duplicate signals
-    map<pair<int, int>, int> counts;
-
-    for (auto &ev : *events)
+    size_t n = events->size();
+    if (n <= 1)
     {
-        counts[make_pair(ev->getDetectorLut(), ev->getDetectorType())]++;
+        return true;
     }
 
-    if (counts.size() != events->size())
+    // remove events with duplicate signals
+    for (size_t i = 0; i < n; i++)
     {
-        return false;
+        auto lut_i = (*events)[i]->getDetectorLut();
+        auto type_i = (*events)[i]->getDetectorType();
+
+        for (size_t j = i + 1; j < n; j++)
+        {
+            if (lut_i == (*events)[j]->getDetectorLut() &&
+                type_i == (*events)[j]->getDetectorType())
+            {
+                return false;
+            }
+        }
     }
 
     return true;
@@ -621,11 +697,11 @@ void delayRun(json config)
 
 void convertRun(json config)
 {
-    deque<event *> varEventPool = loader->readEvents();
+    vector<event> varEventPool = loader->readEventsFlat();
 
     for (auto &evt : varEventPool)
     {
-        writer->addConvertEvent(evt);
+        writer->addConvertEvent(&evt);
     }
 
     writer->closeFile();

@@ -5,15 +5,14 @@
 
 #include <capnp/generated-header-support.h>
 #include <kj/windows-sanity.h>
+#if !CAPNP_LITE
+#include <capnp/capability.h>
+#endif  // !CAPNP_LITE
 
-#ifndef CAPNP_VERSION
-#error "CAPNP_VERSION is not defined, is capnp/generated-header-support.h missing?"
-#elif CAPNP_VERSION != 1001000
+#if CAPNP_VERSION != 8000
 #error "Version mismatch between generated code and library headers.  You must use the same version of the Cap'n Proto compiler and library."
 #endif
 
-
-CAPNP_BEGIN_HEADER
 
 namespace capnp {
 namespace schemas {
@@ -41,6 +40,10 @@ CAPNP_DECLARE_SCHEMA(ab33fce03e2a3c93);
 CAPNP_DECLARE_SCHEMA(f5bcc5cc1c89385e);
 CAPNP_DECLARE_SCHEMA(d4c643408f982e7a);
 CAPNP_DECLARE_SCHEMA(ec8b4a276a3e2966);
+CAPNP_DECLARE_SCHEMA(ea65b1431fd20d4e);
+CAPNP_DECLARE_SCHEMA(b6f60f4e3f25b09c);
+CAPNP_DECLARE_SCHEMA(c4e25c2eec332fe6);
+CAPNP_DECLARE_SCHEMA(9405c25443e83731);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -397,6 +400,71 @@ struct KatherineEvent {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(ec8b4a276a3e2966, 2, 0)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct StateSynchronizer {
+  StateSynchronizer() = delete;
+
+#if !CAPNP_LITE
+  class Client;
+  class Server;
+#endif  // !CAPNP_LITE
+
+  struct SyncState;
+  struct ReportStateParams;
+  struct ReportStateResults;
+
+  #if !CAPNP_LITE
+  struct _capnpPrivate {
+    CAPNP_DECLARE_INTERFACE_HEADER(ea65b1431fd20d4e)
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+  };
+  #endif  // !CAPNP_LITE
+};
+
+struct StateSynchronizer::SyncState {
+  SyncState() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(b6f60f4e3f25b09c, 3, 2)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct StateSynchronizer::ReportStateParams {
+  ReportStateParams() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(c4e25c2eec332fe6, 0, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct StateSynchronizer::ReportStateResults {
+  ReportStateResults() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(9405c25443e83731, 1, 0)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -2639,6 +2707,328 @@ private:
 };
 #endif  // !CAPNP_LITE
 
+#if !CAPNP_LITE
+class StateSynchronizer::Client
+    : public virtual ::capnp::Capability::Client {
+public:
+  typedef StateSynchronizer Calls;
+  typedef StateSynchronizer Reads;
+
+  Client(decltype(nullptr));
+  explicit Client(::kj::Own< ::capnp::ClientHook>&& hook);
+  template <typename _t, typename = ::kj::EnableIf< ::kj::canConvert<_t*, Server*>()>>
+  Client(::kj::Own<_t>&& server);
+  template <typename _t, typename = ::kj::EnableIf< ::kj::canConvert<_t*, Client*>()>>
+  Client(::kj::Promise<_t>&& promise);
+  Client(::kj::Exception&& exception);
+  Client(Client&) = default;
+  Client(Client&&) = default;
+  Client& operator=(Client& other);
+  Client& operator=(Client&& other);
+
+  ::capnp::Request< ::StateSynchronizer::ReportStateParams,  ::StateSynchronizer::ReportStateResults> reportStateRequest(
+      ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
+
+protected:
+  Client() = default;
+};
+
+class StateSynchronizer::Server
+    : public virtual ::capnp::Capability::Server {
+public:
+  typedef StateSynchronizer Serves;
+
+  ::capnp::Capability::Server::DispatchCallResult dispatchCall(
+      uint64_t interfaceId, uint16_t methodId,
+      ::capnp::CallContext< ::capnp::AnyPointer, ::capnp::AnyPointer> context)
+      override;
+
+protected:
+  typedef  ::StateSynchronizer::ReportStateParams ReportStateParams;
+  typedef  ::StateSynchronizer::ReportStateResults ReportStateResults;
+  typedef ::capnp::CallContext<ReportStateParams, ReportStateResults> ReportStateContext;
+  virtual ::kj::Promise<void> reportState(ReportStateContext context);
+
+  inline  ::StateSynchronizer::Client thisCap() {
+    return ::capnp::Capability::Server::thisCap()
+        .template castAs< ::StateSynchronizer>();
+  }
+
+  ::capnp::Capability::Server::DispatchCallResult dispatchCallInternal(
+      uint16_t methodId,
+      ::capnp::CallContext< ::capnp::AnyPointer, ::capnp::AnyPointer> context);
+};
+#endif  // !CAPNP_LITE
+
+class StateSynchronizer::SyncState::Reader {
+public:
+  typedef SyncState Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint16_t getProcId() const;
+
+  inline  ::uint16_t getMaxId() const;
+
+  inline  ::uint64_t getTime() const;
+
+  inline bool hasFilename() const;
+  inline  ::capnp::Text::Reader getFilename() const;
+
+  inline bool hasOp() const;
+  inline  ::capnp::Text::Reader getOp() const;
+
+  inline double getProc() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class StateSynchronizer::SyncState::Builder {
+public:
+  typedef SyncState Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint16_t getProcId();
+  inline void setProcId( ::uint16_t value);
+
+  inline  ::uint16_t getMaxId();
+  inline void setMaxId( ::uint16_t value);
+
+  inline  ::uint64_t getTime();
+  inline void setTime( ::uint64_t value);
+
+  inline bool hasFilename();
+  inline  ::capnp::Text::Builder getFilename();
+  inline void setFilename( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initFilename(unsigned int size);
+  inline void adoptFilename(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownFilename();
+
+  inline bool hasOp();
+  inline  ::capnp::Text::Builder getOp();
+  inline void setOp( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initOp(unsigned int size);
+  inline void adoptOp(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownOp();
+
+  inline double getProc();
+  inline void setProc(double value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class StateSynchronizer::SyncState::Pipeline {
+public:
+  typedef SyncState Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class StateSynchronizer::ReportStateParams::Reader {
+public:
+  typedef ReportStateParams Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasState() const;
+  inline  ::StateSynchronizer::SyncState::Reader getState() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class StateSynchronizer::ReportStateParams::Builder {
+public:
+  typedef ReportStateParams Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasState();
+  inline  ::StateSynchronizer::SyncState::Builder getState();
+  inline void setState( ::StateSynchronizer::SyncState::Reader value);
+  inline  ::StateSynchronizer::SyncState::Builder initState();
+  inline void adoptState(::capnp::Orphan< ::StateSynchronizer::SyncState>&& value);
+  inline ::capnp::Orphan< ::StateSynchronizer::SyncState> disownState();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class StateSynchronizer::ReportStateParams::Pipeline {
+public:
+  typedef ReportStateParams Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::StateSynchronizer::SyncState::Pipeline getState();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class StateSynchronizer::ReportStateResults::Reader {
+public:
+  typedef ReportStateResults Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool getAcknowledged() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class StateSynchronizer::ReportStateResults::Builder {
+public:
+  typedef ReportStateResults Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool getAcknowledged();
+  inline void setAcknowledged(bool value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class StateSynchronizer::ReportStateResults::Pipeline {
+public:
+  typedef ReportStateResults Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 // =======================================================================================
 
 inline  ::DataPacket::Which DataPacket::Reader::which() const {
@@ -4614,6 +5004,205 @@ inline void KatherineEvent::Builder::setTimestamp( ::uint64_t value) {
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
+#if !CAPNP_LITE
+inline StateSynchronizer::Client::Client(decltype(nullptr))
+    : ::capnp::Capability::Client(nullptr) {}
+inline StateSynchronizer::Client::Client(
+    ::kj::Own< ::capnp::ClientHook>&& hook)
+    : ::capnp::Capability::Client(::kj::mv(hook)) {}
+template <typename _t, typename>
+inline StateSynchronizer::Client::Client(::kj::Own<_t>&& server)
+    : ::capnp::Capability::Client(::kj::mv(server)) {}
+template <typename _t, typename>
+inline StateSynchronizer::Client::Client(::kj::Promise<_t>&& promise)
+    : ::capnp::Capability::Client(::kj::mv(promise)) {}
+inline StateSynchronizer::Client::Client(::kj::Exception&& exception)
+    : ::capnp::Capability::Client(::kj::mv(exception)) {}
+inline  ::StateSynchronizer::Client& StateSynchronizer::Client::operator=(Client& other) {
+  ::capnp::Capability::Client::operator=(other);
+  return *this;
+}
+inline  ::StateSynchronizer::Client& StateSynchronizer::Client::operator=(Client&& other) {
+  ::capnp::Capability::Client::operator=(kj::mv(other));
+  return *this;
+}
 
-CAPNP_END_HEADER
+#endif  // !CAPNP_LITE
+inline  ::uint16_t StateSynchronizer::SyncState::Reader::getProcId() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t StateSynchronizer::SyncState::Builder::getProcId() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void StateSynchronizer::SyncState::Builder::setProcId( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t StateSynchronizer::SyncState::Reader::getMaxId() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t StateSynchronizer::SyncState::Builder::getMaxId() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void StateSynchronizer::SyncState::Builder::setMaxId( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint64_t StateSynchronizer::SyncState::Reader::getTime() const {
+  return _reader.getDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint64_t StateSynchronizer::SyncState::Builder::getTime() {
+  return _builder.getDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void StateSynchronizer::SyncState::Builder::setTime( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool StateSynchronizer::SyncState::Reader::hasFilename() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool StateSynchronizer::SyncState::Builder::hasFilename() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader StateSynchronizer::SyncState::Reader::getFilename() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder StateSynchronizer::SyncState::Builder::getFilename() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void StateSynchronizer::SyncState::Builder::setFilename( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder StateSynchronizer::SyncState::Builder::initFilename(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void StateSynchronizer::SyncState::Builder::adoptFilename(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> StateSynchronizer::SyncState::Builder::disownFilename() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool StateSynchronizer::SyncState::Reader::hasOp() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool StateSynchronizer::SyncState::Builder::hasOp() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader StateSynchronizer::SyncState::Reader::getOp() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder StateSynchronizer::SyncState::Builder::getOp() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void StateSynchronizer::SyncState::Builder::setOp( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder StateSynchronizer::SyncState::Builder::initOp(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), size);
+}
+inline void StateSynchronizer::SyncState::Builder::adoptOp(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> StateSynchronizer::SyncState::Builder::disownOp() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline double StateSynchronizer::SyncState::Reader::getProc() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline double StateSynchronizer::SyncState::Builder::getProc() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void StateSynchronizer::SyncState::Builder::setProc(double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool StateSynchronizer::ReportStateParams::Reader::hasState() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool StateSynchronizer::ReportStateParams::Builder::hasState() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::StateSynchronizer::SyncState::Reader StateSynchronizer::ReportStateParams::Reader::getState() const {
+  return ::capnp::_::PointerHelpers< ::StateSynchronizer::SyncState>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::StateSynchronizer::SyncState::Builder StateSynchronizer::ReportStateParams::Builder::getState() {
+  return ::capnp::_::PointerHelpers< ::StateSynchronizer::SyncState>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::StateSynchronizer::SyncState::Pipeline StateSynchronizer::ReportStateParams::Pipeline::getState() {
+  return  ::StateSynchronizer::SyncState::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void StateSynchronizer::ReportStateParams::Builder::setState( ::StateSynchronizer::SyncState::Reader value) {
+  ::capnp::_::PointerHelpers< ::StateSynchronizer::SyncState>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::StateSynchronizer::SyncState::Builder StateSynchronizer::ReportStateParams::Builder::initState() {
+  return ::capnp::_::PointerHelpers< ::StateSynchronizer::SyncState>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void StateSynchronizer::ReportStateParams::Builder::adoptState(
+    ::capnp::Orphan< ::StateSynchronizer::SyncState>&& value) {
+  ::capnp::_::PointerHelpers< ::StateSynchronizer::SyncState>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::StateSynchronizer::SyncState> StateSynchronizer::ReportStateParams::Builder::disownState() {
+  return ::capnp::_::PointerHelpers< ::StateSynchronizer::SyncState>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool StateSynchronizer::ReportStateResults::Reader::getAcknowledged() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool StateSynchronizer::ReportStateResults::Builder::getAcknowledged() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void StateSynchronizer::ReportStateResults::Builder::setAcknowledged(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
 

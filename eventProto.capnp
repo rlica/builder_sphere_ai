@@ -159,3 +159,21 @@ struct KatherineEvent {
     energy @2: UInt16;
     timestamp @3: UInt64;
 }
+
+
+
+
+interface StateSynchronizer {
+
+
+    struct SyncState{
+        procId @0 :UInt16;
+        maxId @1 :UInt16;
+        time @2: UInt64;
+        filename @3: Text;
+        op @4: Text;
+        proc @5: Float64;
+    }
+
+  reportState @0 (state :SyncState) -> (acknowledged :Bool);
+}

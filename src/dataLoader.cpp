@@ -3,6 +3,7 @@
 #include "waveformProcess.h"
 #include <memory>
 #include <fstream>
+#include "dataSyncClient.h"
 
 deque<event *> rootLoader::readEvents()
 {
@@ -330,21 +331,32 @@ deque<event *> threeMVLoader::readEvents()
     return events;
 }
 
-deque<event *> capLoader::readEvents()
+vector<event> capLoader::readEventsFlat()
 {
 
-    deque<event *> events;
+    auto rpcClient = dataSyncClient::getInstance();
+    auto cfg = dataConfig::getInstance();
+    bool countUpdate = true;
+
+    rpcClient->updateState({config["crtId"], "reading data (1/4)", 0});
+
+    vector<event> events;
 
     uint eventNumb = config["input"]["eventCount"];
 
     if (eventNumb == 0)
     {
+        countUpdate = false;
         eventNumb = numeric_limits<uint>::max();
     }
 
     string fileName = config["crtFile"];
 
     auto fd = open(fileName.c_str(), O_RDONLY);
+    if (fd < 0)
+    {
+        return events;
+    }
 
     vector<vector<int>> delay = getDelayVector(config);
 
@@ -352,69 +364,95 @@ deque<event *> capLoader::readEvents()
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
 
-    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes;
+    map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes = findCoincPairTypes();
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
+    bool isAntiCoinc[256] = {false};
+    for (int flag : antiCoincFlags)
+    {
+        if (flag >= 0 && flag < 256)
+        {
+            isAntiCoinc[flag] = true;
+        }
+    }
+
+    uint64_t fileSize = getFileSizeFromFd(fd);
+    if (fileSize > 0)
+    {
+        events.reserve(std::min<size_t>(fileSize / 11, eventNumb));
+    }
 
     kj::FdInputStream fdStream(fd);
     kj::BufferedInputStreamWrapper bufferedStream(fdStream);
-
-    while (bufferedStream.tryGetReadBuffer() != nullptr)
+    try
     {
-        capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
 
-        dataReader dts = message.getRoot<PlainData>();
-
-        int evtType = get<PlainData::Reader>(dts).getType();
-
-        switch (evtType)
+        while (bufferedStream.tryGetReadBuffer() != nullptr)
         {
-        case 0:
-            break;
-        case 1:
-            dts = message.getRoot<PsdData>();
-            break;
 
-        case 2:
-            dts = message.getRoot<WaveData>();
-            break;
+            if (countUpdate)
+            {
+                rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", events.size() * 100 / double(eventNumb)});
+            }
+            else
+            {
+                rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", getCrtPosFromFd(fd) * 100 / double(fileSize)});
+            }
 
-        case 5:
-            dts = message.getRoot<RawTimeData>();
-            break;
+            capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
 
-        default:
-            throw "Unsupported data type: " + dataTypeMap[evtType];
-            break;
-        }
+            dataReader dts = message.getRoot<PlainData>();
 
-        auto done = visit([&](auto &data) -> bool
-                          {
+            int evtType = get<PlainData::Reader>(dts).getType();
+
+            switch (evtType)
+            {
+            case 0:
+                break;
+            case 1:
+                dts = message.getRoot<PsdData>();
+                break;
+
+            case 2:
+                dts = message.getRoot<WaveData>();
+                break;
+
+            case 5:
+                dts = message.getRoot<RawTimeData>();
+                break;
+
+            default:
+                throw "Unsupported data type: " + dataTypeMap[evtType];
+                break;
+            }
+
+            auto done = visit([&](auto &data) -> bool
+                              {
 
                         auto proEvent = data.getEvents();
 
                         for (uint i = 0; i < proEvent.size(); i++){
 
-
                                    using T = decay_t<decltype(proEvent[i])>;
 
-                                    auto ev = new event();
+                                    events.emplace_back();
+                                    auto &ev = events.back();
 
                                     auto brd = proEvent[i].getBoard();
                                     auto ch = proEvent[i].getChannel();
 
-                                    ev->setBoardNumb(brd);
-                                    ev->setChannelNumb(ch);
+                                    ev.setBoardNumb(brd);
+                                    ev.setChannelNumb(ch);
 
-                                    ev->setDetectorLut(lut[brd][ch]);
-                                    ev->setDetectorType(mask[brd][ch]);
+                                    ev.setDetectorLut(lut[brd][ch]);
+                                    ev.setDetectorType(mask[brd][ch]);
 
-                                    ev->setEnergy(proEvent[i].getEnergy());
+                                    ev.setEnergy(proEvent[i].getEnergy());
 
                                     if constexpr (is_same_v<T, PsdEvent>){
-                                        ev->setPSD(proEvent[i].getPsd() * 10000);
+                                        ev.setPSD(proEvent[i].getPsd() * 10000);
                                     } else {
-                                        ev->setPSD(0);
+                                        ev.setPSD(0);
                                     }
 
                                     if constexpr (is_same_v<T,  RawTimeEvent::Reader>){   
@@ -422,37 +460,33 @@ deque<event *> capLoader::readEvents()
                                         uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
 
                                         uint64_t delayedTime = ts - delay[brd][ch];
-                                      
-                                        ev->setTimeStamp(delayedTime);
+                                       
+                                        ev.setTimeStamp(delayedTime);
 
                                     }  else if constexpr (is_same_v<T, WaveEvent::Reader>) {
                                         
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
-                                        ev->setTimeStamp(delayedTime);
+                                        ev.setTimeStamp(delayedTime);
                                     } else {
                                         uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
-                                        ev->setTimeStamp(delayedTime);
+                                        ev.setTimeStamp(delayedTime);
                                     }
 
 
                                     // coinc
-                                    ev->setCoincPair(coincPairs[brd][ch]);
+                                    ev.setCoincPair(coincPairs[brd][ch]);
 
                                     auto findPair = make_pair(brd, ch);
-
-                                    if (!coincPairTypes.count(findPair))
+                                    auto itPair = coincPairTypes.find(findPair);
+                                    if (itPair != coincPairTypes.end())
                                     {
-                                        coincPairTypes[findPair] = findCoincPairType(brd, ch);
+                                        ev.setCoincPairType(itPair->second);
                                     }
 
-                                    ev->setCoincPairType(coincPairTypes[findPair]);
-
-                                    if (find(antiCoincFlags.begin(), antiCoincFlags.end(), ev->getDetectorType()) != antiCoincFlags.end())
+                                    if (isAntiCoinc[ev.getDetectorType()])
                                     {
-                                        ev->setAntiCoincFlag(true);
+                                        ev.setAntiCoincFlag(true);
                                     }
-
-                                    events.push_back(ev);
 
                                     if (events.size() == eventNumb)
                                     {
@@ -461,14 +495,31 @@ deque<event *> capLoader::readEvents()
                                 }
                                 
                       return false; },
-                          dts);
+                              dts);
 
-        if (done)
-        {
-            return events;
+            if (done)
+            {
+                break;
+            }
         }
     }
+    catch (kj::Exception &exp)
+    {
+    }
 
+    close(fd);
+    events.shrink_to_fit();
+    return events;
+}
+
+deque<event *> capLoader::readEvents()
+{
+    vector<event> flat = readEventsFlat();
+    deque<event *> events;
+    for (auto &ev : flat)
+    {
+        events.push_back(new event(ev));
+    }
     return events;
 }
 
@@ -2387,4 +2438,18 @@ map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> capLoader::readAlignEven
     }
 
     return events;
+}
+
+uint64_t dataLoader::getFileSizeFromFd(int fd)
+{
+    uint64_t totalSize = lseek(fd, 0, SEEK_END);
+
+    lseek(fd, 0, SEEK_SET);
+
+    return totalSize;
+}
+
+uint64_t dataLoader::getCrtPosFromFd(int fd)
+{
+    return lseek(fd, 0, SEEK_CUR);
 }

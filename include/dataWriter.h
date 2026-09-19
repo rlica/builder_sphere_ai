@@ -167,7 +167,7 @@ private:
     int eventMaskSize = 0;
     int headerSize = 1;
 
-    void dumpToFile(map<pair<int, int>, vector<event *>> event, uint64_t time);
+    void dumpToFile(const map<pair<int, int>, vector<event *>> &event, uint64_t time);
 
 private:
     void validateConfig();

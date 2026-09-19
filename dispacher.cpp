@@ -16,12 +16,15 @@
 #include <limits>
 #include <parallel/algorithm>
 #include <cstdlib>
+#include <capnp/ez-rpc.h>
+#include <kj/async-io.h>
+#include "syncUtils.h"
+#include <thread>
 
 using namespace std;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-json openConfigFile(int argc, char **argv);
 json readConfigFile(string fileName);
 void buildRun(json &config);
 void delayRun(json &config);
@@ -33,28 +36,31 @@ vector<string> removeAlreadyBuilt(vector<string> input, vector<string> output);
 vector<string> getPathFiles(string path, string identifier = "", string extension = "");
 void dispatchThread(json config);
 vector<string> generateInputFiles(json &config);
-void printStatus(int finished, int total);
+void findAvailableSyncPort(json &config);
+
+atomic<bool> syncFlag = true;
 
 int main(int argc, char **argv)
 {
-    json config = openConfigFile(argc, argv);
+    json config = readConfigFile("config.json");
 
     try
     {
+        auto schemaPath = getEnvironment("BUILDER_BASE") + "/configSchema.json";
 
-        try
-        {
-            auto schemaPath = getEnvironment("BUILDER_BASE") + "/configSchema.json";
+        json schema = readConfigFile(schemaPath);
+        validateJsonSchema(config, schema);
+    }
+    catch (string test)
+    {
+        cout << test << endl;
+        exit(1);
+    }
 
-            json schema = readConfigFile(schemaPath);
+    findAvailableSyncPort(config);
 
-            validateJsonSchema(config, schema);
-        }
-        catch (string test)
-        {
-            cout << test << endl;
-            exit(1);
-        }
+    try
+    {
 
         if (config["general"]["run"] == "build")
         {
@@ -93,8 +99,36 @@ json readConfigFile(string fileName)
     return jf;
 }
 
+shared_future<void> startSyncTracker(json &config)
+{
+
+    auto syncFuture = async(std::launch::async, [config]()
+                            {
+                                
+                                string addr = "*:" + config["syncPort"].get<string>();
+
+                                // Set up the "Easy RPC" server
+                                capnp::EzRpcServer server(kj::heap<StateSynchronizerImpl>(), addr);
+                                // Get the server's wait scope
+
+                                auto &waitScope = server.getWaitScope();
+
+                                auto prom = server.getPort();
+
+                                auto res = prom.wait(waitScope);
+
+                                while (syncFlag)
+                                {
+                                    waitScope.poll();
+                                } })
+                          .share();
+
+    return syncFuture;
+}
+
 void buildRun(json &config)
 {
+
     auto inpFiles = generateInputFiles(config);
 
     vector<shared_future<void>> futures;
@@ -105,13 +139,20 @@ void buildRun(json &config)
     cout << "requested: " << inpFiles.size() << " file/s" << endl;
     cout << "building on: " << maxCores << " core/s" << endl;
 
-    int finished = 0;
+    shared_future<void> syncState;
+
+    if (inpFiles.size())
+    {
+        syncState = startSyncTracker(config);
+    }
 
     config["crtRun"] = "build";
+    config["maxId"] = inpFiles.size();
 
     for (int i = 0; i < inpFiles.size(); i++)
     {
         config["crtFile"] = inpFiles[i];
+        config["crtId"] = i + 1;
 
         futures.push_back(async(std::launch::async, [config]()
                                 { dispatchThread(config); })
@@ -132,10 +173,8 @@ void buildRun(json &config)
             if (pos != -1)
             {
                 futures.erase(futures.begin() + pos);
-                finished++;
             }
         }
-        printStatus(finished, inpFiles.size());
     }
 
     while (futures.size())
@@ -154,30 +193,15 @@ void buildRun(json &config)
         if (pos != -1)
         {
             futures.erase(futures.begin() + pos);
-            finished++;
         }
-
-        printStatus(finished, inpFiles.size());
     }
 
-    if (finished)
+    syncFlag = false;
+
+    if (syncState.valid())
     {
-        cout << endl;
+        syncState.get();
     }
-}
-
-void printStatus(int finished, int total)
-{
-
-    [[deprecated]] int a = 0;
-
-    // string doneStr = "000000" + to_string(finished);
-    // doneStr = doneStr.substr(doneStr.size() - 6);
-
-    // string totalStr = "000000" + to_string(total);
-    // totalStr = totalStr.substr(totalStr.size() - 6);
-
-    // cout << "\rstatus: " << doneStr << " / " << totalStr << std::flush;
 }
 
 vector<string> getPathFiles(string path, string identifier, string extension)
@@ -228,6 +252,8 @@ vector<string> getPathFiles(string path, string identifier, string extension)
 
     transform(timeFiles.cbegin(), timeFiles.cend(), files.begin(), [](pair<string, int64_t> i)
               { return i.first; });
+
+    sort(files.begin(), files.end());
 
     return files;
 }
@@ -353,8 +379,6 @@ void convertRun(json &config)
     cout << "requested: " << inpFiles.size() << " file/s" << endl;
     cout << "building on: " << maxCores << " core/s" << endl;
 
-    int finished = 0;
-
     config["crtRun"] = "convert";
 
     for (int i = 0; i < inpFiles.size(); i++)
@@ -380,10 +404,8 @@ void convertRun(json &config)
             if (pos != -1)
             {
                 futures.erase(futures.begin() + pos);
-                finished++;
             }
         }
-        printStatus(finished, inpFiles.size());
     }
 
     while (futures.size())
@@ -402,15 +424,7 @@ void convertRun(json &config)
         if (pos != -1)
         {
             futures.erase(futures.begin() + pos);
-            finished++;
         }
-
-        printStatus(finished, inpFiles.size());
-    }
-
-    if (finished)
-    {
-        cout << endl;
     }
 }
 
@@ -538,8 +552,6 @@ void alignRun(json &config)
     cout << "requested: " << inpFiles.size() << " file/s" << endl;
     cout << "building on: " << maxCores << " core/s" << endl;
 
-    int finished = 0;
-
     config["crtRun"] = "align";
     config["refFile"] = refFile;
 
@@ -566,10 +578,8 @@ void alignRun(json &config)
             if (pos != -1)
             {
                 futures.erase(futures.begin() + pos);
-                finished++;
             }
         }
-        printStatus(finished, inpFiles.size());
     }
 
     while (futures.size())
@@ -588,45 +598,18 @@ void alignRun(json &config)
         if (pos != -1)
         {
             futures.erase(futures.begin() + pos);
-            finished++;
         }
-
-        printStatus(finished, inpFiles.size());
-    }
-
-    if (finished)
-    {
-        cout << endl;
     }
 }
 
-json openConfigFile(int argc, char **argv)
+void findAvailableSyncPort(json &config)
 {
+    int availablePort = 10000;
 
-    json config;
-
-    if (argc == 1)
+    while (!isPortAvailable(availablePort))
     {
-        config = readConfigFile("config.json");
-    }
-    else
-    {
-        auto path = fs::path(argv[1]);
-
-        if (!fs::exists(path))
-        {
-            cout << "requested config file: " << path << " does not exist." << endl;
-            exit(0);
-        }
-
-        if (path.extension() != ".json")
-        {
-            cout << "requested config file: " << path << " is not a \".json\" file" << endl;
-            exit(0);
-        }
-
-        config = readConfigFile(path.string());
+        availablePort++;
     }
 
-    return config;
+    config["syncPort"] = to_string(availablePort);
 }

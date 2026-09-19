@@ -5,6 +5,7 @@
 #include <regex>
 #include <iomanip>
 #include <set>
+#include <unistd.h>
 
 dataWriter::dataWriter(json &config) : varConfig(config)
 {
@@ -102,9 +103,12 @@ void gaspDataWriter::initializeOutputFile()
 
 void rootDataWriter::setConfig(json &config)
 {
-    varAddHistogram = config["convert"]["root"]["addHistogram"].get<bool>();
-    varAddList = config["convert"]["root"]["addList"].get<bool>();
-    varAddRunTime = config["convert"]["root"]["addRunTime"].get<bool>();
+    if (config["general"]["run"].get<string>() == "convert")
+    {
+        varAddHistogram = config["convert"]["root"]["addHistogram"].get<bool>();
+        varAddList = config["convert"]["root"]["addList"].get<bool>();
+        varAddRunTime = config["convert"]["root"]["addRunTime"].get<bool>();
+    }
 
     resetGap = int(varConfig["build"]["absoluteTime"]["resetGap"]) * pow(10, 12);
     timeScale = pow(10, int(varConfig["build"]["absoluteTime"]["scalePower"]));
@@ -113,6 +117,7 @@ void rootDataWriter::setConfig(json &config)
 rootDataWriter::rootDataWriter(json &config) : dataWriter(config)
 {
     auto runType = config["general"]["run"].get<string>();
+
     setConfig(config);
 
     if (runType == "build")
@@ -121,7 +126,6 @@ rootDataWriter::rootDataWriter(json &config) : dataWriter(config)
     }
     else if (runType == "convert")
     {
-
         initializeConvertOutputFile();
     }
 }
@@ -197,8 +201,6 @@ void rootDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
     prevTime = time;
 
     varAbsoluteTime = (time - resetTime) * timeScale;
-
-    cout << time << " " << varAbsoluteTime << endl;
 
     for (auto sig : events)
     {
@@ -639,13 +641,14 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
     dumpToFile(outputEvents, time);
 }
 
-void gaspDataWriter::dumpToFile(map<pair<int, int>, vector<event *>> events, uint64_t time)
+void gaspDataWriter::dumpToFile(const map<pair<int, int>, vector<event *>> &events, uint64_t time)
 {
 
     vector<int> eventMask = vector<int>(eventMaskSize, 0);
 
-    [[deprecated("prealocate memory")]] vector<short> eventBuffer;
-    [[deprecated("add it to the buffer class")]] int size = 0;
+    vector<short> eventBuffer;
+    eventBuffer.reserve(128);
+    int size = 0;
 
     // add header
     eventBuffer.push_back(0); // size word

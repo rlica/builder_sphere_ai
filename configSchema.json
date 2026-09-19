@@ -30,8 +30,8 @@
                 }
             },
             "required": [
-                "absoluteTime"   , "antiCoincFlag"  , "coincMask"      ,
-                "coincWindow"    , "sortBeforeBuild", "typePriority"
+                "absoluteTime",    "antiCoincFlag",   "coincMask",
+                "coincWindow",     "sortBeforeBuild", "typePriority"
             ],
             "additionalProperties": false
         },
@@ -52,8 +52,8 @@
                 "refType": {"type": "integer"}
             },
             "required": [
-                "energyThreshold", "histBins"       , "histRange"      ,
-                "outFileName"    , "refLUT"         , "refTimeOffset"  ,
+                "energyThreshold", "histBins",        "histRange",
+                "outFileName",     "refLUT",          "refTimeOffset",
                 "refType"
             ],
             "additionalProperties": false
@@ -108,9 +108,9 @@
                 "fileFormat": {
                     "type": "string",
                     "enum": [
-                        "root"       , "proto"      , "cap"        ,
-                        "delila"     , "3MV"        , "bell"       ,
-                        "compass"    , "test"       , "compassWave",
+                        "root",        "proto",       "cap",
+                        "delila",      "3MV",         "bell",
+                        "compass",     "test",        "compassWave",
                         "timepix"
                     ]
                 },
@@ -125,8 +125,8 @@
                 "path": {"type": "string"}
             },
             "required": [
-                "eventCount"    , "fileFormat"    , "fileIdentifier",
-                "keepIndex"     , "liveBuild"     , "path"
+                "eventCount",     "fileFormat",     "fileIdentifier",
+                "keepIndex",      "liveBuild",      "path"
             ],
             "additionalProperties": false
         },
@@ -198,7 +198,8 @@
                     "additionalProperties": false
                 }
             }
-        }
+        },
+        "syncPort": { "root": {"type": "string"} }
     },
     "required": ["build", "delay", "detector", "gasp", "general"],
     "additionalProperties": false
