@@ -376,6 +376,39 @@ vector<event> capLoader::readEventsFlat()
         }
     }
 
+    struct FastChannelInfo {
+        int32_t delay = 0;
+        uint8_t lut = 0;
+        uint8_t type = 0;
+        uint8_t coincPair = 0;
+        pair<uint8_t, uint8_t> coincPairType = {0, 0};
+        bool isAntiCoinc = false;
+    };
+
+    // Precompute L1-cached channel table for O(1) direct indexing without map or vector-of-vector indirection
+    FastChannelInfo channelTable[32][64];
+    for (size_t b = 0; b < 32; b++)
+    {
+        for (size_t c = 0; c < 64; c++)
+        {
+            auto &info = channelTable[b][c];
+            if (b < delay.size() && c < delay[b].size()) info.delay = delay[b][c];
+            if (b < lut.size() && c < lut[b].size()) info.lut = lut[b][c];
+            if (b < mask.size() && c < mask[b].size()) info.type = mask[b][c];
+            if (b < coincPairs.size() && c < coincPairs[b].size()) info.coincPair = coincPairs[b][c];
+
+            auto itPair = coincPairTypes.find({static_cast<uint8_t>(b), static_cast<uint8_t>(c)});
+            if (itPair != coincPairTypes.end())
+            {
+                info.coincPairType = itPair->second;
+            }
+            if (isAntiCoinc[info.type])
+            {
+                info.isAntiCoinc = true;
+            }
+        }
+    }
+
     uint64_t fileSize = getFileSizeFromFd(fd);
     if (fileSize > 0)
     {
@@ -386,17 +419,19 @@ vector<event> capLoader::readEventsFlat()
     kj::BufferedInputStreamWrapper bufferedStream(fdStream);
     try
     {
-
+        uint32_t msgCount = 0;
         while (bufferedStream.tryGetReadBuffer() != nullptr)
         {
-
-            if (countUpdate)
+            if ((msgCount++ & 0x1FF) == 0)
             {
-                rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", events.size() * 100 / double(eventNumb)});
-            }
-            else
-            {
-                rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", getCrtPosFromFd(fd) * 100 / double(fileSize)});
+                if (countUpdate)
+                {
+                    rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", events.size() * 100 / double(eventNumb)});
+                }
+                else
+                {
+                    rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", getCrtPosFromFd(fd) * 100 / double(fileSize)});
+                }
             }
 
             capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
@@ -440,12 +475,13 @@ vector<event> capLoader::readEventsFlat()
 
                                     auto brd = proEvent[i].getBoard();
                                     auto ch = proEvent[i].getChannel();
+                                    const auto &info = (brd < 32 && ch < 64) ? channelTable[brd][ch] : channelTable[0][0];
 
                                     ev.setBoardNumb(brd);
                                     ev.setChannelNumb(ch);
 
-                                    ev.setDetectorLut(lut[brd][ch]);
-                                    ev.setDetectorType(mask[brd][ch]);
+                                    ev.setDetectorLut(info.lut);
+                                    ev.setDetectorType(info.type);
 
                                     ev.setEnergy(proEvent[i].getEnergy());
 
@@ -458,32 +494,19 @@ vector<event> capLoader::readEventsFlat()
                                     if constexpr (is_same_v<T,  RawTimeEvent::Reader>){   
                                                                                 
                                         uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
-
-                                        uint64_t delayedTime = ts - delay[brd][ch];
-                                       
+                                        uint64_t delayedTime = ts - info.delay;
                                         ev.setTimeStamp(delayedTime);
 
-                                    }  else if constexpr (is_same_v<T, WaveEvent::Reader>) {
-                                        
-                                        uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
-                                        ev.setTimeStamp(delayedTime);
-                                    } else {
-                                        uint64_t delayedTime = proEvent[i].getTimestamp() - delay[brd][ch];
+                                    }  else {
+                                        uint64_t delayedTime = proEvent[i].getTimestamp() - info.delay;
                                         ev.setTimeStamp(delayedTime);
                                     }
-
 
                                     // coinc
-                                    ev.setCoincPair(coincPairs[brd][ch]);
+                                    ev.setCoincPair(info.coincPair);
+                                    ev.setCoincPairType(info.coincPairType);
 
-                                    auto findPair = make_pair(brd, ch);
-                                    auto itPair = coincPairTypes.find(findPair);
-                                    if (itPair != coincPairTypes.end())
-                                    {
-                                        ev.setCoincPairType(itPair->second);
-                                    }
-
-                                    if (isAntiCoinc[ev.getDetectorType()])
+                                    if (info.isAntiCoinc)
                                     {
                                         ev.setAntiCoincFlag(true);
                                     }
@@ -503,6 +526,7 @@ vector<event> capLoader::readEventsFlat()
             }
         }
     }
+
     catch (kj::Exception &exp)
     {
     }

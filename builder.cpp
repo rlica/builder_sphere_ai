@@ -28,6 +28,7 @@
 #include "dataSyncClient.h"
 #include <tbb/global_control.h>
 #include <tbb/parallel_sort.h>
+#include <tbb/parallel_for.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -247,24 +248,17 @@ void preProcessEvent(json &config, vector<event> &events)
 {
     if (bool(config["build"]["sortBeforeBuild"]))
     {
-
         auto rpcClient = dataSyncClient::getInstance();
-        auto cfg = dataConfig::getInstance();
 
-        double tMax = events.size() * log2(events.size());
-
-        tbb::enumerable_thread_specific<atomic<uint64_t>> counts;
-
-        rpcClient->startTracking(counts, tMax);
+        rpcClient->updateState({config["crtId"], "sorting data (2/4)", 0}, true);
 
         tbb::parallel_sort(events.begin(), events.end(),
-                           [&counts](const event &i, const event &j)
+                           [](const event &i, const event &j)
                            {
-                               counts.local()++;
                                return (i.getTimeStamp() < j.getTimeStamp());
                            });
 
-        rpcClient->stopTracking();
+        rpcClient->updateState({config["crtId"], "sorting data (2/4)", 100}, true);
     }
 }
 
@@ -283,51 +277,85 @@ void buildRun(json config)
 
     vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
-    vector<CoincRange> eventPos;
-
-    uint64_t crtStep = 0;
-    double maxSteps = varEventPool.size();
-
     rpcClient->updateState({config["crtId"], "building events (3/4)", 0}, true);
 
-    vector<int> checkMask(coincMask[0].size(), 0);
+    size_t totalEvents = varEventPool.size();
+    size_t numThreads = config["general"]["maxCores"].get<size_t>();
+    if (numThreads == 0) numThreads = std::max(1u, std::thread::hardware_concurrency());
 
-    for (size_t i = 0; i < varEventPool.size(); i++)
-    {
-        if ((i & 0x1FFFF) == 0)
+    // Divide work into chunks scaled to core count for load balancing
+    size_t numChunks = numThreads * 4;
+    if (numChunks > totalEvents) numChunks = std::max<size_t>(1, totalEvents);
+    size_t chunkSize = (totalEvents + numChunks - 1) / numChunks;
+
+    vector<vector<CoincRange>> chunkResults(numChunks);
+    atomic<size_t> completedChunks{0};
+
+    tbb::parallel_for(size_t(0), numChunks, [&](size_t chunkIdx) {
+        size_t startIdx = chunkIdx * chunkSize;
+        size_t endIdx = std::min(startIdx + chunkSize, totalEvents);
+        if (startIdx >= endIdx) return;
+
+        vector<int> checkMask(coincMask[0].size(), 0);
+        auto &localMatches = chunkResults[chunkIdx];
+        localMatches.reserve((endIdx - startIdx) / 16);
+
+        for (size_t i = startIdx; i < endIdx; i++)
         {
-            double proc = (i * 100.0) / maxSteps;
-            rpcClient->updateState({config["crtId"], "building events (3/4)", proc});
-        }
+            size_t crtPos = i;
+            uint64_t startTime = varEventPool[i].getTimeStamp();
+            uint64_t interval = varEventPool[crtPos].getTimeStamp() - startTime;
 
-        size_t crtPos = i;
-        uint64_t startTime = varEventPool[i].getTimeStamp();
-        uint64_t interval = varEventPool[crtPos].getTimeStamp() - startTime;
+            std::fill(checkMask.begin(), checkMask.end(), 0);
 
-        std::fill(checkMask.begin(), checkMask.end(), 0);
-
-        while (interval < coincWindow)
-        {
-            addToCheckMask(checkMask, varEventPool[crtPos]);
-
-            crtPos++;
-
-            if (crtPos == varEventPool.size())
+            while (interval < coincWindow)
             {
-                break;
+                addToCheckMask(checkMask, varEventPool[crtPos]);
+
+                crtPos++;
+
+                if (crtPos == totalEvents)
+                {
+                    break;
+                }
+
+                interval = varEventPool[crtPos].getTimeStamp() - startTime;
             }
 
-            interval = varEventPool[crtPos].getTimeStamp() - startTime;
+            if (validateCheckMask(coincMask, checkMask))
+            {
+                localMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+            }
         }
 
-        if (validateCheckMask(coincMask, checkMask))
+        size_t done = ++completedChunks;
+        if ((done & 0x7) == 0 || done == numChunks)
         {
-            eventPos.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+            double proc = (done * 100.0) / double(numChunks);
+            rpcClient->updateState({config["crtId"], "building events (3/4)", proc});
         }
+    });
+
+    // Merge in chronological chunk order to guarantee 100% deterministic output
+    size_t totalCoincMatches = 0;
+    for (const auto &chunk : chunkResults)
+    {
+        totalCoincMatches += chunk.size();
     }
+    vector<CoincRange> eventPos;
+    eventPos.reserve(totalCoincMatches);
+    for (auto &chunk : chunkResults)
+    {
+        eventPos.insert(eventPos.end(), chunk.begin(), chunk.end());
+    }
+    vector<vector<CoincRange>>().swap(chunkResults);
+
     rpcClient->updateState({config["crtId"], "building events (3/4)", 100}, true);
 
     rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 0}, true);
+
+    static vector<CoincRange> overlapEvents;
+    overlapEvents.reserve(64);
 
     if (eventPos.size())
     {
@@ -344,7 +372,7 @@ void buildRun(json config)
             auto d1 = eventPos[i].end - eventPos[i].start;
             auto d2 = eventPos[i + cnt].start - eventPos[i].start;
 
-            vector<CoincRange> overlapEvents;
+            overlapEvents.clear();
             overlapEvents.push_back(eventPos[i]);
 
             while (d2 < d1)
@@ -507,7 +535,11 @@ string extractNumbers(const string &a, string format)
 void postProcessEvent(json &config, const CoincRange &evt, const vector<event> &eventPool)
 {
 
-    vector<event> tempList;
+    static vector<event> tempList;
+    static vector<event *> ptrList;
+    tempList.clear();
+    ptrList.clear();
+
     tempList.reserve(evt.end - evt.start);
 
     uint64_t absTime = eventPool[evt.start].getTimeStamp();
@@ -518,10 +550,10 @@ void postProcessEvent(json &config, const CoincRange &evt, const vector<event> &
         tempList.push_back(eventPool[i]);
     }
 
-    vector<event *> ptrList(tempList.size());
+    ptrList.reserve(tempList.size());
     for (size_t i = 0; i < tempList.size(); i++)
     {
-        ptrList[i] = &tempList[i];
+        ptrList.push_back(&tempList[i]);
     }
 
     if (!validateEvent(&ptrList))

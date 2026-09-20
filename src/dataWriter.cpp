@@ -604,7 +604,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
         auto evt = events[i];
 
         // cout << "type: " << evt->getDetectorType() << " lut: " << evt->getDetectorLut() << endl;
-        auto mapping = typeGroups[{evt->getDetectorType(), evt->getDetectorLut()}];
+        const auto &mapping = typeGroups[{evt->getDetectorType(), evt->getDetectorLut()}];
 
         for (auto iMap : mapping)
         {
@@ -691,8 +691,7 @@ void gaspDataWriter::dumpToFile(const map<pair<int, int>, vector<event *>> &even
         for (size_t i = 0; i < gEvt.second.size(); i++)
         {
             auto evt = gEvt.second[i];
-            auto getter = groupGetters[{iType, i}];
-
+            const auto &getter = typeGetters[iType][i];
             auto value = getter(evt);
 
             eventBuffer.push_back(value);
