@@ -331,66 +331,21 @@ deque<event *> threeMVLoader::readEvents()
     return events;
 }
 
-vector<event> capLoader::readEventsFlat()
+capLoader::capLoader(json cfg) : dataLoader(cfg)
 {
-
-    auto rpcClient = dataSyncClient::getInstance();
-    auto cfg = dataConfig::getInstance();
-    bool countUpdate = true;
-
-    rpcClient->updateState({config["crtId"], "reading data (1/4)", 0});
-
-    vector<event> events;
-
-    uint eventNumb = config["input"]["eventCount"];
-
-    if (eventNumb == 0)
-    {
-        countUpdate = false;
-        eventNumb = numeric_limits<uint>::max();
-    }
-
-    string fileName = config["crtFile"];
-
-    auto fd = open(fileName.c_str(), O_RDONLY);
-    if (fd < 0)
-    {
-        return events;
-    }
-
-#if defined(__linux__) || defined(__WSL__)
-    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
-#endif
-
     vector<vector<int>> delay = getDelayVector(config);
-
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> mask = config["detector"]["type"].get<vector<vector<uint8_t>>>();
     vector<vector<uint8_t>> coincPairs = config["detector"]["coincPairs"].get<vector<vector<uint8_t>>>();
-
     map<pair<uint8_t, uint8_t>, pair<uint8_t, uint8_t>> coincPairTypes = findCoincPairTypes();
 
     vector<int> antiCoincFlags = config["build"]["antiCoincFlag"].get<vector<int>>();
     bool isAntiCoinc[256] = {false};
     for (int flag : antiCoincFlags)
     {
-        if (flag >= 0 && flag < 256)
-        {
-            isAntiCoinc[flag] = true;
-        }
+        if (flag >= 0 && flag < 256) isAntiCoinc[flag] = true;
     }
 
-    struct FastChannelInfo {
-        int32_t delay = 0;
-        uint8_t lut = 0;
-        uint8_t type = 0;
-        uint8_t coincPair = 0;
-        pair<uint8_t, uint8_t> coincPairType = {0, 0};
-        bool isAntiCoinc = false;
-    };
-
-    // Precompute L1-cached channel table for O(1) direct indexing without map or vector-of-vector indirection
-    FastChannelInfo channelTable[32][64];
     for (size_t b = 0; b < 32; b++)
     {
         for (size_t c = 0; c < 64; c++)
@@ -402,141 +357,158 @@ vector<event> capLoader::readEventsFlat()
             if (b < coincPairs.size() && c < coincPairs[b].size()) info.coincPair = coincPairs[b][c];
 
             auto itPair = coincPairTypes.find({static_cast<uint8_t>(b), static_cast<uint8_t>(c)});
-            if (itPair != coincPairTypes.end())
-            {
-                info.coincPairType = itPair->second;
-            }
-            if (isAntiCoinc[info.type])
-            {
-                info.isAntiCoinc = true;
-            }
+            if (itPair != coincPairTypes.end()) info.coincPairType = itPair->second;
+            if (isAntiCoinc[info.type]) info.isAntiCoinc = true;
         }
     }
+}
 
-    uint64_t fileSize = getFileSizeFromFd(fd);
-    if (fileSize > 0)
+capLoader::~capLoader()
+{
+    closeStream();
+}
+
+bool capLoader::openStream()
+{
+    closeStream();
+    string fileName = config["crtFile"];
+    streamFd = open(fileName.c_str(), O_RDONLY);
+    if (streamFd < 0) return false;
+
+#if defined(__linux__) || defined(__WSL__)
+    posix_fadvise(streamFd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
+#endif
+
+    streamFileSize = getFileSizeFromFd(streamFd);
+    totalStreamEventsRead = 0;
+    streamMsgCount = 0;
+    eventNumbLimit = config["input"]["eventCount"];
+    if (eventNumbLimit == 0) eventNumbLimit = numeric_limits<uint>::max();
+
+    fdStream = make_unique<kj::FdInputStream>(streamFd);
+    bufferedStream = make_unique<kj::BufferedInputStreamWrapper>(*fdStream);
+    streamEof = false;
+    return true;
+}
+
+void capLoader::closeStream()
+{
+    bufferedStream.reset();
+    fdStream.reset();
+    if (streamFd >= 0)
     {
-        events.reserve(std::min<size_t>(fileSize / 11, eventNumb));
+        close(streamFd);
+        streamFd = -1;
     }
+    streamEof = true;
+}
 
-    kj::FdInputStream fdStream(fd);
-    kj::BufferedInputStreamWrapper bufferedStream(fdStream);
+double capLoader::getStreamProgress() const
+{
+    if (streamEof) return 100.0;
+    if (eventNumbLimit != numeric_limits<uint>::max() && eventNumbLimit > 0)
+    {
+        return std::min(100.0, (totalStreamEventsRead * 100.0) / double(eventNumbLimit));
+    }
+    if (streamFileSize > 0 && streamFd >= 0)
+    {
+        off_t cur = lseek(streamFd, 0, SEEK_CUR);
+        if (cur > 0) return std::min(100.0, (cur * 100.0) / double(streamFileSize));
+    }
+    return 0.0;
+}
+
+size_t capLoader::readEventsBatch(vector<event> &dest, size_t targetCount)
+{
+    if (streamEof || !bufferedStream) return 0;
+    size_t initialSize = dest.size();
+
     try
     {
-        uint32_t msgCount = 0;
-        while (bufferedStream.tryGetReadBuffer() != nullptr)
+        while (dest.size() - initialSize < targetCount && bufferedStream->tryGetReadBuffer() != nullptr)
         {
-            if ((msgCount++ & 0x1FF) == 0)
-            {
-                if (countUpdate)
-                {
-                    rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", events.size() * 100 / double(eventNumb)});
-                }
-                else
-                {
-                    rpcClient->updateState({cfg->config["crtId"], "reading data (1/4)", getCrtPosFromFd(fd) * 100 / double(fileSize)});
-                }
-            }
-
-            capnp::PackedMessageReader message(bufferedStream, {100000000, 64});
-
+            capnp::PackedMessageReader message(*bufferedStream, {100000000, 64});
             dataReader dts = message.getRoot<PlainData>();
-
             int evtType = get<PlainData::Reader>(dts).getType();
 
             switch (evtType)
             {
-            case 0:
-                break;
-            case 1:
-                dts = message.getRoot<PsdData>();
-                break;
-
-            case 2:
-                dts = message.getRoot<WaveData>();
-                break;
-
-            case 5:
-                dts = message.getRoot<RawTimeData>();
-                break;
-
-            default:
-                throw "Unsupported data type: " + dataTypeMap[evtType];
-                break;
+            case 0: break;
+            case 1: dts = message.getRoot<PsdData>(); break;
+            case 2: dts = message.getRoot<WaveData>(); break;
+            case 5: dts = message.getRoot<RawTimeData>(); break;
+            default: throw "Unsupported data type: " + dataTypeMap[evtType]; break;
             }
 
-            auto done = visit([&](auto &data) -> bool
-                              {
+            visit([&](auto &data) {
+                auto proEvent = data.getEvents();
+                for (uint i = 0; i < proEvent.size(); i++)
+                {
+                    using T = decay_t<decltype(proEvent[i])>;
+                    dest.emplace_back();
+                    auto &ev = dest.back();
+                    auto brd = proEvent[i].getBoard();
+                    auto ch = proEvent[i].getChannel();
+                    const auto &info = (brd < 32 && ch < 64) ? channelTable[brd][ch] : channelTable[0][0];
 
-                        auto proEvent = data.getEvents();
+                    ev.setBoardNumb(brd);
+                    ev.setChannelNumb(ch);
+                    ev.setDetectorLut(info.lut);
+                    ev.setDetectorType(info.type);
+                    ev.setEnergy(proEvent[i].getEnergy());
 
-                        for (uint i = 0; i < proEvent.size(); i++){
+                    if constexpr (is_same_v<T, PsdEvent>) {
+                        ev.setPSD(proEvent[i].getPsd() * 10000);
+                    } else {
+                        ev.setPSD(0);
+                    }
 
-                                   using T = decay_t<decltype(proEvent[i])>;
+                    if constexpr (is_same_v<T, RawTimeEvent::Reader>) {
+                        uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
+                        ev.setTimeStamp(ts - info.delay);
+                    } else {
+                        ev.setTimeStamp(proEvent[i].getTimestamp() - info.delay);
+                    }
 
-                                    events.emplace_back();
-                                    auto &ev = events.back();
+                    ev.setCoincPair(info.coincPair);
+                    ev.setCoincPairType(info.coincPairType);
+                    if (info.isAntiCoinc) ev.setAntiCoincFlag(true);
 
-                                    auto brd = proEvent[i].getBoard();
-                                    auto ch = proEvent[i].getChannel();
-                                    const auto &info = (brd < 32 && ch < 64) ? channelTable[brd][ch] : channelTable[0][0];
+                    totalStreamEventsRead++;
+                    if (totalStreamEventsRead >= eventNumbLimit)
+                    {
+                        streamEof = true;
+                        return;
+                    }
+                }
+            }, dts);
 
-                                    ev.setBoardNumb(brd);
-                                    ev.setChannelNumb(ch);
-
-                                    ev.setDetectorLut(info.lut);
-                                    ev.setDetectorType(info.type);
-
-                                    ev.setEnergy(proEvent[i].getEnergy());
-
-                                    if constexpr (is_same_v<T, PsdEvent>){
-                                        ev.setPSD(proEvent[i].getPsd() * 10000);
-                                    } else {
-                                        ev.setPSD(0);
-                                    }
-
-                                    if constexpr (is_same_v<T,  RawTimeEvent::Reader>){   
-                                                                                
-                                        uint64_t ts = proEvent[i].getTimestamp() * 1024 + proEvent[i].getFineTimestamp();
-                                        uint64_t delayedTime = ts - info.delay;
-                                        ev.setTimeStamp(delayedTime);
-
-                                    }  else {
-                                        uint64_t delayedTime = proEvent[i].getTimestamp() - info.delay;
-                                        ev.setTimeStamp(delayedTime);
-                                    }
-
-                                    // coinc
-                                    ev.setCoincPair(info.coincPair);
-                                    ev.setCoincPairType(info.coincPairType);
-
-                                    if (info.isAntiCoinc)
-                                    {
-                                        ev.setAntiCoincFlag(true);
-                                    }
-
-                                    if (events.size() == eventNumb)
-                                    {
-                                        return true;
-                                    }
-                                }
-                                
-                      return false; },
-                              dts);
-
-            if (done)
-            {
-                break;
-            }
+            if (streamEof) break;
         }
     }
-
-    catch (kj::Exception &exp)
+    catch (...)
     {
+        streamEof = true;
     }
 
-    close(fd);
-    events.shrink_to_fit();
+    if (bufferedStream && bufferedStream->tryGetReadBuffer() == nullptr)
+    {
+        streamEof = true;
+    }
+
+    return dest.size() - initialSize;
+}
+
+vector<event> capLoader::readEventsFlat()
+{
+    vector<event> events;
+    if (!openStream()) return events;
+    if (streamFileSize > 0)
+    {
+        events.reserve(std::min<size_t>(streamFileSize / 11, eventNumbLimit));
+    }
+    readEventsBatch(events, eventNumbLimit);
+    closeStream();
     return events;
 }
 

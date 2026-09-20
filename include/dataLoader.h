@@ -59,6 +59,12 @@ public:
         config["crtFile"] = fileName;
     }
 
+    virtual bool openStream() { return false; }
+    virtual size_t readEventsBatch(vector<event> &dest, size_t targetCount) { return 0; }
+    virtual void closeStream() {}
+    virtual bool isStreamEof() const { return true; }
+    virtual double getStreamProgress() const { return 100.0; }
+
 protected:
     json config;
     vector<vector<int>> getDelayVector(json &config);
@@ -120,11 +126,18 @@ class capLoader : public dataLoader
 {
 
 public:
-    capLoader(json cfg) : dataLoader(cfg) {}
+    capLoader(json cfg);
+    ~capLoader();
     deque<event *> readEvents();
     vector<event> readEventsFlat();
     vector<delayEvent> readDelayEvents();
     map<pair<uint8_t, uint8_t>, shared_ptr<vector<double>>> readAlignEvents();
+
+    bool openStream() override;
+    size_t readEventsBatch(vector<event> &dest, size_t targetCount) override;
+    void closeStream() override;
+    bool isStreamEof() const override { return streamEof; }
+    double getStreamProgress() const override;
 
 private:
     map<int, string> dataTypeMap = {{0, "PLAIN_DATA"},
@@ -133,6 +146,26 @@ private:
                                     {3, "DUAL_WAVE_DATA"},
                                     {4, "FULL_DATA"},
                                     {5, "RAW_TIME_DATA"}};
+
+    struct FastChannelInfo {
+        int32_t delay = 0;
+        uint8_t lut = 0;
+        uint8_t type = 0;
+        uint8_t coincPair = 0;
+        pair<uint8_t, uint8_t> coincPairType = {0, 0};
+        bool isAntiCoinc = false;
+    };
+
+    FastChannelInfo channelTable[32][64];
+
+    int streamFd = -1;
+    unique_ptr<kj::FdInputStream> fdStream;
+    unique_ptr<kj::BufferedInputStreamWrapper> bufferedStream;
+    bool streamEof = true;
+    uint64_t streamFileSize = 0;
+    uint64_t totalStreamEventsRead = 0;
+    uint32_t streamMsgCount = 0;
+    uint eventNumbLimit = 0;
 };
 
 class testLoader : public dataLoader

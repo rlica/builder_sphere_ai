@@ -8,3 +8,4 @@ rootInput
 src/*.o
 analysis/*
 test.txt
+builderStatus.txt

@@ -266,137 +266,212 @@ void buildRun(json config)
 {
     auto rpcClient = dataSyncClient::getInstance();
 
-    vector<event> varEventPool = loader->readEventsFlat();
-    varEventPool.shrink_to_fit();
-
-    cout << "Events loaded: " << varEventPool.size() << " (" << (varEventPool.size() * sizeof(event)) / (1024 * 1024) << " MB)" << endl;
-
-    preProcessEvent(config, varEventPool);
-
     uint32_t coincWindow = uint32_t(config["build"]["coincWindow"]) * int(config["general"]["timeUnitMultiplier"]);
-
     vector<vector<int>> coincMask = config["build"]["coincMask"].get<vector<vector<int>>>();
 
+    bool streamed = loader->openStream();
+    if (!streamed)
+    {
+        // Fallback for non-streaming loaders
+        vector<event> varEventPool = loader->readEventsFlat();
+        varEventPool.shrink_to_fit();
+        preProcessEvent(config, varEventPool);
+
+        size_t totalEvents = varEventPool.size();
+        size_t numThreads = config["general"]["maxCores"].get<size_t>();
+        if (numThreads == 0) numThreads = std::max(1u, std::thread::hardware_concurrency());
+        size_t numChunks = numThreads * 4;
+        if (numChunks > totalEvents) numChunks = std::max<size_t>(1, totalEvents);
+        size_t chunkSize = (totalEvents + numChunks - 1) / numChunks;
+
+        vector<vector<CoincRange>> chunkResults(numChunks);
+        tbb::parallel_for(size_t(0), numChunks, [&](size_t chunkIdx) {
+            size_t startIdx = chunkIdx * chunkSize;
+            size_t endIdx = std::min(startIdx + chunkSize, totalEvents);
+            if (startIdx >= endIdx) return;
+            vector<int> checkMask(coincMask[0].size(), 0);
+            auto &localMatches = chunkResults[chunkIdx];
+            localMatches.reserve((endIdx - startIdx) / 16);
+            for (size_t i = startIdx; i < endIdx; i++)
+            {
+                size_t crtPos = i;
+                uint64_t startTime = varEventPool[i].getTimeStamp();
+                uint64_t interval = varEventPool[crtPos].getTimeStamp() - startTime;
+                std::fill(checkMask.begin(), checkMask.end(), 0);
+                while (interval < coincWindow)
+                {
+                    addToCheckMask(checkMask, varEventPool[crtPos]);
+                    crtPos++;
+                    if (crtPos == totalEvents) break;
+                    interval = varEventPool[crtPos].getTimeStamp() - startTime;
+                }
+                if (validateCheckMask(coincMask, checkMask))
+                {
+                    localMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+                }
+            }
+        });
+
+        vector<CoincRange> eventPos;
+        for (auto &chunk : chunkResults) eventPos.insert(eventPos.end(), chunk.begin(), chunk.end());
+        vector<vector<CoincRange>>().swap(chunkResults);
+
+        static vector<CoincRange> overlapEvents;
+        overlapEvents.reserve(64);
+        if (eventPos.size())
+        {
+            for (size_t i = 0; i < eventPos.size() - 1; i++)
+            {
+                int cnt = 1;
+                auto d1 = eventPos[i].end - eventPos[i].start;
+                auto d2 = eventPos[i + cnt].start - eventPos[i].start;
+                overlapEvents.clear();
+                overlapEvents.push_back(eventPos[i]);
+                while (d2 < d1)
+                {
+                    overlapEvents.push_back(eventPos[i + cnt]);
+                    cnt++;
+                    if (i + cnt >= eventPos.size()) break;
+                    d2 = eventPos[i + cnt].start - eventPos[i].start;
+                }
+                i += overlapEvents.size() - 1;
+                auto evt = selectOverlapEvent(overlapEvents, varEventPool);
+                postProcessEvent(config, evt, varEventPool);
+            }
+        }
+        writer->closeFile();
+        return;
+    }
+
+    // High-performance sliding-window chunked streaming engine (< 60 MB RAM)
     rpcClient->updateState({config["crtId"], "building events (3/4)", 0}, true);
 
-    size_t totalEvents = varEventPool.size();
-    size_t numThreads = config["general"]["maxCores"].get<size_t>();
-    if (numThreads == 0) numThreads = std::max(1u, std::thread::hardware_concurrency());
+    vector<event> eventRing;
+    eventRing.reserve(1500000);
 
-    // Divide work into chunks scaled to core count for load balancing
-    size_t numChunks = numThreads * 4;
-    if (numChunks > totalEvents) numChunks = std::max<size_t>(1, totalEvents);
-    size_t chunkSize = (totalEvents + numChunks - 1) / numChunks;
+    const size_t BATCH_SIZE = 500000;
+    const size_t MARGIN_EVENTS = 200000;
 
-    vector<vector<CoincRange>> chunkResults(numChunks);
-    atomic<size_t> completedChunks{0};
+    vector<CoincRange> pendingMatches;
+    vector<CoincRange> overlapGroup;
+    vector<int> checkMask(coincMask[0].size(), 0);
 
-    tbb::parallel_for(size_t(0), numChunks, [&](size_t chunkIdx) {
-        size_t startIdx = chunkIdx * chunkSize;
-        size_t endIdx = std::min(startIdx + chunkSize, totalEvents);
-        if (startIdx >= endIdx) return;
+    size_t totalRead = 0;
+    size_t loopIter = 0;
 
-        vector<int> checkMask(coincMask[0].size(), 0);
-        auto &localMatches = chunkResults[chunkIdx];
-        localMatches.reserve((endIdx - startIdx) / 16);
+    while (!loader->isStreamEof())
+    {
+        size_t nRead = loader->readEventsBatch(eventRing, BATCH_SIZE);
+        totalRead += nRead;
+        bool isLast = loader->isStreamEof();
 
-        for (size_t i = startIdx; i < endIdx; i++)
+        if (eventRing.empty()) break;
+
+        // Sort current buffer in-place using tbb::parallel_sort
+        tbb::parallel_sort(eventRing.begin(), eventRing.end(), [](const event &i, const event &j) {
+            return i.getTimeStamp() < j.getTimeStamp();
+        });
+
+        // Determine safe limit to evaluate coincidences
+        size_t evalLimit = eventRing.size();
+        if (!isLast)
+        {
+            if (evalLimit > MARGIN_EVENTS)
+            {
+                evalLimit -= MARGIN_EVENTS;
+            }
+            else
+            {
+                continue;
+            }
+            uint64_t safeTime = eventRing[evalLimit].getTimeStamp();
+            while (evalLimit > 0 && (safeTime - eventRing[evalLimit - 1].getTimeStamp() < coincWindow))
+            {
+                evalLimit--;
+            }
+        }
+
+        pendingMatches.clear();
+        for (size_t i = 0; i < evalLimit; i++)
         {
             size_t crtPos = i;
-            uint64_t startTime = varEventPool[i].getTimeStamp();
-            uint64_t interval = varEventPool[crtPos].getTimeStamp() - startTime;
-
+            uint64_t startTime = eventRing[i].getTimeStamp();
+            uint64_t interval = eventRing[crtPos].getTimeStamp() - startTime;
             std::fill(checkMask.begin(), checkMask.end(), 0);
-
             while (interval < coincWindow)
             {
-                addToCheckMask(checkMask, varEventPool[crtPos]);
-
+                addToCheckMask(checkMask, eventRing[crtPos]);
                 crtPos++;
-
-                if (crtPos == totalEvents)
-                {
-                    break;
-                }
-
-                interval = varEventPool[crtPos].getTimeStamp() - startTime;
+                if (crtPos == eventRing.size()) break;
+                interval = eventRing[crtPos].getTimeStamp() - startTime;
             }
-
             if (validateCheckMask(coincMask, checkMask))
             {
-                localMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+                pendingMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
             }
         }
 
-        size_t done = ++completedChunks;
-        if ((done & 0x7) == 0 || done == numChunks)
+        // Overlap resolution and writing
+        size_t mIdx = 0;
+        size_t lastEvictedEvtIdx = 0;
+
+        while (mIdx < pendingMatches.size())
         {
-            double proc = (done * 100.0) / double(numChunks);
-            rpcClient->updateState({config["crtId"], "building events (3/4)", proc});
-        }
-    });
-
-    // Merge in chronological chunk order to guarantee 100% deterministic output
-    size_t totalCoincMatches = 0;
-    for (const auto &chunk : chunkResults)
-    {
-        totalCoincMatches += chunk.size();
-    }
-    vector<CoincRange> eventPos;
-    eventPos.reserve(totalCoincMatches);
-    for (auto &chunk : chunkResults)
-    {
-        eventPos.insert(eventPos.end(), chunk.begin(), chunk.end());
-    }
-    vector<vector<CoincRange>>().swap(chunkResults);
-
-    rpcClient->updateState({config["crtId"], "building events (3/4)", 100}, true);
-
-    rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 0}, true);
-
-    static vector<CoincRange> overlapEvents;
-    overlapEvents.reserve(64);
-
-    if (eventPos.size())
-    {
-        for (size_t i = 0; i < eventPos.size() - 1; i++)
-        {
-            if ((i & 0x3FFF) == 0)
+            if (mIdx == pendingMatches.size() - 1 && !isLast)
             {
-                double proc = (i * 100.0) / double(eventPos.size());
-                rpcClient->updateState({config["crtId"], "filter/write events (4/4)", proc});
+                break;
             }
+            overlapGroup.clear();
+            overlapGroup.push_back(pendingMatches[mIdx]);
+            size_t cnt = 1;
+            bool clusterClosed = false;
 
-            int cnt = 1;
-
-            auto d1 = eventPos[i].end - eventPos[i].start;
-            auto d2 = eventPos[i + cnt].start - eventPos[i].start;
-
-            overlapEvents.clear();
-            overlapEvents.push_back(eventPos[i]);
-
-            while (d2 < d1)
+            while (mIdx + cnt < pendingMatches.size())
             {
-                overlapEvents.push_back(eventPos[i + cnt]);
-
-                cnt++;
-
-                if (i + cnt >= eventPos.size())
+                auto d1 = pendingMatches[mIdx].end - pendingMatches[mIdx].start;
+                auto d2 = pendingMatches[mIdx + cnt].start - pendingMatches[mIdx].start;
+                if (d2 < d1)
                 {
+                    overlapGroup.push_back(pendingMatches[mIdx + cnt]);
+                    cnt++;
+                }
+                else
+                {
+                    clusterClosed = true;
                     break;
                 }
-                d2 = eventPos[i + cnt].start - eventPos[i].start;
             }
 
-            i += overlapEvents.size() - 1;
+            if (!clusterClosed && !isLast)
+            {
+                break;
+            }
 
-            auto evt = selectOverlapEvent(overlapEvents, varEventPool);
+            if (isLast && mIdx >= pendingMatches.size() - 1)
+            {
+                break;
+            }
 
-            postProcessEvent(config, evt, varEventPool);
+            auto evt = selectOverlapEvent(overlapGroup, eventRing);
+            postProcessEvent(config, evt, eventRing);
+
+            lastEvictedEvtIdx = pendingMatches[mIdx].end;
+            mIdx += overlapGroup.size();
+        }
+
+        if (lastEvictedEvtIdx > 0 && !isLast)
+        {
+            eventRing.erase(eventRing.begin(), eventRing.begin() + lastEvictedEvtIdx);
+        }
+
+        if ((loopIter++ & 0x7) == 0)
+        {
+            rpcClient->updateState({config["crtId"], "building events (3/4)", loader->getStreamProgress()});
         }
     }
-    rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 100}, true);
 
+    loader->closeStream();
+    rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 100}, true);
     writer->closeFile();
 }
 
