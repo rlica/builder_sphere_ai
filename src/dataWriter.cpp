@@ -596,50 +596,131 @@ void gaspDataWriter::initializeValueGetters()
 
 void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
 {
-
-    map<pair<int, int>, vector<event *>> outputEvents;
+    struct BuiltDetectorSlot {
+        int expectedSize = 0;
+        event *signals[8] = {nullptr};
+    };
+    static BuiltDetectorSlot slotTable[16][32];
+    static vector<pair<int, int>> activeSlots;
 
     for (size_t i = 0; i < events.size(); i++)
     {
         auto evt = events[i];
-
-        // cout << "type: " << evt->getDetectorType() << " lut: " << evt->getDetectorLut() << endl;
         const auto &mapping = typeGroups[{evt->getDetectorType(), evt->getDetectorLut()}];
 
-        for (auto iMap : mapping)
+        for (const auto &iMap : mapping)
         {
-            auto outId = make_pair(iMap[0], iMap[1]);
+            int oType = iMap[0];
+            int oLut = iMap[1];
+            int expectedSize = iMap[2];
+            int slotIdx = iMap[3];
 
-            if (outputEvents.find(outId) == outputEvents.end())
+            if (oType >= 0 && oType < 16 && oLut >= 0 && oLut < 32)
             {
-                outputEvents[outId] = vector<event *>(iMap[2], nullptr);
+                auto &slot = slotTable[oType][oLut];
+                if (slot.expectedSize == 0)
+                {
+                    slot.expectedSize = expectedSize;
+                    std::fill(slot.signals, slot.signals + expectedSize, nullptr);
+                    activeSlots.push_back({oType, oLut});
+                }
+                slot.signals[slotIdx] = evt;
             }
-
-            outputEvents[outId][iMap[3]] = events[i];
         }
     }
 
     // retrieve missing events
-    for (auto &outEvt : outputEvents)
+    for (const auto &id : activeSlots)
     {
-        for (size_t i = 0; i < outEvt.second.size(); i++)
+        auto &slot = slotTable[id.first][id.second];
+        auto gEvt = defaultEvents[id];
+
+        for (int i = 0; i < slot.expectedSize; i++)
         {
-            auto pEvt = outEvt.second[i];
-
-            if (pEvt != nullptr)
+            if (slot.signals[i] == nullptr)
             {
-                continue;
+                slot.signals[i] = gEvt;
             }
-
-            auto gEvt = defaultEvents[outEvt.first];
-
-            outEvt.second[i] = gEvt;
         }
     }
 
-    // dump to file
-    dumpToFile(outputEvents, time);
+    // Preserve exact std::map key ascending order
+    std::sort(activeSlots.begin(), activeSlots.end());
+
+    // dump to buffer and file without heap vector or map allocations
+    static vector<int> eventMask;
+    eventMask.assign(eventMaskSize, 0);
+
+    static vector<short> eventBuffer;
+    eventBuffer.clear();
+    eventBuffer.reserve(128);
+    int size = 0;
+
+    eventBuffer.push_back(0); // size word
+
+    if (time > (prevTime + resetGap))
+    {
+        resetTime = time;
+    }
+    prevTime = time;
+
+    short scaledTime = (time - resetTime) * timeScale;
+    eventBuffer.push_back(scaledTime);
+    size += 1;
+
+    for (size_t i = 0; i < eventMaskSize; i++)
+    {
+        eventBuffer.push_back(0);
+    }
+    size += eventMaskSize;
+
+    for (const auto &id : activeSlots)
+    {
+        int iType = id.first;
+        int iLut = id.second;
+        int oType = outputTypeMapper[iType];
+        auto &slot = slotTable[iType][iLut];
+
+        eventBuffer.push_back(iLut);
+        size += 1;
+
+        for (int i = 0; i < slot.expectedSize; i++)
+        {
+            auto evt = slot.signals[i];
+            const auto &getter = typeGetters[iType][i];
+            auto value = getter(evt);
+
+            eventBuffer.push_back(value);
+            size += 1;
+        }
+
+        eventMask[oType] += 1;
+        slot.expectedSize = 0;
+    }
+
+    activeSlots.clear();
+
+    eventBuffer[0] = 0xF000 + size;
+
+    int offset = 1 + headerSize;
+    for (size_t i = 0; i < eventMaskSize; i++)
+    {
+        eventBuffer[i + offset] = eventMask[i];
+    }
+
+    if (varBlockBuffer.size() + eventBuffer.size() < MAX_BLOCK_SIZE)
+    {
+        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+    }
+    else
+    {
+        varBlockBuffer.insert(varBlockBuffer.end(), MAX_BLOCK_SIZE - varBlockBuffer.size(), 0);
+        writeData();
+        initializeRecordHeader();
+        varBlockBuffer.insert(varBlockBuffer.end(), eventBuffer.begin(), eventBuffer.end());
+    }
 }
+
 
 void gaspDataWriter::dumpToFile(const map<pair<int, int>, vector<event *>> &events, uint64_t time)
 {

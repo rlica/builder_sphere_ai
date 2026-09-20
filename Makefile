@@ -20,7 +20,7 @@ OBJECTS_C++ := $(SOURCE_C++:$(SOURCE_DIR)/%.c++=$(SOURCE_DIR)/%.o)
 OBJECTS := $(patsubst $(SOURCE_DIR)/%.cpp, $(SOURCE_DIR)/%.o, $(SOURCE_CPP))
 OBJECTS += $(patsubst $(SOURCE_DIR)/%.cpp, $(SOURCE_DIR)/%.o, $(OBJECTS_C++))
 
-FLAGS = -std=c++17
+FLAGS = -std=c++17 -O3 -march=native
 
 
 all: $(OBJECTS)

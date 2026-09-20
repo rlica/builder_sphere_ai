@@ -358,6 +358,10 @@ vector<event> capLoader::readEventsFlat()
         return events;
     }
 
+#if defined(__linux__) || defined(__WSL__)
+    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
+#endif
+
     vector<vector<int>> delay = getDelayVector(config);
 
     vector<vector<uint8_t>> lut = config["detector"]["lut"].get<vector<vector<uint8_t>>>();
