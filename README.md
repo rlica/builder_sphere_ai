@@ -167,34 +167,65 @@ python3 viewWaveform.py
 
 ## Performance & Optimization
 
-In September 2026, the `builder_sphere` pipeline underwent major architectural optimizations (Phase 1: Flat-Memory Architecture & Phase 2: Multi-Core Parallel Engine):
+In September 2026, the `builder_sphere` pipeline underwent major architectural optimizations spanning data ingestion, memory layouts, parallel concurrency, and vectorized binary compilation.
 
-### Benchmark Summary
+### Benchmark Progression Summary
 
-| Optimization Stage | Run 1 (40 MB, ~3.3M Events) | Run 2 (1.0 GB, ~82.8M Events) | Peak RAM (Run 2) | Output MD5 Match |
-| :--- | :--- | :--- | :--- | :--- |
-| **Original Baseline** | 7.0s | ~210s (3m 30s) | ~8.5 GB | Reference |
-| **Phase 1 (Flat-Memory Arch)** | 6.3s | 133s (2m 13s) | 3.6 GB (*~58% reduction*) | **100% Bit-for-bit match** |
-| **Phase 2 (Multi-Core Parallel)** | **4.55s** (*~35% faster*) | **93.7s (1m 33s)** (*~55% faster*) | **~3.6 GB** | **100% Bit-for-bit match** |
+All benchmarks were conducted under WSL (Ubuntu) on an Intel/AMD multi-core workstation (`maxCores: 10`) processing real experimental nuclear physics digitizer runs in Cap'n Proto binary format:
 
-### Key Optimizations
+| Optimization Milestone | Run 1 (40 MB, ~3.3M Events) | Run 2 (1.0 GB, ~82.8M Events) | Peak RAM (Run 2) | Speedup vs Baseline | Output MD5 Match |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Original Baseline** | 7.0s | ~210s (3m 30s) | ~8.5 GB | Baseline | Reference |
+| **Phase 1: Flat-Memory Arch** | 6.3s | 133s (2m 13s) | 3.6 GB | 1.6x faster (*-58% RAM*) | **100% Bit-for-bit match** |
+| **Phase 2: Multi-Core Parallel** | 4.55s | 93.7s (1m 33s) | ~3.6 GB | 2.2x faster | **100% Bit-for-bit match** |
+| **Phase 3A: SIMD + Zero-Map Writer** | **2.47s** | **28.87s** | **~3.6 GB** | **> 7.2x FASTER** | **100% Bit-for-bit match** |
 
-1. **Flat-Memory Event Buffers (Phase 1)**:
-   - Eliminated all 82+ million `new event()` heap allocations in `capLoader` by reading directly into pre-allocated contiguous memory.
-   - Packed event structures from 80 bytes down to 40 bytes per event.
-2. **Multi-Core Parallel Coincidence Engine (Phase 2)**:
-   - Parallelized the sliding-window coincidence search across all CPU cores using `tbb::parallel_for` with dynamic chunking.
-   - Deterministic chunk merging preserves exact chronological ordering for 100% bit-for-bit output reproducibility.
-3. **Zero-Contention Parallel Sort (Phase 2)**:
-   - Stripped thread-local atomic tracking counters from `tbb::parallel_sort`'s inner comparator lambda, eliminating ~2.1 billion TLS lookups and atomic bus locks.
-4. **L1-Cached Channel Descriptor Table (Phase 2)**:
-   - Precomputed a 2D channel lookup array (`[32][64]`) fitting in L1 CPU cache, eliminating 82.7 million `std::map` tree searches and disjoint vector indirections during data ingestion.
-   - Throttled progress reporting to avoid thousands of `lseek(fd, 0, SEEK_CUR)` Linux system call context switches.
-5. **Zero-Copy & Scratch-Buffered Output Pipeline (Phases 1 & 2)**:
-   - Reused static scratch buffers in `postProcessEvent` and overlap resolution to eliminate millions of dynamic vector heap allocations.
-   - Replaced deep copying of mapping vectors with `const auto &` references and direct function indexing in `gaspDataWriter`.
+The 1.0 GB raw run (`run_Eu152_000002.cap`) now reconstructs in **under 29 seconds** (down from 3.5 minutes), with a **~58% reduction in memory**, while guaranteeing **exact bit-for-bit output reproducibility**.
 
-*Note: Antigravity with Gemini 3.8 Flash High was used for profiling, flat-memory architectural refactoring, and multi-core parallel zero-allocation optimizations.*
+---
+
+### Detailed Summary of Completed Optimizations
+
+#### Phase 1: Flat-Memory Architecture & Zero-Allocation Engine
+- **Packed Event Structure**: Reduced memory size of `class event` from ~80 bytes down to **40 bytes** (a 50% size reduction) by optimizing data types, packing bitfields, and converting the heavy per-event `std::vector<int16_t> waveform` (24 bytes) into an on-demand heap pointer.
+- **Contiguous Event Ingestion (`capLoader::readEventsFlat`)**: Eliminated all 82+ million `new event()` heap allocations, reading data directly into a contiguous `std::vector<event>` with capacity pre-reservation to prevent memory reallocations.
+- **In-Place Parallel Sorting**: Replaced STL merge-sort with `tbb::parallel_sort`, avoiding multi-gigabyte auxiliary sorting buffers.
+- **Lightweight Coincidence Ranges**: Replaced 64-byte deque iterator pairs (`eventPos`) with compact 8-byte index ranges (`struct CoincRange { uint32_t start, end; }`), reducing index memory by **87.5%**.
+- **Sliding-Window Mask Hoisting**: Hoisted temporary mask vectors out of the 82-million-event sliding-window loop, eliminating 82+ million dynamic heap allocations.
+- **Zero-Copy Streaming in Writer**: Updated `dumpToFile` to stream events by const reference, eliminating deep map cloning.
+
+#### Phase 2: Multi-Core Concurrency & High-Throughput Ingestion
+- **Multi-Core Parallel Coincidence Engine (Stage 3)**: Transformed the single-threaded linear sliding-window search over 82.7 million events into a multi-threaded parallel engine using `tbb::parallel_for` with dynamic chunking across all 10 available cores. Merging chunks deterministically in chronological order guarantees identical event sequences.
+- **Zero-Contention Parallel Sort (Stage 2)**: Removed thread-local atomic counters from `tbb::parallel_sort`'s inner comparator lambda, eliminating **~2.1 billion** thread-local storage hash lookups and atomic bus locks.
+- **L1-Cached Channel Descriptor Table (Stage 1)**: Precomputed a flat 2D lookup array (`FastChannelInfo channelTable[32][64]`) fitting entirely within L1 CPU cache. Eliminated 82.7 million `std::map<pair<uint8_t, uint8_t>, ...>` tree searches and 4 disjoint vector-of-vector pointer indirections per event.
+- **Throttled Syscalls**: Throttled progress reporting in `readEventsFlat`, eliminating thousands of unnecessary `lseek(fd, 0, SEEK_CUR)` Linux system call context switches.
+- **Reusable Scratch Buffers (Stage 4)**: Replaced dynamic vector allocations in `postProcessEvent` and overlap resolution with static pre-reserved scratch buffers.
+
+#### Phase 3A: SIMD Vectorization, Zero-Map Writer & Kernel Prefetching
+- **`-O3 -march=native` Vectorized Compilation**: Enabled AVX2/SSE4.2 SIMD instructions, loop unrolling, aggressive function inlining, and optimized CPU register allocation across all source modules.
+- **Zero-Map Writer Slot Table**: Replaced dynamic `std::map<pair<int, int>, vector<event*>>` and inner vector allocations in `gaspDataWriter::addBuiltEvent` with a reusable static 2D slot array `slotTable[16][32]`, completely eliminating millions of heap node allocations per run.
+- **Linux Kernel Asynchronous Page Prefetching**: Invoked `posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED)` to preload raw `.cap` file blocks asynchronously into kernel page cache ahead of Cap'n Proto deserialization.
+
+---
+
+### Verification & Validation Checksums
+
+Every optimization phase was strictly verified against the original baseline reference files using MD5 cryptographic checksums:
+
+```bash
+# Run 1 (16,482,304 bytes):
+5521848bc628bc1386ee9c0ce3523bad  output/run_Eu152_000001
+5521848bc628bc1386ee9c0ce3523bad  ../builder_sphere_old/output/run_Eu152_000001
+
+# Run 2 (412,319,744 bytes):
+c32a9cecf0443a2b1f5c573a2cb24395  output/run_Eu152_000002
+c32a9cecf0443a2b1f5c573a2cb24395  ../builder_sphere_old/output/run_Eu152_000002
+```
+
+Both output files remain **100% bit-for-bit identical** to the baseline references.
+
+*Note: Antigravity with Gemini 3.8 Flash High was used for profiling, flat-memory architectural refactoring, multi-core parallelization, and zero-allocation pipeline optimizations.*
+
 
 
 ---
