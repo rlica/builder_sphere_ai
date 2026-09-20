@@ -20,31 +20,38 @@ dataSyncClient::dataSyncClient()
 }
 void dataSyncClient::updateState(tuple<int, string, double> state, bool force)
 {
-    auto cfg = dataConfig::getInstance();
-
-    auto time = getCrtTime();
-
-    if ((time - prevUpdateTime > 1e9) || force)
+    try
     {
-        auto &waitScope = client->getWaitScope();
+        auto cfg = dataConfig::getInstance();
 
-        // Get the "capability" for the remote StateSynchronizer interface
-        StateSynchronizer::Client cap = client->getMain<StateSynchronizer>();
+        auto time = getCrtTime();
 
-        // --- 1. Report 'initializing' state ---
-        auto req = cap.reportStateRequest();
-        req.getState().setProcId(get<0>(state));
-        req.getState().setMaxId(cfg->config["maxId"]);
+        if ((time - prevUpdateTime > 1e9) || force)
+        {
+            auto &waitScope = client->getWaitScope();
 
-        req.getState().setOp(get<1>(state));
-        req.getState().setProc(get<2>(state));
-        req.getState().setTime((time - cfg->getStartTime()) * pow(10, -9));
-        req.getState().setFilename(getFilename());
+            // Get the "capability" for the remote StateSynchronizer interface
+            StateSynchronizer::Client cap = client->getMain<StateSynchronizer>();
 
-        auto promise = req.send();
-        auto response = promise.wait(waitScope);
+            // --- 1. Report 'initializing' state ---
+            auto req = cap.reportStateRequest();
+            req.getState().setProcId(get<0>(state));
+            req.getState().setMaxId(cfg->config["maxId"]);
 
-        prevUpdateTime = time;
+            req.getState().setOp(get<1>(state));
+            req.getState().setProc(get<2>(state));
+            req.getState().setTime((time - cfg->getStartTime()) * pow(10, -9));
+            req.getState().setFilename(getFilename());
+
+            auto promise = req.send();
+            auto response = promise.wait(waitScope);
+
+            prevUpdateTime = time;
+        }
+    }
+    catch (...)
+    {
+        // Gracefully handle case where RPC server is unavailable
     }
 }
 

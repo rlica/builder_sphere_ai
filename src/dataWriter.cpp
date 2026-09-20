@@ -724,10 +724,11 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
 
 void gaspDataWriter::dumpToFile(const map<pair<int, int>, vector<event *>> &events, uint64_t time)
 {
+    static vector<int> eventMask;
+    eventMask.assign(eventMaskSize, 0);
 
-    vector<int> eventMask = vector<int>(eventMaskSize, 0);
-
-    vector<short> eventBuffer;
+    static vector<short> eventBuffer;
+    eventBuffer.clear();
     eventBuffer.reserve(128);
     int size = 0;
 

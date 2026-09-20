@@ -343,7 +343,7 @@ void buildRun(json config)
         return;
     }
 
-    // High-performance sliding-window chunked streaming engine (< 60 MB RAM)
+    // High-performance double-buffered sliding-window streaming engine (< 60 MB RAM)
     rpcClient->updateState({config["crtId"], "building events (3/4)", 0}, true);
 
     vector<event> eventRing;
@@ -352,18 +352,39 @@ void buildRun(json config)
     const size_t BATCH_SIZE = 500000;
     const size_t MARGIN_EVENTS = 200000;
 
+    vector<event> nextBatch;
+    nextBatch.reserve(BATCH_SIZE + 64);
+
     vector<CoincRange> pendingMatches;
     vector<CoincRange> overlapGroup;
-    vector<int> checkMask(coincMask[0].size(), 0);
 
     size_t totalRead = 0;
     size_t loopIter = 0;
 
-    while (!loader->isStreamEof())
+    // Launch background prefetch of initial batch
+    auto readFuture = std::async(std::launch::async, [&]() {
+        return loader->readEventsBatch(nextBatch, BATCH_SIZE);
+    });
+
+    while (true)
     {
-        size_t nRead = loader->readEventsBatch(eventRing, BATCH_SIZE);
+        size_t nRead = readFuture.get();
         totalRead += nRead;
         bool isLast = loader->isStreamEof();
+
+        if (!nextBatch.empty())
+        {
+            eventRing.insert(eventRing.end(), nextBatch.begin(), nextBatch.end());
+            nextBatch.clear();
+        }
+
+        // Launch background prefetch for the NEXT batch immediately!
+        if (!isLast)
+        {
+            readFuture = std::async(std::launch::async, [&]() {
+                return loader->readEventsBatch(nextBatch, BATCH_SIZE);
+            });
+        }
 
         if (eventRing.empty()) break;
 
@@ -391,23 +412,65 @@ void buildRun(json config)
             }
         }
 
-        pendingMatches.clear();
-        for (size_t i = 0; i < evalLimit; i++)
+        // Parallel Coincidence Search using tbb::parallel_for
+        size_t numChunks = std::min<size_t>(10, std::max<size_t>(1, evalLimit / 10000));
+        if (numChunks <= 1)
         {
-            size_t crtPos = i;
-            uint64_t startTime = eventRing[i].getTimeStamp();
-            uint64_t interval = eventRing[crtPos].getTimeStamp() - startTime;
-            std::fill(checkMask.begin(), checkMask.end(), 0);
-            while (interval < coincWindow)
+            vector<int> checkMask(coincMask[0].size(), 0);
+            pendingMatches.clear();
+            for (size_t i = 0; i < evalLimit; i++)
             {
-                addToCheckMask(checkMask, eventRing[crtPos]);
-                crtPos++;
-                if (crtPos == eventRing.size()) break;
-                interval = eventRing[crtPos].getTimeStamp() - startTime;
+                size_t crtPos = i;
+                uint64_t startTime = eventRing[i].getTimeStamp();
+                uint64_t interval = eventRing[crtPos].getTimeStamp() - startTime;
+                std::fill(checkMask.begin(), checkMask.end(), 0);
+                while (interval < coincWindow)
+                {
+                    addToCheckMask(checkMask, eventRing[crtPos]);
+                    crtPos++;
+                    if (crtPos == eventRing.size()) break;
+                    interval = eventRing[crtPos].getTimeStamp() - startTime;
+                }
+                if (validateCheckMask(coincMask, checkMask))
+                {
+                    pendingMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+                }
             }
-            if (validateCheckMask(coincMask, checkMask))
+        }
+        else
+        {
+            size_t chunkSize = (evalLimit + numChunks - 1) / numChunks;
+            vector<vector<CoincRange>> chunkResults(numChunks);
+            tbb::parallel_for(size_t(0), numChunks, [&](size_t chunkIdx) {
+                size_t startIdx = chunkIdx * chunkSize;
+                size_t endIdx = std::min(startIdx + chunkSize, evalLimit);
+                if (startIdx >= endIdx) return;
+                vector<int> checkMask(coincMask[0].size(), 0);
+                auto &localMatches = chunkResults[chunkIdx];
+                localMatches.reserve((endIdx - startIdx) / 16);
+                for (size_t i = startIdx; i < endIdx; i++)
+                {
+                    size_t crtPos = i;
+                    uint64_t startTime = eventRing[i].getTimeStamp();
+                    uint64_t interval = eventRing[crtPos].getTimeStamp() - startTime;
+                    std::fill(checkMask.begin(), checkMask.end(), 0);
+                    while (interval < coincWindow)
+                    {
+                        addToCheckMask(checkMask, eventRing[crtPos]);
+                        crtPos++;
+                        if (crtPos == eventRing.size()) break;
+                        interval = eventRing[crtPos].getTimeStamp() - startTime;
+                    }
+                    if (validateCheckMask(coincMask, checkMask))
+                    {
+                        localMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+                    }
+                }
+            });
+            pendingMatches.clear();
+            for (auto &chunk : chunkResults)
             {
-                pendingMatches.push_back({static_cast<uint32_t>(i), static_cast<uint32_t>(crtPos)});
+                pendingMatches.insert(pendingMatches.end(), chunk.begin(), chunk.end());
             }
         }
 
@@ -468,6 +531,8 @@ void buildRun(json config)
         {
             rpcClient->updateState({config["crtId"], "building events (3/4)", loader->getStreamProgress()});
         }
+
+        if (isLast) break;
     }
 
     loader->closeStream();
