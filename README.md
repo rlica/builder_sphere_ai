@@ -167,13 +167,35 @@ python3 viewWaveform.py
 
 ## Performance & Optimization
 
-In September 2026, the `builder_sphere` coincidence sorting and loading engine underwent major architectural optimization:
-- **Flat Memory Buffers**: Transitioned from multi-million dynamic heap pointer allocations in `capLoader` to contiguous pre-allocated memory buffers.
-- **Zero-Allocation Coincidence Loop**: Hoisted mask vectors and temporary pair allocations out of high-frequency loops; replaced heavy STL iterators with lightweight contiguous index ranges.
-- **In-Place Parallel Sorting**: Integrated Intel TBB in-place parallel sorting to eliminate multi-gigabyte temporary sort buffers.
-- **Results**: Reduced peak RAM consumption by **~58%** (from ~8.5 GB down to 3.6 GB RSS on 1 GB raw data) and cut processing runtime by **~31%**, maintaining exact bit-for-bit output match.
+In September 2026, the `builder_sphere` pipeline underwent major architectural optimizations (Phase 1: Flat-Memory Architecture & Phase 2: Multi-Core Parallel Engine):
 
-*Note: Antigravity with Gemini 3.8 Flash High was used for profiling, flat-memory architectural refactoring, and zero-allocation optimizations.*
+### Benchmark Summary
+
+| Optimization Stage | Run 1 (40 MB, ~3.3M Events) | Run 2 (1.0 GB, ~82.8M Events) | Peak RAM (Run 2) | Output MD5 Match |
+| :--- | :--- | :--- | :--- | :--- |
+| **Original Baseline** | 7.0s | ~210s (3m 30s) | ~8.5 GB | Reference |
+| **Phase 1 (Flat-Memory Arch)** | 6.3s | 133s (2m 13s) | 3.6 GB (*~58% reduction*) | **100% Bit-for-bit match** |
+| **Phase 2 (Multi-Core Parallel)** | **4.55s** (*~35% faster*) | **93.7s (1m 33s)** (*~55% faster*) | **~3.6 GB** | **100% Bit-for-bit match** |
+
+### Key Optimizations
+
+1. **Flat-Memory Event Buffers (Phase 1)**:
+   - Eliminated all 82+ million `new event()` heap allocations in `capLoader` by reading directly into pre-allocated contiguous memory.
+   - Packed event structures from 80 bytes down to 40 bytes per event.
+2. **Multi-Core Parallel Coincidence Engine (Phase 2)**:
+   - Parallelized the sliding-window coincidence search across all CPU cores using `tbb::parallel_for` with dynamic chunking.
+   - Deterministic chunk merging preserves exact chronological ordering for 100% bit-for-bit output reproducibility.
+3. **Zero-Contention Parallel Sort (Phase 2)**:
+   - Stripped thread-local atomic tracking counters from `tbb::parallel_sort`'s inner comparator lambda, eliminating ~2.1 billion TLS lookups and atomic bus locks.
+4. **L1-Cached Channel Descriptor Table (Phase 2)**:
+   - Precomputed a 2D channel lookup array (`[32][64]`) fitting in L1 CPU cache, eliminating 82.7 million `std::map` tree searches and disjoint vector indirections during data ingestion.
+   - Throttled progress reporting to avoid thousands of `lseek(fd, 0, SEEK_CUR)` Linux system call context switches.
+5. **Zero-Copy & Scratch-Buffered Output Pipeline (Phases 1 & 2)**:
+   - Reused static scratch buffers in `postProcessEvent` and overlap resolution to eliminate millions of dynamic vector heap allocations.
+   - Replaced deep copying of mapping vectors with `const auto &` references and direct function indexing in `gaspDataWriter`.
+
+*Note: Antigravity with Gemini 3.8 Flash High was used for profiling, flat-memory architectural refactoring, and multi-core parallel zero-allocation optimizations.*
+
 
 ---
 
