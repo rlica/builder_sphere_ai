@@ -83,10 +83,33 @@ export BUILDER_BASE=$(pwd)
 ```
 
 ### 2. Generate Cap'n Proto Serialization Code
-If modifying `eventProto.capnp` or performing a fresh build:
+`include/eventProto.capnp.h` and `src/eventProto.capnp.c++` are **generated** and are not tracked in git. This is deliberate: the generated header contains a hard version guard
+
+```cpp
+#if CAPNP_VERSION != 8000
+#error "Version mismatch between generated code and library headers. ..."
+#endif
+```
+
+so committing it would pin the repository to a single Cap'n Proto release. `make` regenerates the files automatically (`capnp_sync.sh`) whenever the schema is newer than the generated code, or whenever the locally installed Cap'n Proto version differs from the one that produced it. Nothing needs to be done by hand on a fresh clone.
+
+To regenerate explicitly (for example after editing `eventProto.capnp`):
 
 ```bash
 make cap
+```
+
+To inspect the three versions involved — the `capnp` compiler, the Cap'n Proto library headers actually used for compilation, and the version the generated code came from:
+
+```bash
+make capnp-check
+```
+
+```
+capnproto compiler : 0.8.0
+capnproto library  : 8000
+generated code     : 8000 (include/eventProto.capnp.h)
+status             : up to date
 ```
 
 ### 3. Compile Executables
@@ -100,6 +123,14 @@ To clean intermediate object files and binaries:
 ```bash
 make clean
 ```
+
+**Cap'n Proto version requirements and troubleshooting**
+
+- The `capnp` **compiler and library must be the same version** (e.g. `capnproto` / `libcapnp-dev` 0.8.x together, or both 1.x). Mismatched pairs are rejected up front with an explicit error.
+- Different Cap'n Proto versions across machines are fine: each machine generates its own code from `eventProto.capnp`. The schema pins the file ID (`@0x86067e6a0fae5e5e;`), so the wire format is version independent and existing `.cap` files stay readable.
+- If the build stops with `Version mismatch between generated code and library headers`, run `make cap` (or `make clean && make`) to regenerate against the installed version.
+- If `capnp` is missing, the build reuses existing generated code when it is already valid for the installed library; otherwise it fails with instructions to install the compiler package (`capnproto` on Debian/Ubuntu, `capnproto-devel` on Fedora/RHEL — these provide both `capnp` and `capnpc-c++`).
+
 
 ---
 
