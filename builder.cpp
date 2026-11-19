@@ -4,6 +4,7 @@
 #include <deque>
 #include "utils.h"
 #include <math.h>
+#include <cmath>
 #include <iomanip>
 #include <string>
 #include <iostream>
@@ -343,17 +344,58 @@ void buildRun(json config)
         return;
     }
 
-    // High-performance double-buffered sliding-window streaming engine (< 60 MB RAM)
+    // High-performance double-buffered sliding-window streaming engine
     rpcClient->updateState({config["crtId"], "building events (3/4)", 0}, true);
 
-    vector<event> eventRing;
-    eventRing.reserve(1500000);
+    int scalePower = config["build"]["absoluteTime"]["scalePower"].get<int>();
+    uint64_t ticksPerSecond = (scalePower < 0 && scalePower >= -18)
+                                  ? static_cast<uint64_t>(std::llround(std::pow(10.0, -scalePower)))
+                                  : 1000000000000ULL;
 
     const size_t BATCH_SIZE = 500000;
     const size_t MARGIN_EVENTS = 200000;
+    const size_t MAX_RING_EVENTS = 8000000; // ~320 MB safety ceiling
+    const uint64_t MIN_JITTER_WINDOW = std::max<uint64_t>(2ULL * ticksPerSecond, 10ULL * coincWindow);
+    const uint64_t MAX_JITTER_WINDOW = std::max<uint64_t>(5ULL * ticksPerSecond, 2ULL * MIN_JITTER_WINDOW);
+    const uint64_t OUTLIER_HORIZON = std::max<uint64_t>(30ULL * ticksPerSecond, 6ULL * MAX_JITTER_WINDOW);
+
+    vector<event> eventRing;
+    eventRing.reserve(2500000);
 
     vector<event> nextBatch;
     nextBatch.reserve(BATCH_SIZE + 64);
+
+    vector<event> deferredEvents;
+    uint64_t deferredMinTs = std::numeric_limits<uint64_t>::max();
+    vector<uint64_t> tsSample;
+    tsSample.reserve(4096);
+
+    uint64_t boardMaxTs[32] = {0};
+    bool boardSeen[32] = {false};
+    bool hasEvicted = false;
+    uint64_t lastEvictedTs = 0;
+    size_t lateEventCount = 0;
+    uint64_t maxLateGap = 0;
+
+    auto acceptIntoRing = [&](event &ev, bool trackBoard)
+    {
+        uint64_t ts = ev.getTimeStamp();
+        if (hasEvicted && ts < lastEvictedTs)
+        {
+            lateEventCount++;
+            maxLateGap = std::max(maxLateGap, lastEvictedTs - ts);
+        }
+        if (trackBoard)
+        {
+            uint8_t brd = ev.getBoardNumb();
+            if (brd < 32 && (!boardSeen[brd] || ts > boardMaxTs[brd]))
+            {
+                boardSeen[brd] = true;
+                boardMaxTs[brd] = ts;
+            }
+        }
+        eventRing.push_back(std::move(ev));
+    };
 
     vector<CoincRange> pendingMatches;
     vector<CoincRange> overlapGroup;
@@ -374,7 +416,65 @@ void buildRun(json config)
 
         if (!nextBatch.empty())
         {
-            eventRing.insert(eventRing.end(), nextBatch.begin(), nextBatch.end());
+            if (!isLast)
+            {
+                tsSample.clear();
+                size_t stride = std::max<size_t>(1, nextBatch.size() / 4096);
+                for (size_t i = 0; i < nextBatch.size(); i += stride)
+                {
+                    tsSample.push_back(nextBatch[i].getTimeStamp());
+                }
+                size_t mid = tsSample.size() / 2;
+                std::nth_element(tsSample.begin(), tsSample.begin() + mid, tsSample.end());
+                uint64_t batchMedianTs = tsSample[mid];
+                uint64_t outlierCutoff = (batchMedianTs <= std::numeric_limits<uint64_t>::max() - OUTLIER_HORIZON)
+                                             ? (batchMedianTs + OUTLIER_HORIZON)
+                                             : std::numeric_limits<uint64_t>::max();
+
+                for (auto &ev : nextBatch)
+                {
+                    uint64_t ts = ev.getTimeStamp();
+                    if (ts > outlierCutoff)
+                    {
+                        if (ts < deferredMinTs) deferredMinTs = ts;
+                        deferredEvents.push_back(std::move(ev));
+                    }
+                    else
+                    {
+                        acceptIntoRing(ev, true);
+                    }
+                }
+
+                // Re-inject previously deferred events if the stream legitimately catches up (e.g., run pause)
+                if (!deferredEvents.empty() && deferredMinTs <= outlierCutoff)
+                {
+                    uint64_t newMinTs = std::numeric_limits<uint64_t>::max();
+                    size_t writeIdx = 0;
+                    for (size_t i = 0; i < deferredEvents.size(); i++)
+                    {
+                        uint64_t ts = deferredEvents[i].getTimeStamp();
+                        if (ts <= outlierCutoff)
+                        {
+                            acceptIntoRing(deferredEvents[i], true);
+                        }
+                        else
+                        {
+                            if (ts < newMinTs) newMinTs = ts;
+                            if (writeIdx != i) deferredEvents[writeIdx] = std::move(deferredEvents[i]);
+                            writeIdx++;
+                        }
+                    }
+                    deferredEvents.resize(writeIdx);
+                    deferredMinTs = newMinTs;
+                }
+            }
+            else
+            {
+                for (auto &ev : nextBatch)
+                {
+                    acceptIntoRing(ev, false);
+                }
+            }
             nextBatch.clear();
         }
 
@@ -386,6 +486,16 @@ void buildRun(json config)
             });
         }
 
+        if (isLast && !deferredEvents.empty())
+        {
+            eventRing.reserve(eventRing.size() + deferredEvents.size());
+            for (auto &ev : deferredEvents)
+            {
+                eventRing.push_back(std::move(ev));
+            }
+            vector<event>().swap(deferredEvents);
+        }
+
         if (eventRing.empty()) break;
 
         // Sort current buffer in-place using tbb::parallel_sort
@@ -393,22 +503,74 @@ void buildRun(json config)
             return i.getTimeStamp() < j.getTimeStamp();
         });
 
-        // Determine safe limit to evaluate coincidences
+        // Determine safe limit to evaluate coincidences using time horizon + per-board watermarks
         size_t evalLimit = eventRing.size();
         if (!isLast)
         {
-            if (evalLimit > MARGIN_EVENTS)
-            {
-                evalLimit -= MARGIN_EVENTS;
-            }
-            else
+            if (eventRing.size() <= MARGIN_EVENTS)
             {
                 continue;
             }
+
+            uint64_t ringMaxTs = eventRing.back().getTimeStamp();
+            if (ringMaxTs <= MIN_JITTER_WINDOW)
+            {
+                if (eventRing.size() > MAX_RING_EVENTS)
+                {
+                    evalLimit = eventRing.size() - MARGIN_EVENTS;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                uint64_t safeCutoffTs = ringMaxTs - MIN_JITTER_WINDOW;
+                for (int b = 0; b < 32; b++)
+                {
+                    if (boardSeen[b] && boardMaxTs[b] <= ringMaxTs && (ringMaxTs - boardMaxTs[b]) <= MAX_JITTER_WINDOW)
+                    {
+                        safeCutoffTs = std::min(safeCutoffTs, boardMaxTs[b]);
+                    }
+                }
+
+                if (safeCutoffTs <= coincWindow)
+                {
+                    evalLimit = 0;
+                }
+                else
+                {
+                    uint64_t evalCutoffTs = safeCutoffTs - coincWindow;
+                    auto it = std::lower_bound(eventRing.begin(), eventRing.end(), evalCutoffTs,
+                                               [](const event &ev, uint64_t val) {
+                                                   return ev.getTimeStamp() < val;
+                                               });
+                    evalLimit = static_cast<size_t>(it - eventRing.begin());
+                }
+
+                evalLimit = std::min(evalLimit, eventRing.size() - MARGIN_EVENTS);
+                if (eventRing.size() > MAX_RING_EVENTS)
+                {
+                    evalLimit = std::max(
+                        evalLimit,
+                        std::min(eventRing.size() - MARGIN_EVENTS, eventRing.size() - MAX_RING_EVENTS + BATCH_SIZE));
+                }
+            }
+
+            if (evalLimit == 0)
+            {
+                continue;
+            }
+
             uint64_t safeTime = eventRing[evalLimit].getTimeStamp();
             while (evalLimit > 0 && (safeTime - eventRing[evalLimit - 1].getTimeStamp() < coincWindow))
             {
                 evalLimit--;
+            }
+            if (evalLimit == 0)
+            {
+                continue;
             }
         }
 
@@ -524,6 +686,12 @@ void buildRun(json config)
 
         if (lastEvictedEvtIdx > 0 && !isLast)
         {
+            uint64_t evictedTs = eventRing[lastEvictedEvtIdx - 1].getTimeStamp();
+            if (!hasEvicted || evictedTs > lastEvictedTs)
+            {
+                lastEvictedTs = evictedTs;
+                hasEvicted = true;
+            }
             eventRing.erase(eventRing.begin(), eventRing.begin() + lastEvictedEvtIdx);
         }
 
@@ -536,6 +704,15 @@ void buildRun(json config)
     }
 
     loader->closeStream();
+    if (lateEventCount > 0)
+    {
+        double maxGapMs = (ticksPerSecond > 0)
+                              ? (static_cast<double>(maxLateGap) * 1000.0 / static_cast<double>(ticksPerSecond))
+                              : 0.0;
+        cerr << "[WARNING] " << config["crtFile"].get<string>()
+             << ": " << lateEventCount << " late out-of-order event(s) arrived after ring eviction "
+             << "(max lag = " << maxGapMs << " ms); consider increasing MAX_JITTER_WINDOW." << endl;
+    }
     rpcClient->updateState({config["crtId"], "filter/write events (4/4)", 100}, true);
     writer->closeFile();
 }

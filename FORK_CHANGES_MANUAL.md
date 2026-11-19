@@ -1,8 +1,8 @@
 # `builder_sphere` Fork Changes & Technical Reference Manual
 
 **Upstream Baseline:** `gabriel-turturica/builder_sphere` (`master` @ `67f4d37865f50a907cdf52ab67f19b49728b3ccb`, last pushed `2025-10-21`)  
-**Current Fork Head:** `rlica/builder_sphere` (`master`, following tag `v1.0.1` @ `217006744ce9b290ef1727eb14ac9d4798aac89a`)  
-**Divergence:** **10 commits ahead, 0 commits behind** upstream (`22` files changed, `+2,633` insertions, `-7,500` deletions)
+**Current Fork Head:** `rlica/builder_sphere` (`master`, following `b2ba260496a0ca060a5a27529aa6eafc04978a76` / tag `v1.0.1`)  
+**Divergence:** **13 commits ahead, 0 commits behind** upstream (`23` files changed)
 
 ---
 
@@ -41,7 +41,8 @@ Commits between `67f4d37` (upstream `master`) and fork `master` in chronological
 | `ec96bfa` | `2026-09-20` | Phase 4 (`v1.0.0`) | Asynchronous `std::async` double-buffered batch prefetching, parallel streaming coincidence search, static buffer hoisting in `gaspDataWriter`, RPC `try/catch` hardening for standalone runs |
 | `2170067` | `2026-09-29` | Build (`v1.0.1`) | Untracked generated `eventProto.capnp.h` / `.c++`, added `capnp_sync.sh`, `pkg-config` flag resolution, `make cap`/`capnp-check`/`capnp-sync`, and fixed `OBJECTS` substitution for `.c++` files |
 | `7af60d9` | `2026-11-19` | Docs | Added `FORK_CHANGES_MANUAL.md` fork changes and technical reference manual |
-| *(HEAD)* | `2026-11-19` | Bugfix | Expanded `gaspDataWriter::addBuiltEvent` `slotTable` from `[16][32]` to `[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`) so GASP builds no longer silently drop detectors with LUT `>= 32` (576 KiB static per process, negligible RAM/cache impact) |
+| `b2ba260` | `2026-11-19` | Bugfix | Expanded `gaspDataWriter::addBuiltEvent` `slotTable` from `[16][32]` to `[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`) so GASP builds no longer silently drop detectors with LUT `>= 32` (576 KiB static per process, negligible RAM/cache impact) |
+| *(HEAD)* | `2026-11-19` | Bugfix / Tooling | Adaptive streaming time-horizon (`2 s` min / `5 s` per-board watermark cap), future-outlier quarantine (`deferredEvents`, `30 s` horizon, merged before final `isLast` pass), late-event warning, `updateResetWindow()` `uint64_t` underflow/overflow guard in `src/dataWriter.cpp`, and new `compare_gasp_runs.py` GASP comparison tool; verified 100% bit-for-bit MD5 parity on `Run_000170`–`172` |
 
 ---
 
@@ -189,17 +190,20 @@ Note that `BUILDER_BASE` must point to the repository root so `./build` can loca
 
 #### Path A: Streaming Double-Buffered Engine (`openStream() == true`, used by `capLoader`)
 
-1. **Pre-Allocated Ring & Staging Buffers:**
-   - `eventRing`: reserved to `1,500,000` `event` objects (~60 MB at 40 B/event).
+1. **Pre-Allocated Ring, Quarantine & Staging Buffers:**
+   - `eventRing`: reserved to `2,500,000` `event` objects (~100 MB at 40 B/event), with a safety memory ceiling of `MAX_RING_EVENTS = 8,000,000` (~320 MB).
    - `nextBatch`: reserved to `BATCH_SIZE + 64` (`BATCH_SIZE = 500,000`).
-   - `MARGIN_EVENTS = 200,000`.
+   - `deferredEvents`: quarantine buffer holding extreme future-timestamp outliers (`> batchMedianTs + OUTLIER_HORIZON`) until the main stream catches up or reaches EOF.
+   - `boardMaxTs[32]` / `boardSeen[32]`: per-board high-watermark timestamp trackers; `ticksPerSecond` is derived from `build.absoluteTime.scalePower` (`10^-scalePower`, defaulting to `1e12` ps/s).
+   - `MARGIN_EVENTS = 200,000`, `MIN_JITTER_WINDOW = max(2 s, 10 * coincWindow)`, `MAX_JITTER_WINDOW = max(5 s, 2 * MIN_JITTER_WINDOW)`, `OUTLIER_HORIZON = max(30 s, 6 * MAX_JITTER_WINDOW)`.
 2. **Asynchronous Double Buffering (`std::async`):**
    - Before entering the loop, launches an async task `readFuture` calling `loader->readEventsBatch(nextBatch, BATCH_SIZE)`.
-   - On each iteration: awaits `readFuture.get()`, appends `nextBatch` to `eventRing`, clears `nextBatch`, and **immediately** launches `readFuture` for the subsequent 500k batch if `!isLast` — overlapping disk/Cap'n Proto deserialization with CPU sorting and coincidence matching.
+   - On each iteration: awaits `readFuture.get()`, filters `nextBatch` into `eventRing` / `deferredEvents` (when `!isLast`), clears `nextBatch`, and **immediately** launches `readFuture` for the subsequent 500k batch if `!isLast` — overlapping disk/Cap'n Proto deserialization with CPU sorting and coincidence matching.
 3. **In-Place Parallel Sort:**
    - Sorts `eventRing` in place using `tbb::parallel_sort` by `getTimeStamp()` (zero auxiliary merge buffers, no TLS atomics in the comparator).
-4. **Three-Tier Anti-Splitting Safeguard:**
-   - **Tier 1 (Inter-Board Arrival Jitter Buffer):** When `!isLast`, holds back the trailing `MARGIN_EVENTS = 200,000` events (`evalLimit -= MARGIN_EVENTS`), representing ~10× the empirically measured maximum CAEN inter-board arrival displacement (20,560 events / ~137 ms). If `eventRing.size() <= MARGIN_EVENTS`, skips evaluation and reads another batch.
+4. **Three-Tier Anti-Splitting Safeguard + Outlier Quarantine:**
+   - **Future-Outlier Quarantine (`!isLast`):** Estimates `batchMedianTs` via `std::nth_element` on up to `4,096` evenly sampled timestamps from `nextBatch` and sets `outlierCutoff = batchMedianTs + OUTLIER_HORIZON`. Events with `ts > outlierCutoff` are moved to `deferredEvents` so a misbehaving/stuck-bit channel cannot sit in the tail of `eventRing`, starve the holdback margin, or spill mid-run bursts. If the stream later catches up past `deferredMinTs <= outlierCutoff` (e.g., after a genuine DAQ run pause), deferred events are automatically re-injected into `eventRing`. On `isLast`, any remaining `deferredEvents` are merged into `eventRing` before the final sort/coincidence pass so the global end-of-file ordering matches monolithic upstream `i < eventPos.size() - 1` bit-for-bit.
+   - **Tier 1 (Adaptive Time-Horizon + Per-Board Watermark Holdback):** When `!isLast`, requires `eventRing.size() > MARGIN_EVENTS`, then sets `safeCutoffTs = min(ringMaxTs - MIN_JITTER_WINDOW, min_b boardMaxTs[b])` across active boards whose `boardMaxTs[b]` is within `MAX_JITTER_WINDOW` (`5 s`) of `ringMaxTs` (so a silent or disconnected board cannot stall the ring indefinitely). Uses `std::lower_bound` at `evalCutoffTs = safeCutoffTs - coincWindow`, clamped to `<= eventRing.size() - MARGIN_EVENTS` (and bounded below by `MAX_RING_EVENTS` so memory cannot grow unboundedly).
    - **Tier 2 (Coincidence Window Horizon Back-Off):** Walks `evalLimit` backward while `eventRing[evalLimit].getTimeStamp() - eventRing[evalLimit - 1].getTimeStamp() < coincWindow`, guaranteeing every evaluated anchor `i < evalLimit` sees its entire `[t_i, t_i + coincWindow)` window in `eventRing`.
    - **Tier 3 (Decoupled Cluster Finalization):** Scans `pendingMatches` into `overlapGroup` and refuses to finalize/write a cluster until either a quiet gap (`d2 >= d1`) closes the group (`clusterClosed == true`) or `isLast` is true.
    - *(Note: On `isLast`, `if (isLast && mIdx >= pendingMatches.size() - 1) break;` mirrors upstream's loop bound `i < eventPos.size() - 1` so output matches upstream bit-for-bit, including omitting the last unmatched/trailing boundary element in `eventPos`.)*
@@ -211,8 +215,8 @@ Note that `BUILDER_BASE` must point to the repository root so `./build` can loca
    - `getTimeStd()`: shifts timestamps relative to `t0 = eventPool[evt.start].getTimeStamp()` and accumulates in `double` instead of `uint128_t` / `float128_t` + `vector<double> diff(size)`.
    - `postProcessEvent()`: reuses `static vector<event> tempList` and `static vector<event *> ptrList` instead of allocating/deleting `new event(*(*i))` per built event.
    - `validateEvent()`: replaces `map<pair<int, int>, int> counts` with a direct O(n²) pairwise `(detectorLut, detectorType)` duplicate scan (typically $n \le 4$–$8$).
-7. **Rolling Eviction & Throttled Progress:**
-   - After writing closed clusters, erases `[eventRing.begin(), eventRing.begin() + lastEvictedEvtIdx)` when `!isLast`.
+7. **Rolling Eviction, Late-Event Watermark Check & Throttled Progress:**
+   - Records `lastEvictedTs = eventRing[lastEvictedEvtIdx - 1].getTimeStamp()` before erasing `[eventRing.begin(), eventRing.begin() + lastEvictedEvtIdx)` when `!isLast`. Any subsequent non-quarantined event arriving with `ts < lastEvictedTs` increments `lateEventCount` / `maxLateGap` and emits a `[WARNING]` summary on `stderr` at end of run (silent when `0`).
    - Reports progress via `rpcClient->updateState(...)` every 8 loop iterations (`(loopIter++ & 0x7) == 0`) using `loader->getStreamProgress()`.
 
 #### Path B: Non-Streaming Fallback (`!openStream()`, e.g., `rootLoader`, `compassLoader`, etc.)
@@ -248,6 +252,9 @@ Note that `BUILDER_BASE` must point to the repository root so `./build` can loca
 3. **`rootDataWriter` Fixes (`src/dataWriter.cpp`):**
    - Guarded reading `config["convert"]["root"]["addHistogram" | "addList" | "addRunTime"]` in `setConfig()` behind `if (config["general"]["run"].get<string>() == "convert")`, preventing missing-key JSON exceptions in `"build"` mode when `"convert"` is omitted or partial.
    - Removed a per-event debug `cout << time << " " << varAbsoluteTime << endl;` from `rootDataWriter::addBuiltEvent()`.
+4. **`resetTime` Underflow & Overflow Guard (`src/dataWriter.cpp`):**
+   - Extracted an anonymous-namespace `updateResetWindow(uint64_t time, int64_t resetGap, uint64_t &resetTime, uint64_t &prevTime)` helper shared across `rootDataWriter::addBuiltEvent`, `gaspDataWriter::addBuiltEvent`, and `gaspDataWriter::dumpToFile`.
+   - Replaced `if (time > (prevTime + resetGap))` with `if (time < resetTime || (time > prevTime && (time - prevTime) > gap))`, eliminating both `prevTime + resetGap` addition overflow and `uint64_t` `time - resetTime` underflow when timestamps jump backward (e.g., at the end-of-file transition from quarantined outlier events back to earlier timestamps, or between disjoint streams).
 
 ---
 
@@ -286,8 +293,10 @@ Note that `BUILDER_BASE` must point to the repository root so `./build` can loca
    - Provides a custom **Detector** tab with a module selector (`Module 0..N`), **Add Module** / **Remove Selected Module** buttons, and 4×4 (16-channel) grids per detector property (`coincPairs`, `delay`, `lut`, `type`).
 2. **`viewWaveform.py` (87 lines, newly tracked):**
    - Un-ignored from `.gitignore` and tracked in git. Reads multi-column waveform traces from `"garb"` (skipping 4 header lines) and displays them interactively via `matplotlib.pyplot`, with commented-out CFD trigger, `savgol_filter`, `uniform_filter1d`, and `TH1D` scaffolding.
-3. **`README.md` (311 lines):**
-   - Expanded from a minimal 2-line upstream file into full project documentation covering features, directory layout, dependencies, Cap'n Proto auto-sync workflow & troubleshooting, `config.json` overview, execution instructions, GUI tools, optimization phases 1–4, three-tier streaming safeguards, benchmarks, and MD5 checksums.
+3. **`README.md` (345 lines):**
+   - Expanded from a minimal 2-line upstream file into full project documentation covering features, directory layout, dependencies, Cap'n Proto auto-sync workflow & troubleshooting, `config.json` overview, execution instructions, GUI/diagnostic tools, optimization phases 1–4, streaming safeguards, benchmarks, and MD5 checksums.
+4. **`compare_gasp_runs.py` (new, Python 3 standard library only):**
+   - Decodes GASP binary runs dynamically from `config.json` (`load_gasp_schema()`), validates block `0x4748`/`0x4758` headers and per-event framing/LUT ordering/`coincMask`, reports per-type/per-LUT/per-board hit distributions, aligns event streams via `difflib.SequenceMatcher(..., autojunk=False)` without treating frequent events as junk, and supports `--find-first-diff`, `--dump-events`, and `--json-report`.
 
 ---
 
@@ -308,8 +317,10 @@ Review these carefully before merging upstream or deploying into new environment
 6. **Hard limits & non-reentrancy in `gaspDataWriter::addBuiltEvent` and `postProcessEvent`:**
    - `slotTable[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`; 576 KiB static per process — expanded from `[16][32]` to fix silent dropping of GASP detectors with LUT `>= 32`) supports `oType` in `0..31`, `oLut` in `0..255` (matching `event::detectorLut`'s `uint8_t` ceiling), and at most **8 signals per detector slot** (`event *signals[8]`); entries outside `0 <= oType < 32` or `0 <= oLut < 256` are silently skipped (and `slotIdx >= 8` would overflow `signals[8]`).
    - Function-local `static` buffers (`slotTable`, `activeSlots`, `eventMask`, `eventBuffer`, `tempList`, `ptrList`) make `gaspDataWriter::addBuiltEvent`, `dumpToFile`, and `postProcessEvent` **not thread-safe** if called concurrently within one process.
-7. **200,000-event jitter buffer assumption (`MARGIN_EVENTS = 200000`):**
-   - The streaming engine assumes inter-board packet arrival displacement never exceeds 200,000 events (roughly 10× the profiled 20,560-event worst case on CAEN multi-board `.cap` streams). Streams with larger out-of-order skew require increasing `MARGIN_EVENTS` (and `eventRing.reserve(...)`).
+7. **Adaptive streaming jitter bounds (`MIN_JITTER_WINDOW = 2s`, `MAX_JITTER_WINDOW = 5s`, `OUTLIER_HORIZON = 30s`, `MAX_RING_EVENTS = 8M`):**
+   - Replaces the earlier fixed `MARGIN_EVENTS = 200,000` holdback (which failed at ~`656 kHz` when boards 6 & 7 lagged up to `447.14 ms` / `~269,775` raw events, and collapsed to zero effective margin when a stuck-bit channel sat in the tail).
+   - Holds back at least `2 s` (`MIN_JITTER_WINDOW`), adapts to lagging active boards up to `5 s` (`MAX_JITTER_WINDOW`), quarantines extreme future outliers `> 30 s` ahead of batch median in `deferredEvents` until catch-up or EOF, and caps `eventRing` at `8,000,000` events (~320 MB).
+   - **Caveat:** Inter-board skew exceeding `MAX_JITTER_WINDOW` (`5 s`) or a channel with timestamps stuck in the *past* relative to the active stream (e.g., stuck at `0`) will not buffer the whole file; instead, `buildRun()` detects `ts < lastEvictedTs` and prints a `[WARNING]` on `stderr` with the late event count and maximum lag in ms.
 8. **Streaming parallel chunk cap of 10:**
    - The streaming coincidence search in `builder.cpp` caps `numChunks` at `std::min<size_t>(10, ...)` rather than reading `general.maxCores` (unlike the non-streaming fallback, which uses `maxCores * 4`).
 9. **CPU portability with `-march=native`:**
@@ -329,15 +340,17 @@ Review these carefully before merging upstream or deploying into new environment
 
 ## 6. Complete File-by-File Change Matrix
 
-Diff summary across all 22 touched files (`git diff --stat 67f4d37..2170067`):
+Diff summary across touched files (`git diff --stat 67f4d37` at `2170067` plus subsequent bugfix/tooling updates):
 
 | File | Status | Line Delta | Summary of Changes |
 | :--- | :--- | :--- | :--- |
 | `.gitignore` | Modified | `16 +-` | Ignore `test.txt`, `builderStatus.txt`, `.scratch/`, and generated `eventProto.capnp.*`/stamp; un-ignore `viewWaveform.py` |
+| `FORK_CHANGES_MANUAL.md` | **Added** | `499 +` | Comprehensive fork changes, architecture reference, and `Run_000170`–`172` diagnostic case study |
 | `Makefile` | Modified | `94 +-` | Add `capnp_sync.sh` auto-sync, `pkg-config` flags + fallback, `cap`/`capnp-check`/`capnp-sync` targets, `-O3 -march=native`, `-g`, fix `.c++` object mapping |
-| `README.md` | Modified | `310 ++-` | Full user, build, Cap'n Proto troubleshooting, architecture, optimization, and benchmark documentation |
-| `builder.cpp` | Modified | `478 +++--` | Streaming double-buffered `buildRun()`, `CoincRange`, `tbb::parallel_for` coincidence search, `tbb::parallel_sort`, hoisted post-processing, RPC reporting, `readEventsFlat()` in `convertRun()` |
+| `README.md` | Modified | `344 ++-` | Full user, build, Cap'n Proto troubleshooting, `compare_gasp_runs.py` usage, architecture, optimization, and benchmark documentation |
+| `builder.cpp` | Modified | `647 +++--` | Streaming double-buffered `buildRun()` with adaptive time-horizon (`2 s`–`5 s` per-board watermark), future-outlier quarantine (`30 s` horizon, EOF merge), late-event warning, `CoincRange`, `tbb::parallel_for`, `tbb::parallel_sort`, hoisted post-processing, RPC reporting, `readEventsFlat()` |
 | `capnp_sync.sh` | **Added** | `186 ++` | Preprocessor-based Cap'n Proto version detector and auto-regenerator (`--check` / `--force` / sync) |
+| `compare_gasp_runs.py` | **Added** | `1427 ++++` | Config-driven GASP binary validator, per-LUT/board comparator, stream aligner, and `--find-first-diff` diagnostic tool |
 | `configSchema.json` | Modified | `21 +-` | Add `syncPort` property; whitespace/alignment cleanup |
 | `config_editor.py` | **Added** | `399 ++++` | Tkinter GUI editor for `config.json` with 4×4 per-module detector channel grids |
 | `dispacher.cpp` | Modified | `151 +-` | Add `StateSynchronizerImpl` RPC server, dynamic port discovery (`10000+`), `sort()` in `getPathFiles()`, hardcode `./config.json`, remove `openConfigFile` & `printStatus` |
@@ -352,7 +365,7 @@ Diff summary across all 22 touched files (`git diff --stat 67f4d37..2170067`):
 | `src/dataConfig.cpp` | **Added** | `4 +` | Static member definitions for `dataConfig` singleton |
 | `src/dataLoader.cpp` | Modified | `287 +--` | `capLoader` constructor table precompute, `posix_fadvise`, `openStream`/`readEventsBatch`/`closeStream`/`getStreamProgress`, `readEventsFlat()`, FD size/pos helpers |
 | `src/dataSyncClient.cpp` | **Added** | `105 +` | `dataSyncClient` 1 Hz throttled `EzRpcClient` with standalone `try/catch` guard |
-| `src/dataWriter.cpp` | Modified | `152 +-` | `gaspDataWriter::addBuiltEvent` static `slotTable[32][256]` (originally `[16][32]`) + inlined GASP serialization; `dumpToFile` buffer hoisting; `rootDataWriter` `convert` guard & log cleanup |
+| `src/dataWriter.cpp` | Modified | `177 +-` | `gaspDataWriter::addBuiltEvent` static `slotTable[32][256]` + inlined GASP serialization; `dumpToFile` buffer hoisting; `updateResetWindow()` `uint64_t` underflow/overflow guard; `rootDataWriter` `convert` guard & log cleanup |
 | `src/eventProto.capnp.c++` | **Deleted** | `2470 -` | Untracked generated Cap'n Proto source (now generated per machine by `capnp_sync.sh`) |
 | `viewWaveform.py` | **Added** | `87 +` | Matplotlib/NumPy/SciPy pulse waveform inspection script |
 
@@ -404,7 +417,68 @@ md5sum output/run_*
 
 ---
 
-## 8. Git & Upstream Integration Reference
+## 8. Diagnostic Case Study (`Run_000170`–`172`) & Streaming/Writer Bugfixes
+
+Following the `slotTable[32][256]` fix (`b2ba260`), a structural comparison against upstream baseline outputs (`output/old/Run_000170..172`, ~2.08 GB across 9 digitizer boards) using `compare_gasp_runs.py` uncovered three interacting defects in the streaming coincidence engine and writer when processing high-rate multi-board `.cap` datasets containing a stuck-timestamp channel.
+
+### 8.1 Pre-Fix Observations on `Run_000170`
+
+While the first `1,000` built events were `1000/1000` bit-for-bit identical in all three runs, full-file GASP inspection revealed systematic divergence starting at event `180,621` (`Run_000170`), `36,572` (`Run_000171`), and `111,167` (`Run_000172`):
+
+| Metric (`Run_000170`) | Old (`output/old/Run_000170`) | Pre-Fix Fork (`output/Run_000170`) | Delta (`New - Old`) |
+| :--- | ---: | ---: | ---: |
+| File size | `690,192,384` B (`42,126` blocks) | `685,375,488` B (`41,832` blocks) | `-4,816,896` B (`-294` blocks) |
+| Total built events | `12,043,335` | `12,056,863` | **`+13,528`** |
+| Total GASP words | `343,642,024` | `341,247,863` | `-2,394,161` |
+| `hpgeBGO` entries | `38,546,670` | `38,196,319` | **`-350,351`** (`-0.91%`) |
+| — `HPGe` (`t0`) non-zero sub-hits | `15,734,091` | `15,731,513` | `-2,578` (`-0.02%`) |
+| — `BGO` (`t1`) non-zero sub-hits | `28,647,950` | `28,203,722` | **`-444,228`** (`-1.55%`) |
+| `sectorDE` (board `8`) | `160,902` | `159,575` | `-1,327` (`-0.82%`) |
+| `sectorE` (board `4`) | `20,358` | `19,641` | `-717` (`-3.52%`) |
+| `ringDE` (boards `5`, `6`, `7`) | `207,571` | `203,897` | **`-3,674`** (`-1.77%`) |
+| `scaledTime` range (`uint16`) | `0..119` (clean) | `0..29`, then **`58031` / `58032`** | **8,461,536 corrupted events** |
+
+Key structural patterns identified in the pre-fix output:
+- **Per-board hit losses:** Board `6` (`ringDE` LUTs `15..29`) lost **23.3%–36.3%** per channel, board `7` (`ringDE` LUTs `30..44`) lost **18.0%–29.0%** per channel, and board `4` (`sectorE`) lost **2.3%–4.6%**, whereas boards `0`, `1`, `5`, and `8` lost **0.3%–1.5%**. All LUTs up to `44` were present, ruling out `slotTable` indexing.
+- **Cascade overlap flips:** Dropping even one lagging hit could change coincidence multiplicity and flip `selectOverlapEvent()` (e.g., at `Run_000170` event `808,587`, dropping `ringDE LUT=25` reduced a 6-hit window to 5 hits and switched selection to an earlier 5-hit window).
+- **Sudden cliff at event `2,767,648` (~29 s):** From `0` to `2,000,000` events, only `ringDE` hits on boards `6` and `7` were lost (`-4`, `-10`, `-23`, `-58` across consecutive 500k-event buckets). At built event `2,767,648`, the pre-fix output emitted **4,052 consecutive single-hit `hpgeBGO LUT=4` (`brd=2 ch=4`) events** (`scaledTime = 0`), then resumed normal events at `2,771,700` with `scaledTime` jumped to `58031`/`58032`. In total, `124` periodic bursts of `LUT=4` (`~5,100` events every `~74,000` built events, ending in a `200,944`-event burst at `idx = 11,855,919`, summing to `827,679` single `LUT=4` events) were interleaved through the rest of the run while every 500k-event bucket lost `~10k–14k` HPGe and `~100k–125k` BGO hits. In `output/old/Run_000170`, those identical `827,679` `LUT=4` events all sat cleanly at the end of the file (`idx = 11,215,656..12,043,334`).
+
+### 8.2 Root-Cause Verification in Raw `input/Run_000170..172.cap`
+
+Inspecting raw Cap'n Proto packets in `input/Run_000170.cap` (first 1.5M raw events via `capnp decode`) and the first 200k raw events of `Run_000171.cap` / `Run_000172.cap` explained all three failure modes with exact numerical agreement:
+
+1. **Bug 1 — Timestamp-Outlier Channel Starves Fixed `MARGIN_EVENTS = 200,000`:**
+   - Normal channels ran at `7,466.1 s .. 7,585 s`, while **`brd=2 ch=4` (`hpgeBGO LUT=4`)** carried timestamps at **`570,416.1 s .. 570,535 s`** (`+562,950 s ≈ 2^49 ps`, a stuck upper timestamp bit representing `1.030%` of raw events; the identical `(brd=2, ch=4)` offset also appeared in `Run_000171.cap` and `Run_000172.cap`).
+   - `tbb::parallel_sort` pushed ~`5,100` `brd=2 ch=4` events per `500,000`-event batch to the tail of `eventRing`, trapping them inside the `200,000`-event holdback zone. Once `200,000` outlier events accumulated (after `~19.42M` raw events = `29 s` = built event `2,767,648`), **effective jitter margin for normal boards dropped to `0`**, splitting coincidences at every batch cut and flushing `~5,100` `LUT=4` events into the output every batch.
+2. **Bug 2 — Fixed `MARGIN_EVENTS = 200,000` Insufficient for Low-Rate Boards at High Trigger Rates:**
+   - At `~656,000` raw events/s across 9 boards, low-rate CAEN boards flushed infrequently and exceeded `200,000` raw events of inter-board arrival displacement even before Bug 1 triggered:
+     - Boards `0`, `1`: `97.65–97.72 ms` (`~56.5k–58.9k` raw events)
+     - Boards `2`, `3`, `4`: `107.98–155.37 ms` (`~97.8k–109.8k` raw events)
+     - Boards `5`, `8`: `106.50–109.98 ms` (`~70.7k–83.5k` raw events)
+     - **Board `6` (`ringDE` LUT `15..29`):** **`447.14 ms`** (`~269,775` raw events)
+     - **Board `7` (`ringDE` LUT `30..44`):** **`349.31 ms`** (`~258,207` raw events)
+3. **Bug 3 — `uint64_t` Underflow & Stuck `resetTime` in `dataWriter.cpp`:**
+   - When the first `brd=2 ch=4` burst spilled at `idx = 2,767,648`, `resetTime` latched to `570,416 s`. When normal timestamps (`~7,495 s`) resumed at `idx = 2,771,700`, `time > prevTime + resetGap` was false, leaving `resetTime` stuck at `570,416 s`. Unsigned `uint64_t` subtraction `(time - resetTime) * 1e-12` underflowed to `~17,883,823`, truncating to 16-bit `58031` / `58032` for the remaining `8,461,536` events.
+
+### 8.3 Implemented Fixes & Post-Fix Verification
+
+- **`builder.cpp` (`buildRun`):** Replaced the fixed `200,000`-event margin with sampled median future-outlier quarantine (`OUTLIER_HORIZON = 30 s`, pause re-injection, unified merge before the final `isLast` pass), adaptive `MIN_JITTER_WINDOW = 2 s` + per-board `MAX_JITTER_WINDOW = 5 s` holdback (`MAX_RING_EVENTS = 8M` ceiling), and a `ts < lastEvictedTs` late-event `stderr` warning.
+- **`src/dataWriter.cpp` (`updateResetWindow`):** Guarded `time < resetTime || (time > prevTime && (time - prevTime) > gap)` across `rootDataWriter::addBuiltEvent`, `gaspDataWriter::addBuiltEvent`, and `gaspDataWriter::dumpToFile`.
+- **`compare_gasp_runs.py`:** Added to the repository to verify header/block integrity, per-LUT/board hit distributions, and full-stream event parity.
+
+**Verified Post-Fix Parity (`Run_000170`–`172` vs `output/old/`):**
+
+| Run | File Size (Bytes) | Blocks | Measured Time / Peak RSS (Standalone `./builder`) | Late-Event Warnings | MD5 (`output/old/` & `output/`) | Parity |
+| :--- | ---: | ---: | :--- | :---: | :--- | :--- |
+| `Run_000170` | `690,192,384` | `42,126` | `23.51 s` / `417,328 KiB` (`407.5 MiB`) | `0` | `c2768ef52d79f3324e41b686d77e16a2` | **100% Bit-for-bit match** |
+| `Run_000171` | `696,352,768` | `42,502` | `21.18 s` / `421,044 KiB` (`411.2 MiB`) | `0` | `b06775adc449cf85fedd82abdbe2f175` | **100% Bit-for-bit match** |
+| `Run_000172` | `695,992,320` | `42,480` | — *(full rebuild via `./build` matched)* | `0` | `8f471ccd254f2d0408a08ec4b9efb7fc` | **100% Bit-for-bit match** |
+
+*(Note: Peak RSS during `Run_000170`–`171` reflects the `eventRing` `2.5M`-event reservation plus buffering the `827,679` quarantined `brd=2 ch=4` events until EOF rather than corrupting the output stream.)*
+
+---
+
+## 9. Git & Upstream Integration Reference
 
 Currently `.git/config` defines only `origin` (`https://github.com/rlica/builder_sphere.git`). Useful commands for inspecting or integrating with upstream `gabriel-turturica/builder_sphere`:
 

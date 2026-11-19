@@ -7,6 +7,19 @@
 #include <set>
 #include <unistd.h>
 
+namespace
+{
+    inline void updateResetWindow(uint64_t time, int64_t resetGap, uint64_t &resetTime, uint64_t &prevTime)
+    {
+        uint64_t gap = (resetGap > 0) ? static_cast<uint64_t>(resetGap) : 0ULL;
+        if (time < resetTime || (time > prevTime && (time - prevTime) > gap))
+        {
+            resetTime = time;
+        }
+        prevTime = time;
+    }
+}
+
 dataWriter::dataWriter(json &config) : varConfig(config)
 {
     auto runType = config["general"]["run"].get<string>();
@@ -193,12 +206,7 @@ void rootDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
     varRelativePsTime.clear();
 
     // add header parameters
-    if (time > (prevTime + resetGap))
-    {
-        resetTime = time;
-    }
-
-    prevTime = time;
+    updateResetWindow(time, resetGap, resetTime, prevTime);
 
     varAbsoluteTime = (time - resetTime) * timeScale;
 
@@ -660,11 +668,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
 
     eventBuffer.push_back(0); // size word
 
-    if (time > (prevTime + resetGap))
-    {
-        resetTime = time;
-    }
-    prevTime = time;
+    updateResetWindow(time, resetGap, resetTime, prevTime);
 
     short scaledTime = (time - resetTime) * timeScale;
     eventBuffer.push_back(scaledTime);
@@ -738,12 +742,7 @@ void gaspDataWriter::dumpToFile(const map<pair<int, int>, vector<event *>> &even
     eventBuffer.push_back(0); // size word
 
     // add header parameters
-    if (time > (prevTime + resetGap))
-    {
-        resetTime = time;
-    }
-
-    prevTime = time;
+    updateResetWindow(time, resetGap, resetTime, prevTime);
 
     short scaledTime = (time - resetTime) * timeScale;
 
