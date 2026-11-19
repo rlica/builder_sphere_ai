@@ -341,5 +341,7 @@ All verified runs (`152Eu` Runs 1–2 and 9-board `Run_000170`–`172`) are **10
 
 ## License & Authors
 
-Maintained by **Razvan Lica** ([@rlica](https://github.com/rlica)) and contributors.
+Originally created by **Gabriel Turturica** ([@gabriel-turturica](https://github.com/gabriel-turturica)) in the upstream repository [`gabriel-turturica/builder_sphere`](https://github.com/gabriel-turturica/builder_sphere), from which this project is forked.
+
+This fork is maintained by **Razvan Lica** ([@rlica](https://github.com/rlica)) and contributors with the assistance of LLMs, with the goal of optimizing CPU throughput and RAM usage while preserving bit-for-bit output parity.
 Developed for experimental nuclear physics data acquisition and offline event reconstruction.
