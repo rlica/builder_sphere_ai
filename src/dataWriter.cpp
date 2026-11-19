@@ -600,7 +600,9 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
         int expectedSize = 0;
         event *signals[8] = {nullptr};
     };
-    static BuiltDetectorSlot slotTable[16][32];
+    constexpr int MAX_SLOT_TYPES = 32;
+    constexpr int MAX_SLOT_LUTS = 256;
+    static BuiltDetectorSlot slotTable[MAX_SLOT_TYPES][MAX_SLOT_LUTS];
     static vector<pair<int, int>> activeSlots;
 
     for (size_t i = 0; i < events.size(); i++)
@@ -615,7 +617,7 @@ void gaspDataWriter::addBuiltEvent(vector<event *> &events, uint64_t time)
             int expectedSize = iMap[2];
             int slotIdx = iMap[3];
 
-            if (oType >= 0 && oType < 16 && oLut >= 0 && oLut < 32)
+            if (oType >= 0 && oType < MAX_SLOT_TYPES && oLut >= 0 && oLut < MAX_SLOT_LUTS)
             {
                 auto &slot = slotTable[oType][oLut];
                 if (slot.expectedSize == 0)

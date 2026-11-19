@@ -236,7 +236,7 @@ The 1.0 GB raw run (`run_Eu152_000002.cap`) now reconstructs in **16.20 seconds*
 
 #### Phase 3A: SIMD Vectorization, Zero-Map Writer & Kernel Prefetching
 - **`-O3 -march=native` Vectorized Compilation**: Enabled AVX2/SSE4.2 SIMD instructions, loop unrolling, aggressive function inlining, and optimized CPU register allocation across all source modules.
-- **Zero-Map Writer Slot Table**: Replaced dynamic `std::map<pair<int, int>, vector<event*>>` and inner vector allocations in `gaspDataWriter::addBuiltEvent` with a reusable static 2D slot array `slotTable[16][32]`, completely eliminating millions of heap node allocations per run.
+- **Zero-Map Writer Slot Table**: Replaced dynamic `std::map<pair<int, int>, vector<event*>>` and inner vector allocations in `gaspDataWriter::addBuiltEvent` with a reusable static 2D slot array `slotTable[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`), completely eliminating millions of heap node allocations per run. Expanded from the original `[16][32]` (36 KiB) — which silently dropped GASP detectors with LUT `>= 32` — to cover up to 32 detector types and the full `0..255` `uint8_t` LUT range. At 72 bytes per `BuiltDetectorSlot` on 64-bit Linux, the static table uses 576 KiB (~0.56 MiB, +540 KiB) allocated once per `builder` process (~1% of the ~50 MB streaming RSS), with negligible CPU cache impact because only entries in `activeSlots` are accessed and reset.
 - **Linux Kernel Asynchronous Page Prefetching**: Invoked `posix_fadvise(streamFd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED)` to preload raw `.cap` file blocks asynchronously into kernel page cache ahead of Cap'n Proto deserialization.
 
 #### Phase 3B: Sliding-Window Chunked Streaming Engine (< 50 MB RAM)

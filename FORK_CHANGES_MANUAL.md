@@ -1,7 +1,7 @@
 # `builder_sphere` Fork Changes & Technical Reference Manual
 
 **Upstream Baseline:** `gabriel-turturica/builder_sphere` (`master` @ `67f4d37865f50a907cdf52ab67f19b49728b3ccb`, last pushed `2025-10-21`)  
-**Current Fork Head:** `rlica/builder_sphere` (`master`, tag `v1.0.1` @ `217006744ce9b290ef1727eb14ac9d4798aac89a`)  
+**Current Fork Head:** `rlica/builder_sphere` (`master`, following tag `v1.0.1` @ `217006744ce9b290ef1727eb14ac9d4798aac89a`)  
 **Divergence:** **10 commits ahead, 0 commits behind** upstream (`22` files changed, `+2,633` insertions, `-7,500` deletions)
 
 ---
@@ -26,7 +26,7 @@ This manual documents every architectural, algorithmic, build-system, configurat
 
 ## 2. Commit History & Release Timeline
 
-All 10 commits between `67f4d37` (upstream `master`) and `2170067` (fork `master` / `v1.0.1`) in chronological order:
+Commits between `67f4d37` (upstream `master`) and fork `master` in chronological order:
 
 | Commit | Date | Tag / Phase | Summary |
 | :--- | :--- | :--- | :--- |
@@ -40,6 +40,8 @@ All 10 commits between `67f4d37` (upstream `master`) and `2170067` (fork `master
 | `9acce22` | `2026-09-20` | Docs | Documented the three-tier safeguard against coincidence event splitting across streaming windows in `README.md` |
 | `ec96bfa` | `2026-09-20` | Phase 4 (`v1.0.0`) | Asynchronous `std::async` double-buffered batch prefetching, parallel streaming coincidence search, static buffer hoisting in `gaspDataWriter`, RPC `try/catch` hardening for standalone runs |
 | `2170067` | `2026-09-29` | Build (`v1.0.1`) | Untracked generated `eventProto.capnp.h` / `.c++`, added `capnp_sync.sh`, `pkg-config` flag resolution, `make cap`/`capnp-check`/`capnp-sync`, and fixed `OBJECTS` substitution for `.c++` files |
+| `7af60d9` | `2026-11-19` | Docs | Added `FORK_CHANGES_MANUAL.md` fork changes and technical reference manual |
+| *(HEAD)* | `2026-11-19` | Bugfix | Expanded `gaspDataWriter::addBuiltEvent` `slotTable` from `[16][32]` to `[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`) so GASP builds no longer silently drop detectors with LUT `>= 32` (576 KiB static per process, negligible RAM/cache impact) |
 
 ---
 
@@ -233,9 +235,12 @@ Note that `BUILDER_BASE` must point to the repository root so `./build` can loca
          int expectedSize = 0;
          event *signals[8] = {nullptr};
      };
-     static BuiltDetectorSlot slotTable[16][32];
+     constexpr int MAX_SLOT_TYPES = 32;
+     constexpr int MAX_SLOT_LUTS = 256;
+     static BuiltDetectorSlot slotTable[MAX_SLOT_TYPES][MAX_SLOT_LUTS];
      static vector<pair<int, int>> activeSlots;
      ```
+   - Expanded from the original Phase 3A `[16][32]` (36 KiB) — which silently skipped GASP detectors with `oLut >= 32` while ROOT output remained unaffected — to `[32][256]`, matching the full `0..255` `uint8_t` range of `event::detectorLut`. At 72 bytes per `BuiltDetectorSlot` on 64-bit Linux (`int` + 4 B padding + `event *signals[8]`), the static array takes 576 KiB (~0.56 MiB, +540 KiB) allocated once per `builder` process (~1% of the ~50 MB streaming RSS), with effectively unchanged CPU cache behavior because only slots recorded in `activeSlots` are touched and reset.
    - Looks up `const auto &mapping` by `const &` (eliminating vector copy), fills missing slots with `defaultEvents[id]`, and calls `std::sort(activeSlots.begin(), activeSlots.end())` to preserve exact `std::map` ascending `(oType, oLut)` key ordering.
    - Inlines GASP word packing into `addBuiltEvent` using hoisted `static vector<int> eventMask` and `static vector<short> eventBuffer` (pre-reserved to 128 shorts) and direct `typeGetters[iType][i]` lookup instead of `groupGetters[{iType, i}]` map searches.
 2. **`gaspDataWriter::dumpToFile`:**
@@ -301,7 +306,7 @@ Review these carefully before merging upstream or deploying into new environment
 5. **`event` metadata field range reductions (`uint16_t` → `uint8_t`, `double` → `float`):**
    - `boardNumb`, `chNumb`, `detectorType`, and `detectorLut` now hold `0..255`, and `varPSD` is stored as 32-bit `float`. Configs or loaders with detector LUTs, types, boards, or channels `>= 256` will overflow `uint8_t`.
 6. **Hard limits & non-reentrancy in `gaspDataWriter::addBuiltEvent` and `postProcessEvent`:**
-   - `slotTable[16][32]` supports `oType` in `0..15`, `oLut` in `0..31`, and at most **8 signals per detector slot** (`event *signals[8]`); entries outside `0 <= oType < 16` or `0 <= oLut < 32` are silently skipped (and `slotIdx >= 8` would overflow `signals[8]`).
+   - `slotTable[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`; 576 KiB static per process — expanded from `[16][32]` to fix silent dropping of GASP detectors with LUT `>= 32`) supports `oType` in `0..31`, `oLut` in `0..255` (matching `event::detectorLut`'s `uint8_t` ceiling), and at most **8 signals per detector slot** (`event *signals[8]`); entries outside `0 <= oType < 32` or `0 <= oLut < 256` are silently skipped (and `slotIdx >= 8` would overflow `signals[8]`).
    - Function-local `static` buffers (`slotTable`, `activeSlots`, `eventMask`, `eventBuffer`, `tempList`, `ptrList`) make `gaspDataWriter::addBuiltEvent`, `dumpToFile`, and `postProcessEvent` **not thread-safe** if called concurrently within one process.
 7. **200,000-event jitter buffer assumption (`MARGIN_EVENTS = 200000`):**
    - The streaming engine assumes inter-board packet arrival displacement never exceeds 200,000 events (roughly 10× the profiled 20,560-event worst case on CAEN multi-board `.cap` streams). Streams with larger out-of-order skew require increasing `MARGIN_EVENTS` (and `eventRing.reserve(...)`).
@@ -347,7 +352,7 @@ Diff summary across all 22 touched files (`git diff --stat 67f4d37..2170067`):
 | `src/dataConfig.cpp` | **Added** | `4 +` | Static member definitions for `dataConfig` singleton |
 | `src/dataLoader.cpp` | Modified | `287 +--` | `capLoader` constructor table precompute, `posix_fadvise`, `openStream`/`readEventsBatch`/`closeStream`/`getStreamProgress`, `readEventsFlat()`, FD size/pos helpers |
 | `src/dataSyncClient.cpp` | **Added** | `105 +` | `dataSyncClient` 1 Hz throttled `EzRpcClient` with standalone `try/catch` guard |
-| `src/dataWriter.cpp` | Modified | `152 +-` | `gaspDataWriter::addBuiltEvent` static `slotTable[16][32]` + inlined GASP serialization; `dumpToFile` buffer hoisting; `rootDataWriter` `convert` guard & log cleanup |
+| `src/dataWriter.cpp` | Modified | `152 +-` | `gaspDataWriter::addBuiltEvent` static `slotTable[32][256]` (originally `[16][32]`) + inlined GASP serialization; `dumpToFile` buffer hoisting; `rootDataWriter` `convert` guard & log cleanup |
 | `src/eventProto.capnp.c++` | **Deleted** | `2470 -` | Untracked generated Cap'n Proto source (now generated per machine by `capnp_sync.sh`) |
 | `viewWaveform.py` | **Added** | `87 +` | Matplotlib/NumPy/SciPy pulse waveform inspection script |
 
