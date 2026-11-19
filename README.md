@@ -301,41 +301,6 @@ The true power of the streaming engine and double-buffering architecture was dem
 | **System Stability** | Crashed on workstations (< 32 GB RAM) | **Smooth, zero memory spikes** | Stable on any laptop/workstation |
 | **Bit-for-Bit Correctness** | Reference | **100% Bit-for-bit match** | Hashes match baseline references |
 
----
-
-### Verification & Validation Checksums
-
-Every optimization phase was strictly verified against the original baseline reference files using MD5 cryptographic checksums:
-
-```bash
-# Run 1 (16,482,304 bytes):
-5521848bc628bc1386ee9c0ce3523bad  output/run_Eu152_000001
-5521848bc628bc1386ee9c0ce3523bad  ../builder_sphere_old/output/run_Eu152_000001
-
-# Run 2 (412,319,744 bytes):
-c32a9cecf0443a2b1f5c573a2cb24395  output/run_Eu152_000002
-c32a9cecf0443a2b1f5c573a2cb24395  ../builder_sphere_old/output/run_Eu152_000002
-
-# Run 3 (410,796,032 bytes):
-500b80bbad755bcfa8fff71ef2d92c88  output/run_Eu152_000003
-
-# Run 4 (410,664,960 bytes):
-ef49b9bf68241ce007cec311b1476085  output/run_Eu152_000004
-
-# 9-board high-rate dataset validation (690-696 MB built outputs, matching output/old/ bit-for-bit):
-c2768ef52d79f3324e41b686d77e16a2  output/Run_000170   (690,192,384 bytes)
-c2768ef52d79f3324e41b686d77e16a2  output/old/Run_000170
-b06775adc449cf85fedd82abdbe2f175  output/Run_000171   (696,352,768 bytes)
-b06775adc449cf85fedd82abdbe2f175  output/old/Run_000171
-8f471ccd254f2d0408a08ec4b9efb7fc  output/Run_000172   (695,992,320 bytes)
-8f471ccd254f2d0408a08ec4b9efb7fc  output/old/Run_000172
-```
-
-All verified runs (`152Eu` Runs 1–2 and 9-board `Run_000170`–`172`) are **100% bit-for-bit identical** to the baseline references.
-
-*Note: Antigravity with Gemini 3.8 Flash High was used for profiling, flat-memory architectural refactoring, multi-core parallelization, zero-allocation pipeline optimizations, double-buffered asynchronous streaming, and multi-run concurrent batch benchmarking.*
-
-
 
 ---
 
