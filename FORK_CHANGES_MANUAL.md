@@ -293,8 +293,8 @@ Note that `BUILDER_BASE` must point to the repository root so `./build` can loca
    - Provides a custom **Detector** tab with a module selector (`Module 0..N`), **Add Module** / **Remove Selected Module** buttons, and 4×4 (16-channel) grids per detector property (`coincPairs`, `delay`, `lut`, `type`).
 2. **`viewWaveform.py` (87 lines, newly tracked):**
    - Un-ignored from `.gitignore` and tracked in git. Reads multi-column waveform traces from `"garb"` (skipping 4 header lines) and displays them interactively via `matplotlib.pyplot`, with commented-out CFD trigger, `savgol_filter`, `uniform_filter1d`, and `TH1D` scaffolding.
-3. **`README.md` (345 lines):**
-   - Expanded from a minimal 2-line upstream file into full project documentation covering features, directory layout, dependencies, Cap'n Proto auto-sync workflow & troubleshooting, `config.json` overview, execution instructions, GUI/diagnostic tools, optimization phases 1–4, streaming safeguards, benchmarks, and MD5 checksums.
+3. **`README.md`:**
+   - Expanded from a minimal 2-line upstream file into full project documentation covering features, directory layout, dependencies, Cap'n Proto auto-sync workflow & troubleshooting, `config.json` overview, execution instructions, GUI/diagnostic tools, and benchmark summaries (linking to `FORK_CHANGES_MANUAL.md` for the detailed optimization phases, streaming safeguards, and MD5 checksums).
 4. **`compare_gasp_runs.py` (new, Python 3 standard library only):**
    - Decodes GASP binary runs dynamically from `config.json` (`load_gasp_schema()`), validates block `0x4748`/`0x4758` headers and per-event framing/LUT ordering/`coincMask`, reports per-type/per-LUT/per-board hit distributions, aligns event streams via `difflib.SequenceMatcher(..., autojunk=False)` without treating frequent events as junk, and supports `--find-first-diff`, `--dump-events`, and `--json-report`.
 
@@ -394,6 +394,50 @@ Diff summary across touched files (`git diff --stat 67f4d37` at `2170067` plus s
 | **Total CPU Work (User Time)** | ~1,200s | **81.08s** | **> 14.8× CPU efficiency** |
 | **Sustained CPU Utilization** | ~100% | **400%** | **4× parallel throughput** |
 | **Peak Concurrent RAM** | ~34 GB (*OOM crash on < 32 GB*) | **~300 MB** | **99.1% memory reduction** |
+
+### Detailed Summary of Completed Optimizations
+
+#### Phase 1: Flat-Memory Architecture & Zero-Allocation Engine
+- **Packed Event Structure**: Reduced memory size of `class event` from ~80 bytes down to **40 bytes** (a 50% size reduction) by optimizing data types, packing bitfields, and converting the heavy per-event `std::vector<int16_t> waveform` (24 bytes) into an on-demand heap pointer.
+- **Contiguous Event Ingestion (`capLoader::readEventsFlat`)**: Eliminated all 82+ million `new event()` heap allocations, reading data directly into a contiguous `std::vector<event>` with capacity pre-reservation to prevent memory reallocations.
+- **In-Place Parallel Sorting**: Replaced STL merge-sort with `tbb::parallel_sort`, avoiding multi-gigabyte auxiliary sorting buffers.
+- **Lightweight Coincidence Ranges**: Replaced 64-byte deque iterator pairs (`eventPos`) with compact 8-byte index ranges (`struct CoincRange { uint32_t start, end; }`), reducing index memory by **87.5%**.
+- **Sliding-Window Mask Hoisting**: Hoisted temporary mask vectors out of the 82-million-event sliding-window loop, eliminating 82+ million dynamic heap allocations.
+- **Zero-Copy Streaming in Writer**: Updated `dumpToFile` to stream events by const reference, eliminating deep map cloning.
+
+#### Phase 2: Multi-Core Concurrency & High-Throughput Ingestion
+- **Multi-Core Parallel Coincidence Engine (Stage 3)**: Transformed the single-threaded linear sliding-window search over 82.7 million events into a multi-threaded parallel engine using `tbb::parallel_for` with dynamic chunking across all 10 available cores. Merging chunks deterministically in chronological order guarantees identical event sequences.
+- **Zero-Contention Parallel Sort (Stage 2)**: Removed thread-local atomic counters from `tbb::parallel_sort`'s inner comparator lambda, eliminating **~2.1 billion** thread-local storage hash lookups and atomic bus locks.
+- **L1-Cached Channel Descriptor Table (Stage 1)**: Precomputed a flat 2D lookup array (`FastChannelInfo channelTable[32][64]`) fitting entirely within L1 CPU cache. Eliminated 82.7 million `std::map<pair<uint8_t, uint8_t>, ...>` tree searches and 4 disjoint vector-of-vector pointer indirections per event.
+- **Throttled Syscalls**: Throttled progress reporting in `readEventsFlat`, eliminating thousands of unnecessary `lseek(fd, 0, SEEK_CUR)` Linux system call context switches.
+- **Reusable Scratch Buffers (Stage 4)**: Replaced dynamic vector allocations in `postProcessEvent` and overlap resolution with static pre-reserved scratch buffers.
+
+#### Phase 3A: SIMD Vectorization, Zero-Map Writer & Kernel Prefetching
+- **`-O3 -march=native` Vectorized Compilation**: Enabled AVX2/SSE4.2 SIMD instructions, loop unrolling, aggressive function inlining, and optimized CPU register allocation across all source modules.
+- **Zero-Map Writer Slot Table**: Replaced dynamic `std::map<pair<int, int>, vector<event*>>` and inner vector allocations in `gaspDataWriter::addBuiltEvent` with a reusable static 2D slot array `slotTable[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`), completely eliminating millions of heap node allocations per run. Expanded from the original `[16][32]` (36 KiB) — which silently dropped GASP detectors with LUT `>= 32` — to cover up to 32 detector types and the full `0..255` `uint8_t` LUT range. At 72 bytes per `BuiltDetectorSlot` on 64-bit Linux, the static table uses 576 KiB (~0.56 MiB, +540 KiB) allocated once per `builder` process (~1% of the ~50 MB streaming RSS), with negligible CPU cache impact because only entries in `activeSlots` are accessed and reset.
+- **Linux Kernel Asynchronous Page Prefetching**: Invoked `posix_fadvise(streamFd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED)` to preload raw `.cap` file blocks asynchronously into kernel page cache ahead of Cap'n Proto deserialization.
+
+#### Phase 3B: Sliding-Window Chunked Streaming Engine
+- **Adaptive Bounded Memory Scaling**: Replaced monolithic file ingestion with a streaming ring buffer (`eventRing`, reserved to 2.5M events with an 8M-event safety cap) and a future-outlier quarantine buffer (`deferredEvents`) to maintain bounded RAM while preserving global event parity.
+- **Adaptive Per-Board Watermark & Outlier Isolation**: Holds back at least `MIN_JITTER_WINDOW = 2 s` and tracks per-board high-watermarks up to `MAX_JITTER_WINDOW = 5 s` (covering high-rate runs where low-rate CAEN boards lag by hundreds of milliseconds / `>200,000` raw events). Events jumping `> OUTLIER_HORIZON` (`30 s`) ahead of batch median timestamps (such as stuck-timestamp channels) are quarantined into `deferredEvents`—automatically re-injected on genuine run pauses or merged before the final `isLast` pass—and any arriving event with `ts < lastEvictedTs` emits a `[WARNING]` on `stderr`.
+- **Continuous Overlap Clustering & Immediate Eviction**: Coincidence windows and overlapping cluster groups are resolved continuously as soon as quiet time gaps $> \text{coincWindow}$ are encountered. Fully closed clusters are written to the GASP output file immediately, and processed events are evicted from RAM in rolling batches.
+- **Writer Timestamp Guard (`updateResetWindow`)**: Guards `resetTime` updates in `gaspDataWriter::addBuiltEvent`, `gaspDataWriter::dumpToFile`, and `rootDataWriter::addBuiltEvent` against both `prevTime + resetGap` addition overflow and `uint64_t` `time - resetTime` underflow when timestamps step backward.
+- **Unbounded Dataset Scalability**: Enables processing of arbitrarily large datasets (10 GB, 100 GB, 1 TB+) on standard workstations or cluster nodes without memory exhaustion or disk swapping.
+- **Throughput Boost**: Eliminating 3.2 GB monolithic heap allocations and vector resizing improved cache locality, cutting Run 2 runtime down to **17.75 seconds** (**> 11.8x faster than original baseline**).
+
+##### How Event Splitting Across Chunk Boundaries is Prevented
+A fundamental concern with chunked data processing in nuclear physics is the risk of splitting a coincidence event or multi-detector cascade across chunk boundaries. `builder_sphere` eliminates this risk via outlier quarantine plus a three-tier safeguard:
+1. **Adaptive Inter-Board Jitter Horizon & Outlier Quarantine**: CAEN digitizers buffer and transmit channel data asynchronously; at high trigger rates (`~656 kHz`), low-rate boards can lag by `~450 ms` (`>250,000` raw events), while a channel with a stuck upper timestamp bit can jump hours ahead. Extreme future outliers (`> 30 s` beyond batch median) are quarantined in `deferredEvents` until catch-up or EOF, while active boards are held back by a `2 s`–`5 s` adaptive per-board watermark (`>= 200,000` events) so all out-of-order normal hits are merged into strict chronological order before coincidence evaluation.
+2. **Coincidence Window Horizon Back-Off**: An event $i$ is only evaluated for coincidence if its full prospective coincidence window $[t_i, t_i + \text{coincWindow})$ is strictly contained within the sorted active buffer. Any trailing events whose coincidence window could overlap with future unread data are held in the buffer and deferred to the next batch.
+3. **Decoupled Cluster Finalization**: Overlapping coincidence matches (e.g. Compton-suppressed HPGe + BGO vetoes or gamma cascades) form contiguous clusters. The engine only finalizes and outputs a cluster if a quiet time gap ($> \text{coincWindow}$) is encountered after it. If a cluster is still open or touches the evaluation boundary, it is preserved in the active ring buffer across batch iterations and only evicted once fully closed.
+
+This mechanism mathematically guarantees that no coincidence event is ever truncated or divided, resulting in **100% bit-for-bit identical output** compared to processing the entire file in a single monolithic buffer.
+
+#### Phase 4: Double-Buffered Asynchronous Streaming & Multi-Run Concurrent Batch Processing
+- **Asynchronous Producer–Consumer Double Buffering**: Decoupled raw disk I/O and Cap'n Proto binary decompression from the sorting and coincidence pipeline. While the CPU cores process, sort, and match events in the active ring buffer, a background worker thread (`std::async`) asynchronously decompresses and deserializes the next 500,000-event batch directly into a secondary pre-reserved staging buffer.
+- **Thread-Parallel Coincidence Matching (`tbb::parallel_for`)**: Divided each sliding chunk into balanced workload partitions processed in parallel across worker threads. Chunk results are concatenated in deterministic index order, ensuring identical event outputs with near-zero lock contention.
+- **Zero-Allocation Output Buffer Hoisting**: Hoisted `eventMask` and `eventBuffer` inside `gaspDataWriter::dumpToFile` into pre-allocated static buffers, eliminating hundreds of thousands of heap allocations during output writing.
+- **Robust Standalone CLI & RPC Handling**: Hardened Cap'n Proto RPC state synchronization in `dataSyncClient` with non-blocking try-catch safety guards, allowing `builder` to execute either under the multi-process `build` dispatcher or directly as a standalone CLI tool without hanging.
 
 ### Reference MD5 Checksums & Verification Steps
 

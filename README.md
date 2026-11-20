@@ -255,54 +255,6 @@ All benchmarks were conducted under WSL (Ubuntu) on an Intel/AMD multi-core work
 
 The 1.0 GB raw run (`run_Eu152_000002.cap`) now reconstructs in **16.20 seconds** (down from 3.5 minutes, **> 13.0x faster**), while slashing peak RAM from **8.5 GB down to under 50 MB** (**99.4% memory reduction**), with **exact bit-for-bit output reproducibility**.
 
----
-
-### Detailed Summary of Completed Optimizations
-
-#### Phase 1: Flat-Memory Architecture & Zero-Allocation Engine
-- **Packed Event Structure**: Reduced memory size of `class event` from ~80 bytes down to **40 bytes** (a 50% size reduction) by optimizing data types, packing bitfields, and converting the heavy per-event `std::vector<int16_t> waveform` (24 bytes) into an on-demand heap pointer.
-- **Contiguous Event Ingestion (`capLoader::readEventsFlat`)**: Eliminated all 82+ million `new event()` heap allocations, reading data directly into a contiguous `std::vector<event>` with capacity pre-reservation to prevent memory reallocations.
-- **In-Place Parallel Sorting**: Replaced STL merge-sort with `tbb::parallel_sort`, avoiding multi-gigabyte auxiliary sorting buffers.
-- **Lightweight Coincidence Ranges**: Replaced 64-byte deque iterator pairs (`eventPos`) with compact 8-byte index ranges (`struct CoincRange { uint32_t start, end; }`), reducing index memory by **87.5%**.
-- **Sliding-Window Mask Hoisting**: Hoisted temporary mask vectors out of the 82-million-event sliding-window loop, eliminating 82+ million dynamic heap allocations.
-- **Zero-Copy Streaming in Writer**: Updated `dumpToFile` to stream events by const reference, eliminating deep map cloning.
-
-#### Phase 2: Multi-Core Concurrency & High-Throughput Ingestion
-- **Multi-Core Parallel Coincidence Engine (Stage 3)**: Transformed the single-threaded linear sliding-window search over 82.7 million events into a multi-threaded parallel engine using `tbb::parallel_for` with dynamic chunking across all 10 available cores. Merging chunks deterministically in chronological order guarantees identical event sequences.
-- **Zero-Contention Parallel Sort (Stage 2)**: Removed thread-local atomic counters from `tbb::parallel_sort`'s inner comparator lambda, eliminating **~2.1 billion** thread-local storage hash lookups and atomic bus locks.
-- **L1-Cached Channel Descriptor Table (Stage 1)**: Precomputed a flat 2D lookup array (`FastChannelInfo channelTable[32][64]`) fitting entirely within L1 CPU cache. Eliminated 82.7 million `std::map<pair<uint8_t, uint8_t>, ...>` tree searches and 4 disjoint vector-of-vector pointer indirections per event.
-- **Throttled Syscalls**: Throttled progress reporting in `readEventsFlat`, eliminating thousands of unnecessary `lseek(fd, 0, SEEK_CUR)` Linux system call context switches.
-- **Reusable Scratch Buffers (Stage 4)**: Replaced dynamic vector allocations in `postProcessEvent` and overlap resolution with static pre-reserved scratch buffers.
-
-#### Phase 3A: SIMD Vectorization, Zero-Map Writer & Kernel Prefetching
-- **`-O3 -march=native` Vectorized Compilation**: Enabled AVX2/SSE4.2 SIMD instructions, loop unrolling, aggressive function inlining, and optimized CPU register allocation across all source modules.
-- **Zero-Map Writer Slot Table**: Replaced dynamic `std::map<pair<int, int>, vector<event*>>` and inner vector allocations in `gaspDataWriter::addBuiltEvent` with a reusable static 2D slot array `slotTable[32][256]` (`MAX_SLOT_TYPES = 32`, `MAX_SLOT_LUTS = 256`), completely eliminating millions of heap node allocations per run. Expanded from the original `[16][32]` (36 KiB) — which silently dropped GASP detectors with LUT `>= 32` — to cover up to 32 detector types and the full `0..255` `uint8_t` LUT range. At 72 bytes per `BuiltDetectorSlot` on 64-bit Linux, the static table uses 576 KiB (~0.56 MiB, +540 KiB) allocated once per `builder` process (~1% of the ~50 MB streaming RSS), with negligible CPU cache impact because only entries in `activeSlots` are accessed and reset.
-- **Linux Kernel Asynchronous Page Prefetching**: Invoked `posix_fadvise(streamFd, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED)` to preload raw `.cap` file blocks asynchronously into kernel page cache ahead of Cap'n Proto deserialization.
-
-#### Phase 3B: Sliding-Window Chunked Streaming Engine
-- **Adaptive Bounded Memory Scaling**: Replaced monolithic file ingestion with a streaming ring buffer (`eventRing`, reserved to 2.5M events with an 8M-event safety cap) and a future-outlier quarantine buffer (`deferredEvents`) to maintain bounded RAM while preserving global event parity.
-- **Adaptive Per-Board Watermark & Outlier Isolation**: Holds back at least `MIN_JITTER_WINDOW = 2 s` and tracks per-board high-watermarks up to `MAX_JITTER_WINDOW = 5 s` (covering high-rate runs where low-rate CAEN boards lag by hundreds of milliseconds / `>200,000` raw events). Events jumping `> OUTLIER_HORIZON` (`30 s`) ahead of batch median timestamps (such as stuck-timestamp channels) are quarantined into `deferredEvents`—automatically re-injected on genuine run pauses or merged before the final `isLast` pass—and any arriving event with `ts < lastEvictedTs` emits a `[WARNING]` on `stderr`.
-- **Continuous Overlap Clustering & Immediate Eviction**: Coincidence windows and overlapping cluster groups are resolved continuously as soon as quiet time gaps $> \text{coincWindow}$ are encountered. Fully closed clusters are written to the GASP output file immediately, and processed events are evicted from RAM in rolling batches.
-- **Writer Timestamp Guard (`updateResetWindow`)**: Guards `resetTime` updates in `gaspDataWriter::addBuiltEvent`, `gaspDataWriter::dumpToFile`, and `rootDataWriter::addBuiltEvent` against both `prevTime + resetGap` addition overflow and `uint64_t` `time - resetTime` underflow when timestamps step backward.
-- **Unbounded Dataset Scalability**: Enables processing of arbitrarily large datasets (10 GB, 100 GB, 1 TB+) on standard workstations or cluster nodes without memory exhaustion or disk swapping.
-- **Throughput Boost**: Eliminating 3.2 GB monolithic heap allocations and vector resizing improved cache locality, cutting Run 2 runtime down to **17.75 seconds** (**> 11.8x faster than original baseline**).
-
-##### How Event Splitting Across Chunk Boundaries is Prevented
-A fundamental concern with chunked data processing in nuclear physics is the risk of splitting a coincidence event or multi-detector cascade across chunk boundaries. `builder_sphere` eliminates this risk via outlier quarantine plus a three-tier safeguard:
-1. **Adaptive Inter-Board Jitter Horizon & Outlier Quarantine**: CAEN digitizers buffer and transmit channel data asynchronously; at high trigger rates (`~656 kHz`), low-rate boards can lag by `~450 ms` (`>250,000` raw events), while a channel with a stuck upper timestamp bit can jump hours ahead. Extreme future outliers (`> 30 s` beyond batch median) are quarantined in `deferredEvents` until catch-up or EOF, while active boards are held back by a `2 s`–`5 s` adaptive per-board watermark (`>= 200,000` events) so all out-of-order normal hits are merged into strict chronological order before coincidence evaluation.
-2. **Coincidence Window Horizon Back-Off**: An event $i$ is only evaluated for coincidence if its full prospective coincidence window $[t_i, t_i + \text{coincWindow})$ is strictly contained within the sorted active buffer. Any trailing events whose coincidence window could overlap with future unread data are held in the buffer and deferred to the next batch.
-3. **Decoupled Cluster Finalization**: Overlapping coincidence matches (e.g. Compton-suppressed HPGe + BGO vetoes or gamma cascades) form contiguous clusters. The engine only finalizes and outputs a cluster if a quiet time gap ($> \text{coincWindow}$) is encountered after it. If a cluster is still open or touches the evaluation boundary, it is preserved in the active ring buffer across batch iterations and only evicted once fully closed.
-
-This mechanism mathematically guarantees that no coincidence event is ever truncated or divided, resulting in **100% bit-for-bit identical output** compared to processing the entire file in a single monolithic buffer.
-
-#### Phase 4: Double-Buffered Asynchronous Streaming & Multi-Run Concurrent Batch Processing
-- **Asynchronous Producer–Consumer Double Buffering**: Decoupled raw disk I/O and Cap'n Proto binary decompression from the sorting and coincidence pipeline. While the CPU cores process, sort, and match events in the active ring buffer, a background worker thread (`std::async`) asynchronously decompresses and deserializes the next 500,000-event batch directly into a secondary pre-reserved staging buffer.
-- **Thread-Parallel Coincidence Matching (`tbb::parallel_for`)**: Divided each sliding chunk into balanced workload partitions processed in parallel across worker threads. Chunk results are concatenated in deterministic index order, ensuring identical event outputs with near-zero lock contention.
-- **Zero-Allocation Output Buffer Hoisting**: Hoisted `eventMask` and `eventBuffer` inside `gaspDataWriter::dumpToFile` into pre-allocated static buffers, eliminating hundreds of thousands of heap allocations during output writing.
-- **Robust Standalone CLI & RPC Handling**: Hardened Cap'n Proto RPC state synchronization in `dataSyncClient` with non-blocking try-catch safety guards, allowing `builder` to execute either under the multi-process `build` dispatcher or directly as a standalone CLI tool without hanging.
-
----
-
 ### Multi-Run Concurrent Batch Benchmark (10 CPU Cores)
 
 The true power of the streaming engine and double-buffering architecture was demonstrated by processing **all 4 experimental runs simultaneously** (`run 1`, `run 2`, `run 3`, `run 4`, total **~2.9 GB raw binary data**, **~250 million total events**) using the multi-process dispatcher across 10 CPU cores:
@@ -316,6 +268,7 @@ The true power of the streaming engine and double-buffering architecture was dem
 | **System Stability** | Crashed on workstations (< 32 GB RAM) | **Smooth, zero memory spikes** | Stable on any laptop/workstation |
 | **Bit-for-Bit Correctness** | Reference | **100% Bit-for-bit match** | Hashes match baseline references |
 
+For a phase-by-phase summary of completed optimizations, streaming anti-splitting safeguards, and full subsystem documentation, see [FORK_CHANGES_MANUAL.md](FORK_CHANGES_MANUAL.md#detailed-summary-of-completed-optimizations).
 
 ---
 
@@ -323,5 +276,5 @@ The true power of the streaming engine and double-buffering architecture was dem
 
 Licensed under the [MIT License](LICENSE).
 
-Originally created by **Gabriel Turturica** ([@gabriel-turturica](https://github.com/gabriel-turturica)) in [`gabriel-turturica/builder_sphere`](https://github.com/gabriel-turturica/builder_sphere). This standalone public repository ([`rlica/builder_sphere_ai`](https://github.com/rlica/builder_sphere_ai)) is derived from the original codebase with Gabriel Turturica's permission and is maintained by **Razvan Lica** ([@rlica](https://github.com/rlica)) and contributors with the assistance of LLMs, with the goal of optimizing CPU throughput and RAM usage while preserving bit-for-bit output parity.
-Developed for experimental nuclear physics data acquisition and offline event reconstruction.
+Originally created by **Gabriel Turturica** ([@gabriel-turturica](https://github.com/gabriel-turturica)) in [`gabriel-turturica/builder_sphere`](https://github.com/gabriel-turturica/builder_sphere). This repository ([`rlica/builder_sphere_ai`](https://github.com/rlica/builder_sphere_ai)) is derived from the original codebase and is maintained with the assistance of LLMs, with the goal of optimizing CPU throughput and RAM usage while preserving bit-for-bit output parity.
+
