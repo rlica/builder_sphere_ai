@@ -1,14 +1,14 @@
-# `builder_sphere` Fork Changes & Technical Reference Manual
+# `builder_sphere_ai` Changes & Technical Reference Manual
 
 **Upstream Baseline:** `gabriel-turturica/builder_sphere` (`master` @ `67f4d37865f50a907cdf52ab67f19b49728b3ccb`, last pushed `2025-10-21`)  
-**Current Fork Head:** `rlica/builder_sphere` (`master`, following `b2ba260496a0ca060a5a27529aa6eafc04978a76` / tag `v1.0.1`)  
+**Repository:** `rlica/builder_sphere_ai` (`main`, derived from `gabriel-turturica/builder_sphere` `master` @ `67f4d37`)  
 **Divergence:** **13 commits ahead, 0 commits behind** upstream (`23` files changed)
 
 ---
 
 ## 1. Executive Summary
 
-This manual documents every architectural, algorithmic, build-system, configuration, and tooling change introduced in the `rlica/builder_sphere` fork relative to the upstream `gabriel-turturica/builder_sphere` `master` branch.
+This manual documents every architectural, algorithmic, build-system, configuration, and tooling change introduced in `rlica/builder_sphere_ai` relative to the original `gabriel-turturica/builder_sphere` `master` branch.
 
 ### Key Outcomes
 
@@ -478,22 +478,18 @@ Inspecting raw Cap'n Proto packets in `input/Run_000170.cap` (first 1.5M raw eve
 
 ---
 
-## 9. Git & Upstream Integration Reference
+## 9. Git & Repository Reference
 
-Currently `.git/config` defines only `origin` (`https://github.com/rlica/builder_sphere.git`). Useful commands for inspecting or integrating with upstream `gabriel-turturica/builder_sphere`:
+`origin` points to `https://github.com/rlica/builder_sphere_ai.git` on branch `main`. Useful commands for inspecting changes relative to the original `67f4d37` baseline and maintaining this repository:
 
 ```bash
-# Add upstream remote (read/write access already verified for user rlica)
-git remote add upstream https://github.com/gabriel-turturica/builder_sphere.git
-git fetch upstream
-
-# Inspect commits and diffs between upstream/master and fork master
-git log --oneline upstream/master..master
-git diff --stat upstream/master..master
+# Inspect commits and diffs since the original baseline (67f4d37)
+git log --oneline 67f4d37..HEAD
+git diff --stat 67f4d37..HEAD
 
 # Verify Cap'n Proto toolchain status before building
 make capnp-check
 
-# Create a pull request from rlica:master against upstream master (if desired)
-gh pr create --repo gabriel-turturica/builder_sphere --base master --head rlica:master
+# Push updates to the public repository
+git push origin main
 ```

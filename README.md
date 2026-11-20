@@ -1,4 +1,4 @@
-# builder_sphere
+# builder_sphere_ai
 
 High-performance event builder, coincidence sorter, and data processing pipeline for nuclear physics detector arrays (HPGe, BGO Compton suppression shields, LaBr₃ scintillators, and particle detectors).
 
@@ -34,12 +34,13 @@ High-performance event builder, coincidence sorter, and data processing pipeline
 ## Directory Structure
 
 ```text
-builder_sphere/
+builder_sphere_ai/
 ├── builder.cpp             # Core event builder and coincidence sorter executable
 ├── dispacher.cpp           # Multi-threaded job orchestrator and RPC server
 ├── config.json             # Default configuration template
 ├── configSchema.json       # JSON Schema definition for configuration validation
 ├── Makefile                # Build automation
+├── LICENSE                 # MIT License
 ├── eventProto.capnp        # Cap'n Proto serialization schema
 ├── config_editor.py        # Graphical configuration editor (Tkinter)
 ├── viewWaveform.py         # Pulse waveform visualizer
@@ -306,7 +307,7 @@ The true power of the streaming engine and double-buffering architecture was dem
 
 ## License & Authors
 
-Originally created by **Gabriel Turturica** ([@gabriel-turturica](https://github.com/gabriel-turturica)) in the upstream repository [`gabriel-turturica/builder_sphere`](https://github.com/gabriel-turturica/builder_sphere), from which this project is forked.
+Licensed under the [MIT License](LICENSE).
 
-This fork is maintained by **Razvan Lica** ([@rlica](https://github.com/rlica)) and contributors with the assistance of LLMs, with the goal of optimizing CPU throughput and RAM usage while preserving bit-for-bit output parity.
+Originally created by **Gabriel Turturica** ([@gabriel-turturica](https://github.com/gabriel-turturica)) in [`gabriel-turturica/builder_sphere`](https://github.com/gabriel-turturica/builder_sphere). This standalone public repository ([`rlica/builder_sphere_ai`](https://github.com/rlica/builder_sphere_ai)) is derived from the original codebase with Gabriel Turturica's permission and is maintained by **Razvan Lica** ([@rlica](https://github.com/rlica)) and contributors with the assistance of LLMs, with the goal of optimizing CPU throughput and RAM usage while preserving bit-for-bit output parity.
 Developed for experimental nuclear physics data acquisition and offline event reconstruction.
