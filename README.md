@@ -175,6 +175,20 @@ The behavior of `builder_sphere` is driven by a central JSON configuration valid
    ```
 4. Output files will be generated in `output/` with run names matching the input datasets.
 
+### Running from Any Directory (`~/.bashrc`)
+To run the dispatcher from any experiment directory containing a `config.json`, make sure ROOT (`thisroot.sh`) is sourced and add a shell function to `~/.bashrc`. Scoping `BUILDER_BASE` and `PATH` to the function avoids conflicts when both the original `builder_sphere` and `builder_sphere_ai` are installed on the same machine (ensuring each dispatcher loads its own `configSchema.json` and launches its own `builder` worker):
+
+```bash
+# Example ~/.bashrc function (adjust the path to your installation directory)
+build-ai() {
+    BUILDER_BASE="/home/dfn/Installed/builder_sphere_ai" \
+    PATH="/home/dfn/Installed/builder_sphere_ai:$PATH" \
+    /home/dfn/Installed/builder_sphere_ai/build "$@"
+}
+```
+
+Reload your shell (`source ~/.bashrc`), then run `build-ai` from any directory containing `config.json`.
+
 ### Direct Execution of the Builder
 To run a single file directly through the low-level builder engine:
 ```bash
